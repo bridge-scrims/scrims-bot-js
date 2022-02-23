@@ -1,8 +1,8 @@
-const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
+const { MessageEmbed, MessageComponentInteraction } = require("discord.js");
 
 async function onComponent(interaction) {
 
-    if (!interaction?.isMessageComponent()) // "Houston, we have a problem"
+    if (!(interaction instanceof MessageComponentInteraction)) // "Houston, we have a problem"
         return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
     const handler = getHandler(interaction.args.shift());
@@ -29,7 +29,7 @@ async function onDeny(interaction) {
 
     const ticketCreatorId = interaction.ticket.userId
     if (ticketCreatorId != interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.fromSupport));
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.fromStaff));
      
     const transcriber = interaction.client.transcriber;
     transcriber.transcribe(interaction.channel.id, `<b> ${interaction.user.username} </b> denied the close request.`);
@@ -43,7 +43,7 @@ async function onAccept(interaction) {
     
     const ticketCreatorId = interaction.ticket.userId
     if (ticketCreatorId != interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.fromSupport));
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.fromStaff));
 
     const transcriber = interaction.client.transcriber; // Instance of TicketTranscriber created in bot.js
     transcriber.transcribe(interaction.channel.id, `<b> ${interaction.user.username} </b> accepted the close request.`);
@@ -55,13 +55,13 @@ async function onAccept(interaction) {
 
 }
 
-function getNotAllowedPayload(ticketCreatorId, isSupportMember) {
+function getNotAllowedPayload(ticketCreatorId, isStaffMember) {
     const embed = new MessageEmbed()
         .setColor("#2F3136")
         .setTitle(`Error`)
         .setDescription(
             `Only <@${ticketCreatorId}> can close this ticket.` 
-            + (isSupportMember ? ` Since you are part of the support team you could force close this ticket with the **/forceclose** command.` : ``)
+            + (isStaffMember ? ` Since you are part of the staff team you could force close this ticket with the **/forceclose** command.` : ``)
         ).setTimestamp();
 
     return { embeds: [embed] };

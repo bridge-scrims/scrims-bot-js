@@ -4,7 +4,7 @@ const { MessageEmbed } = require("discord.js");
 async function onSubmit(interaction) {
 
     if (!(interaction instanceof ModalSubmitInteraction)) // "Houston, we have a problem"
-        return interaction.reply({ content: "How did we get here?" });
+        return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
     interaction.ticketId = interaction.args.shift()
     interaction.firstResponse = interaction.getTextInputValue('request-reason');
@@ -30,15 +30,15 @@ async function fetchChannel(guild, id) {
 
 async function createTicket(interaction) {
     const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
-    const channel = await createTicketChannel(interaction.guild, interaction.user)
+    const channel = await createTicketChannel(interaction.client, interaction.guild, interaction.user)
 
     await dbClient.createTicket(interaction.ticketId, channel.id, interaction.userId)
-    await interaction.followUp({ embeds: [getCreatedPayload(channel)] })
-    await channel.send({ embeds: [getIntroPayload(interaction.firstResponse)] })
+    await interaction.followUp(getCreatedPayload(channel))
+    await channel.send(getIntroPayload(interaction.firstResponse))
 }
 
 function getAlreadyCreatedPayload(channel) {
-    const embed = MessageEmbed()
+    const embed = new MessageEmbed()
         .setColor("#2F3136")
         .setTitle(`Error`)
         .setDescription(`You already have a ticket open (${channel}).`)
@@ -73,7 +73,7 @@ function getIntroPayload(firstResponse) {
 }
 
 async function createTicketChannel(client, guild, user) {
-    const title = $`support-${user.username.toLowerCase()}`;
+    const title = `support-${user.username.toLowerCase()}`;
 
     return guild.channels.create(title, {
         permissionOverwrites: [

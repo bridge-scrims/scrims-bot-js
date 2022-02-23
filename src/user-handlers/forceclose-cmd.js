@@ -1,11 +1,11 @@
-const { MessageEmbed } = require("discord.js");
+const { MessageEmbed, CommandInteraction } = require("discord.js");
 
 async function onCommand(interaction) {
 
-    if (!interaction?.isCommand()) // "Houston, we have a problem"
+    if (!(interaction instanceof CommandInteraction)) // "Houston, we have a problem"
         return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
-    if (!interaction.fromSupport) return interaction.reply(getMissingPermissionPayload()); // Get outa here
+    if (!interaction.fromStaff) return interaction.reply(getMissingPermissionPayload()); // Get outa here
 
     const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
     const ticket = await dbClient.getTicket({ channelId: interaction.channel.id })

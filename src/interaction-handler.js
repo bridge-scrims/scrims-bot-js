@@ -9,8 +9,8 @@ function getHandler(cmdName) {
     switch(cmdName) {
         case("TicketCloseRequest"): return onCloseRequestComponent;
         case("forceclose"): return onForceCloseCommand;
+        case("support-modal"): return onSupportSubmit; 
         case("support"): return onSupportComponent;
-        case("support"): return onSupportSubmit; 
         case("close"): return onCloseCommand;
         default: return false;
     }
@@ -21,6 +21,7 @@ function expandInteraction(interaction) {
     interaction.userId = interaction.user.id
     interaction.params = interaction.options
     interaction.fromSupport = interaction.client.supportRoles.some(roleId => interaction.member.roles.cache.has(roleId))
+    interaction.fromStaff = interaction.client.staffRoles.some(roleId => interaction.member.roles.cache.has(roleId))
     interaction.args = interaction?.customId?.split("/") || []
     if (!interaction.commandName) 
         interaction.commandName = interaction.args.shift() || null

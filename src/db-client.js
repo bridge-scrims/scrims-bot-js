@@ -1,4 +1,4 @@
-const mysql = require("mysql");
+const mysql = require("mysql2");
 
 class DBCache {
 
@@ -11,7 +11,7 @@ class DBCache {
     }
 
     getTicket(selectCondition) {
-        return this.tickets.filter(ticket => Object.entries(selectCondition).every((key, value) => ticket[key] == value))[0] ?? null;
+        return this.tickets.filter(ticket => Object.entries(selectCondition).every(([key, value]) => ticket[key] == value))[0] ?? null;
     }
 
     setTickets(tickets) {
@@ -37,7 +37,7 @@ class DBCache {
 class DBClient {
 
     constructor(config) {
-        this.con = mysql.createPool({
+        this.con = mysql.createConnection({
             connectionLimit: 100,
             host: config.host,
             user: config.username,
@@ -63,7 +63,7 @@ class DBClient {
     }
 
     createWhereClause(selectCondition) {
-        return Object.entries(selectCondition).map((key, value) => `${key}='${value}'`).join(" AND ");
+        return Object.entries(selectCondition).map(([key, value]) => `${key}='${value}'`).join(" AND ");
     }
 
     async getTicket(selectCondition) {

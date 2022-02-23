@@ -1,19 +1,22 @@
-const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
+const { MessageEmbed, MessageActionRow, MessageButton, CommandInteraction } = require("discord.js");
 
 async function onCommand(interaction) {
 
-    if (!interaction?.isCommand()) // "Houston, we have a problem"
+    if (!(interaction instanceof CommandInteraction)) // "Houston, we have a problem"
         return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
     if (!interaction.fromSupport) return interaction.reply(getMissingPermissionPayload()); // Get outa here   
     
+    /*
     const commandHandler = getHandler(interaction?.options?.getSubcommand())
     if (!commandHandler) return interaction.reply({ content: "This Subcommand does not have a handler. Please refrain from trying again.", ephemeral: true });
+    */
 
-    return commandHandler(interaction);
+    return onClose(interaction);
 
 }
 
+/*
 function getHandler(subCommand) {
     switch (subCommand) {
         case ("reason"):
@@ -22,8 +25,9 @@ function getHandler(subCommand) {
             return false;
     }
 }
+*/
 
-async function reason(interaction) {
+async function onClose(interaction) {
 
     const reason = interaction.options.getString('reason') ?? "No reason provided.";
     
