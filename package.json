@@ -1,9 +1,0 @@
-{
-  "dependencies": {
-    "discord-modals": "^1.2.1",
-    "discord.js": "^13.6.0",
-    "fs": "*",
-    "mysql": "^2.18.1",
-    "util": "^0.12.4"
-  }
-}
