@@ -6,7 +6,7 @@ async function onCommand(interaction) {
         return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
     if (!interaction.fromSupport) return interaction.reply(getMissingPermissionPayload()); // Get outa here   
-    
+ 
     /*
     const commandHandler = getHandler(interaction?.options?.getSubcommand())
     if (!commandHandler) return interaction.reply({ content: "This Subcommand does not have a handler. Please refrain from trying again.", ephemeral: true });
@@ -36,13 +36,18 @@ async function onClose(interaction) {
 
     if (ticket === null) return interaction.reply(getMissingTicketPayload()); // This is no ticket channel (bruh moment)
     
-    await interaction.channel.send(getCloseRequestPayload(interaction.user, reason, ticket)); // Close request sent and is awaiting aproval!
+    await interaction.reply(getCloseRequestPayload(interaction.user, reason, ticket)) // Close request sent and is awaiting aproval!
 
 }
 
-function getCloseActions(ticketId) {
+function getCloseRequestActions(ticketId) {
     return new MessageActionRow()
         .addComponents(
+            new MessageButton()
+            .setCustomId(`TicketCloseRequest/ACCEPT/${ticketId}`)
+            .setLabel("✅ Accept & Close")
+            .setStyle("PRIMARY")
+        ).addComponents(
             new MessageButton()
             .setCustomId(`TicketCloseRequest/DENY/${ticketId}`)
             .setLabel("❌ Deny & Keep Open")
@@ -50,25 +55,16 @@ function getCloseActions(ticketId) {
         );
 }
 
-function getOpenActions(ticketId) {
-    return new MessageActionRow()
-        .addComponents(
-            new MessageButton()
-            .setCustomId(`TicketCloseRequest/ACCEPT/${ticketId}`)
-            .setLabel("✅ Accept & Close")
-            .setStyle("PRIMARY")
-        );
-}
-
 function getCloseRequestPayload(user, reason, ticket) {
     const embed = new MessageEmbed()
-        .setColor("#5d9acf")
+        .setColor("#5D9ACF")
         .setTitle("Close Request")
+        .addField("Reason", `\`\`\`${reason}\`\`\``, false)
         .setDescription(
-            `${user} has requested to close this ticket. Reason:\n\`\`\`${reason}\`\`\`\n`
-                + `Please accept or deny using the buttons below.`
+            `${user} has requested to close this ticket. `
+            + `Please accept or deny using the buttons below.`
         ).setTimestamp();
-    return { content: `<@${ticket.userId}>`, embeds: [embed], components: [ getOpenActions(ticket.id), getCloseActions(ticket.id) ] };
+    return { content: `<@${ticket.userId}>`, embeds: [embed], components: [ getCloseRequestActions(ticket.id) ] };
 }
 
 function getMissingTicketPayload() {

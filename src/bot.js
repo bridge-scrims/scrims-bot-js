@@ -38,7 +38,7 @@ class ScrimsBot extends Client {
         await this.database.initializeCache();
         console.log("Connected to database!")
 
-        this.transcriber = new TicketTranscriber();
+        this.transcriber = new TicketTranscriber(this.database);
         
         const transcriptChannelId = this.config.transcriptChannelId
         if (transcriptChannelId) {
@@ -48,7 +48,6 @@ class ScrimsBot extends Client {
 
         console.log("Installing commands...")
         const guilds = await this.guilds.fetch().then(oAuth2Guilds => Promise.all(oAuth2Guilds.map(oAuth2Guild => oAuth2Guild.fetch())))
-        console.log("All guilds were fetched!")
         await Promise.all(guilds.map(guild => this.commands.install(guild)))
         console.log("Commands successfully installed!")
 

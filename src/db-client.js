@@ -4,33 +4,45 @@ class DBCache {
 
     constructor() {
         this.tickets = []
+        this.transcript = []
     }
 
     isEmpty() {
-        return (this.tickets.length < 1);
+        return (this.tickets.length < 1 && this.transcript.length < 1);
     }
 
-    getTicket(selectCondition) {
-        return this.tickets.filter(ticket => Object.entries(selectCondition).every(([key, value]) => ticket[key] == value))[0] ?? null;
+    rmv(key, filter) {
+        this[key] = this[key].filter(obj => !Object.entries(filter).every(([key, value]) => obj[key] == value))
     }
 
-    setTickets(tickets) {
-        this.tickets = tickets.map(ticket => ({ ...ticket, timestamp: Date.now() }))
+    get(key, filter) {
+        return this[key].filter(obj => Object.entries(filter).every(([key, value]) => obj[key] == value))[0] ?? null;
     }
 
-    removeTicket(id) {
-        this.tickets = this.tickets.filter(ticket => ticket.id != id)
+    set(key, values) {
+        this[key] = values.map(value => ({ ...value, timestamp: Date.now() }))
     }
 
-    pushTicket(ticketData) {
-        if (ticketData === null) return false;
+    push(key, value) {
+        if (value === null) return false;
 
-        const idx = this.tickets.indexOf(this.getTicket({ id: ticketData.id }))
-        if (idx == -1) this.tickets.push(ticketData);
-        else this.tickets[idx] = ticketData
+        const idx = this[key].indexOf(this.get(key, { id: value.id }))
+        if (idx == -1) this[key].push(value);
+        else this[key] = [value]
 
         return true;
     }
+
+    getTicket(filter) { return this.get("tickets", filter) }
+    setTickets(tickets) { this.set("tickets", tickets) }
+    removeTicket(id) { this.rmv("tickets", { id }) }
+    pushTicket(ticketData) { return this.push("tickets", ticketData) }
+
+    getMessage(filter) { return this.get("transcript", filter) }
+    setTranscript(transcript) { this.set("transcript", transcript) }
+    addTranscript(transcript) { transcript.forEach(message => this.pushMessage(message)) }
+    removeTranscript(ticketId) { this.rmv("transcript", { ticketId }) }
+    pushMessage(msg) { return this.push("transcript", msg) }
 
 }
 
@@ -51,6 +63,7 @@ class DBClient {
 
     async initializeCache() {
         await this.query(`SELECT * FROM tickets`).then(tickets => this.cache.setTickets(tickets))
+        await this.query(`SELECT * FROM transcript`).then(transcript => this.cache.setTranscript(transcript))
     }
 
     async queryCallback(err, results, resolve) {
@@ -59,31 +72,67 @@ class DBClient {
     }
     
     async query(queryString) {
-        return new Promise(resolve => this.con.query(queryString, (err, results) => this.queryCallback(err, results, resolve)))
+        return new Promise(resolve => this.con.query(queryString, (err, results) => resolve([err, results])))
+            .then(([err, results]) => {
+                if (err) throw err;
+                return results;
+            })
+    }
+
+    async insert(tableName, data) {
+        await this.query(`INSERT INTO ${tableName} ${this.createInsertClause(data)}`)
+        return data;
+    }
+
+    formatValue(value) {
+        if (typeof value === "number") return value;
+        if (typeof value === "string") return `'${value}'`;
+        return "NULL";
+    }
+
+    createInsertClause(data) {
+        return `(${Object.keys(data).join(", ")}) VALUES (${Object.values(data).map(value => this.formatValue(value)).join(", ")})`;
     }
 
     createWhereClause(selectCondition) {
-        return Object.entries(selectCondition).map(([key, value]) => `${key}='${value}'`).join(" AND ");
+        return "WHERE " + Object.entries(selectCondition).map(([key, value]) => `${key}=${this.formatValue(value)}`).join(" AND ");
     }
 
     async getTicket(selectCondition) {
-        const ticket = await this.query(`SELECT * FROM tickets WHERE ${this.createWhereClause(selectCondition)}`).then(rows => rows[0] ?? null)
+        const ticket = await this.query(`SELECT * FROM tickets ${this.createWhereClause(selectCondition)}`).then(rows => rows[0] ?? null)
         this.cache.pushTicket(ticket)
         return ticket;
     }
 
     async createTicket(id, channelId, userId) {
-        const ticket = await this.query(`INSERT INTO tickets (id, userId, channelId) VALUES ('${id}', '${userId}', '${channelId}')`).then(() => ({ id, userId, channelId }))
+        const ticket = await this.insert("tickets", { id, userId, channelId })
         this.cache.pushTicket(ticket);
         return ticket;
     }
 
     async deleteTicket(id) {
-        const response = await this.query(`DELETE FROM tickets WHERE id='${id}'`)
+        const response = await this.query(`DELETE FROM tickets ${this.createWhereClause({ id })}`)
         this.cache.removeTicket(id)
         return response;
     }
 
+    async removeTranscript(ticketId) {
+        const response = await this.query(`DELETE FROM transcript ${this.createWhereClause({ ticketId })}`)
+        this.cache.removeTranscript(ticketId)
+        return response;
+    }
+
+    async getTranscript(ticketId) {
+        const transcript = await this.query(`SELECT * FROM transcript ${this.createWhereClause({ ticketId })}`)
+        this.cache.addTranscript(transcript)
+        return transcript;
+    }
+
+    async createTranscriptMessage(message, ticketId) {
+        const msg = await this.insert("transcript", { id: message.id, ticketId, content: message.content, creation: message.createdTimestamp, authorId: message.userId, authorTag: message.user.tag })
+        this.cache.pushMessage(msg)
+        return msg;
+    }
     
 }
 

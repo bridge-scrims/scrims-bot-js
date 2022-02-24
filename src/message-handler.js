@@ -1,6 +1,7 @@
 const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
 
 function expandMessage(message) {
+    message.user = message.author
     message.userId = message.author.id
     message.fromSupport = message.client.supportRoles.some(roleId => message?.member?.roles?.cache?.has(roleId))
     message.fromStaff = message.client.staffRoles.some(roleId => message?.member?.roles?.cache?.has(roleId))
@@ -14,7 +15,7 @@ async function handleMessage(message) {
     
     if (ticket && (message.author.id != message.client.user.id)) {
         const transcriber = message.client.transcriber; // Instance of TicketTranscriber created in bot.js
-        transcriber.transcribe(message.channel.id, `<b>${message.author.username}:</b> ${message.content}`);
+        await transcriber.transcribe(ticket.id, message).catch(console.error);
         return true;
     } 
     

@@ -34,7 +34,7 @@ async function createTicket(interaction) {
 
     await dbClient.createTicket(interaction.ticketId, channel.id, interaction.userId)
     await interaction.followUp(getCreatedPayload(channel))
-    await channel.send(getIntroPayload(interaction.firstResponse))
+    await channel.send(getIntroPayload(interaction.user, interaction.firstResponse))
 }
 
 function getAlreadyCreatedPayload(channel) {
@@ -49,7 +49,7 @@ function getAlreadyCreatedPayload(channel) {
 
 function getCreatedPayload(channel) {
     const embed = new MessageEmbed()
-        .setColor("#83cf5d")
+        .setColor("#83CF5D")
         .setTitle(`Created Ticket`)
         .setDescription(`Opened a new ticket: ${channel}`)
         .setTimestamp()
@@ -57,19 +57,19 @@ function getCreatedPayload(channel) {
     return { embeds: [embed] };
 }
 
-function getIntroPayload(firstResponse) {
+function getIntroPayload(user, firstResponse) {
     const embed = new MessageEmbed()
-        .setColor("#5d9acf")
+        .setColor("#5D9ACF")
         .setTitle(`Support`)
+        .addField("Reason", `\`\`\`${firstResponse}\`\`\``)
         .setDescription(
             "Thank you for opening a support ticket on Ranked Bridge! "
             + "If there is any way that we can assist you, please state it below and we will be glad to help! "
             + "Regarding Staff/Scorer applications, Staff will send you a Google Document for you to fill out. "
             + "We are working on automating the process for applications, so please be patient as we work on developing that!"
-            + `\n\`Reason:\`\n\`\`\`${firstResponse}\`\`\``
         ).setTimestamp()
 
-    return { embeds: [embed] };
+    return { content: `${user}`, embeds: [embed] };
 }
 
 async function createTicketChannel(client, guild, user) {

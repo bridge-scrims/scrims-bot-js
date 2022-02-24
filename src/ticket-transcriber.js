@@ -1,22 +1,15 @@
-const { MessageEmbed } = require("discord.js");
-const util = require("util");
-const fs = require("fs");
-
+const { MessageEmbed, MessageAttachment } = require("discord.js");
+const fs = require("fs/promises");
 
 class TicketTranscriber {
-    
-    transcribe(id, message) {
 
-        const logFile = fs.createWriteStream(`../tickets/${id}.txt`, { flags: "a" });
-        if (!message) logFile.write(util.format("Could not get message.") + "\n");
-        else logFile.write(util.format(message) + "\n");
-
+    constructor(dbClient) {
+        this.client = dbClient // Instance of DBClient created in bot.js
     }
+    
+    async transcribe(ticketId, message) {
 
-    readTranscript(id) {
-
-        const content = fs.readFileSync(`../tickets/${id}.txt`, 'utf8');
-        return content.split("\n");
+        await this.client.createTranscriptMessage(message, ticketId)
 
     }
 
@@ -43,11 +36,13 @@ class TicketTranscriber {
     async send(guild, ticket) {
         
         try {
-            const ticketTranscript = this.readTranscript(ticket.id)
-            const logFile = fs.createWriteStream(`../tickets/${id}.html`, { flags: "a" });
-            logFile.write(this.getHTMLContent(ticketTranscript));
-    
-            const file = new MessageAttachment(`../tickets/${id}.html`);
+            const ticketTranscript = (await this.client.getTranscript(ticket.id)).map(message => `<b>${message.authorTag}:</b> ${message.content}`)
+
+            const filePath = `./tickets/${ticket.id}.html`
+            await fs.writeFile(filePath, this.getHTMLContent(ticketTranscript), { flags: "a" });
+            await this.client.removeTranscript(ticket.id)
+            const file = new MessageAttachment(filePath);
+
             const embed = new MessageEmbed()
                 .setColor("#2F3136")
                 .setTitle(`Transcript for <#${ticket.channelId}>`)

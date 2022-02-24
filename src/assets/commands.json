@@ -3,7 +3,7 @@
         "name": "close",
         "description": "Use this command in a support channel to request a ticket closure.",
         "permissionLevel": "SUPPORT",
-        "default_permission": false,
+        "default_permission": true,
         "options": [
             {
                 "name": "reason",
@@ -16,7 +16,7 @@
     {
         "name": "forceclose",
         "description": "Use this command in a support channel to request a ticket closure.",
-        "default_permission": false,
+        "default_permission": true,
         "permissionLevel": "STAFF",
         "options": []
     }

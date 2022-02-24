@@ -85,7 +85,7 @@ class ScrimsBotCommandInstaller {
         )
         commands.forEach(([appCmd, rawCmd]) => this.expandCommand(appCmd, rawCmd))
         this.commands[guild.id] = commands.map(([appCmd, _]) => appCmd)
-        await this.installPermissions(guild)
+        this.installPermissions(guild).catch(console.error)
     }
 
     async installPermissions(guild) {

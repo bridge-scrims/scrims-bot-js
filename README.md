@@ -20,6 +20,7 @@ Once a ticket is closed the full transcription is sent to the ticket creator and
 
 ## TODO
 
+- [ ] Post transcriptions to website from viewing (since its hard to display a lot of data using discord)
 - [ ] Add the following tasks:
  - All users with both member and unverified role will remove unverified
  - All users with banned and member role will remove member

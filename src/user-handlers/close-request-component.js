@@ -10,8 +10,8 @@ async function onComponent(interaction) {
 
     const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
     interaction.ticket = await dbClient.getTicket({ id: interaction.args.shift() })
-    if (interaction.ticket === null) return interaction.deleteReply(); // The ticket no longer exists :/
-    
+    if (interaction.ticket === null) return interaction.message.delete() // The ticket no longer exists :/
+
     await interaction.deferReply({ ephemeral: true });
     return handler(interaction);
 
@@ -30,25 +30,29 @@ async function onDeny(interaction) {
     const ticketCreatorId = interaction.ticket.userId
     if (ticketCreatorId != interaction.user.id)
         return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.fromStaff));
-     
+
     const transcriber = interaction.client.transcriber;
-    transcriber.transcribe(interaction.channel.id, `<b> ${interaction.user.username} </b> denied the close request.`);
-    
+    await transcriber.transcribe(
+        interaction.ticket.id, { ...interaction, createdTimestamp: interaction.createdTimestamp, content: "denied the close request" }
+    ).catch(console.error);
+
     await interaction.editReply("Close request denied.");
     await interaction.message.edit(getRequestDeniedPayload(interaction.user));
 
 }
 
 async function onAccept(interaction) {
-    
+
     const ticketCreatorId = interaction.ticket.userId
     if (ticketCreatorId != interaction.user.id)
         return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.fromStaff));
 
     const transcriber = interaction.client.transcriber; // Instance of TicketTranscriber created in bot.js
-    transcriber.transcribe(interaction.channel.id, `<b> ${interaction.user.username} </b> accepted the close request.`);
-    transcriber.send(guild, interaction.ticket);
-    
+    await transcriber.transcribe(
+        interaction.ticket.id, { ...interaction, createdTimestamp: interaction.createdTimestamp, content: "accepted the close request" }
+    ).catch(console.error);
+    await transcriber.send(interaction.guild, interaction.ticket).catch(console.error);
+
     const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
     await dbClient.deleteTicket(interaction.ticket.id);
     await interaction.channel.delete();
