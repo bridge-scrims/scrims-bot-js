@@ -13,7 +13,7 @@ class ApplicationCommandPermissionsCache extends Array {
 
 }
 
-class TicketBotCommandInstaller {
+class ScrimsBotCommandInstaller {
 
     constructor(client, commands) {
         this.client = client
@@ -147,4 +147,4 @@ class TicketBotCommandInstaller {
 
 }
 
-module.exports = TicketBotCommandInstaller;
+module.exports = ScrimsBotCommandInstaller;

@@ -1,13 +1,13 @@
 const handleInteraction = require('./interaction-handler.js');
 const TicketTranscriber = require("./ticket-transcriber.js");
-const TicketBotCommandInstaller = require("./commands.js");
+const ScrimsBotCommandInstaller = require("./commands.js");
 const handleMessage = require('./message-handler.js');
 const Commands = require("./assets/commands.json");
 const discordModals = require('discord-modals');
 const DBClient = require("./db-client.js");
 const { Client } = require("discord.js");
 
-class TicketBot extends Client {
+class ScrimsBot extends Client {
 
     constructor(config) {
         super({ 
@@ -19,7 +19,7 @@ class TicketBot extends Client {
 		});
 
         this.config = config;
-        this.commands = new TicketBotCommandInstaller(this, Commands);
+        this.commands = new ScrimsBotCommandInstaller(this, Commands);
         this.transcriptChannel = null;
 
         this.prefix = config.prefix;
@@ -86,4 +86,4 @@ class TicketBot extends Client {
 
 
 
-module.exports = TicketBot;
+module.exports = ScrimsBot;

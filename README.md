@@ -1,12 +1,13 @@
-## Scrims Ticket Bot
+# Javascript Scrims Discord Bot
 
-Is a bot made for the minecraft **bridge scrims discord server** (https://discord.gg/ZNBkRBjd8k).
-Using private channels for each support ticket and components for user input, this bot aims to make requesting and handling support easier for both the support team and the discord server members.
+>This is a bot made for the **bridge scrims discord server** (https://discord.gg/ZNBkRBjd8k).
+It includes many features to enhance the user and staff experience aslong as the overall efficiency.
 
-## Function
+## Ticket System
 
-The **Support Button** creates a modal with a textinputcomponent for users to type in their reason for requesting support.
-Once submited (aslong as the user does not have another ticket open) a new **ticket** will be created.
+>Using private channels for each support ticket and components for user input, this system aims to make requesting and handling support easier for both the support team and the discord server members.
+
+The **Support Button** creates a modal with a textinputcomponent for users to type in their reason for requesting support.  Once submited (aslong as the user does not have another ticket open) a new **ticket** will be created.
 
 **Tickets** are saved in a database with a `id`, `userId` and a `channelId`.
 Ticket channels are only viewable by the ticket creator and the support team and are removed once the ticket was closed.
@@ -17,6 +18,13 @@ The support team also has the option to forably close tickets with the **/forcec
 While a ticket is open all activity will get saved using the **ticket-transcriber**.
 Once a ticket is closed the full transcription is sent to the ticket creator and into the configured transcription channel.
 
+## TODO
+
+- [ ] Add the following tasks:
+ - All users with both member and unverified role will remove unverified
+ - All users with banned and member role will remove member
+ - All users with banned and unverified will remove unverified
+ - All users without the booster role will lose all the following roles
 
 ## Contributing
 
