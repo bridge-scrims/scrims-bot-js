@@ -20,8 +20,7 @@ function getHandler(cmdName) {
 function expandInteraction(interaction) {
     interaction.userId = interaction.user.id
     interaction.params = interaction.options
-    interaction.fromSupport = interaction.client.supportRoles.some(roleId => interaction.member.roles.cache.has(roleId))
-    interaction.fromStaff = interaction.client.staffRoles.some(roleId => interaction.member.roles.cache.has(roleId))
+    interaction.hasPermission = (permLevel) => interaction.client.hasPermission(interaction?.member, permLevel)
     interaction.args = interaction?.customId?.split("/") || []
     if (!interaction.commandName) 
         interaction.commandName = interaction.args.shift() || null

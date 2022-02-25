@@ -15,21 +15,21 @@ class TicketTranscriber {
 
     getHTMLContent(ticketTranscript) {
 
-        return `
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=PT Sans" />
-                    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Ubuntu" />
-                    <title>Ranked Bridge Ticket Transcript</title>
-                    <style> </style>
-                </head>
-                <body>
-                    <h1>Ticket Transcript</h1>
-                    ${ticketTranscript.map(s => `<p>${s}</p>`).join("\n")}
-                </body>
-            </html>
-        `;
+        return (
+            `<!DOCTYPE html>`
+                + `<html>`
+                    + `<head>`
+                        + `<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=PT Sans" />`
+                        + `<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Ubuntu" />`
+                        + `<title>Ranked Bridge Ticket Transcript</title>`
+                        + `<style> </style>`
+                    + `</head>`
+                    + `<body>`
+                        + `<h1>Ticket Transcript</h1>`
+                        + `${ticketTranscript.map(s => `<p>${s}</p>`).join("\n")}`
+                    + `</body>`
+                + `</html>`
+        );
 
     }
 

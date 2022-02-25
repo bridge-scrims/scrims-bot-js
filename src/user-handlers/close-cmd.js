@@ -5,7 +5,7 @@ async function onCommand(interaction) {
     if (!(interaction instanceof CommandInteraction)) // "Houston, we have a problem"
         return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
-    if (!interaction.fromSupport) return interaction.reply(getMissingPermissionPayload()); // Get outa here   
+    if (!interaction.hasPermission("SUPPORT")) return interaction.reply(getMissingPermissionPayload()); // Get outa here   
  
     /*
     const commandHandler = getHandler(interaction?.options?.getSubcommand())

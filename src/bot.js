@@ -56,6 +56,27 @@ class ScrimsBot extends Client {
 
     }
 
+    /**
+     * Checks if the member or role has the given permissionlevel **OR** higher.
+     * 
+     * @param  { GuildMember | Role } permissible
+     * @param  { String } permissionLevel
+     */
+    hasPermission(permissible, permissionLevel) {
+        if (permissionLevel == "ALL") return true;
+
+        if (permissible?.permissions?.has("ADMINISTRATOR")) return true;
+        if (permissionLevel == "ADMIN") return false;
+
+        if (this.staffRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true;
+        if (permissionLevel == "STAFF") return false;
+
+        if (this.supportRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true;
+        if (permissionLevel == "SUPPORT") return false;
+
+        return false;
+    }
+
     addEventListeners() {
 
         this.on('modalSubmit', handleInteraction);

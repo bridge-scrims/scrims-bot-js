@@ -5,7 +5,7 @@ async function onCommand(interaction) {
     if (!(interaction instanceof CommandInteraction)) // "Houston, we have a problem"
         return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
-    if (!interaction.fromStaff) return interaction.reply(getMissingPermissionPayload()); // Get outa here
+    if (!interaction.hasPermission("STAFF")) return interaction.reply(getMissingPermissionPayload()); // Get outa here
 
     const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
     const ticket = await dbClient.getTicket({ channelId: interaction.channel.id })

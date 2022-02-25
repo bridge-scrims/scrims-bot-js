@@ -3,8 +3,7 @@ const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
 function expandMessage(message) {
     message.user = message.author
     message.userId = message.author.id
-    message.fromSupport = message.client.supportRoles.some(roleId => message?.member?.roles?.cache?.has(roleId))
-    message.fromStaff = message.client.staffRoles.some(roleId => message?.member?.roles?.cache?.has(roleId))
+    message.hasPermission = (permLevel) => message.client.hasPermission(message?.member, permLevel)
 }
 
 async function handleMessage(message) {
@@ -19,7 +18,7 @@ async function handleMessage(message) {
         return true;
     } 
     
-    if (message.content === `${message.client.prefix}ticketembed` && message.fromSupport) {
+    if (message.content === `${message.client.prefix}ticketembed` && message.hasPermission("SUPPORT")) {
         const action = new MessageActionRow()
             .addComponents(
                 new MessageButton()

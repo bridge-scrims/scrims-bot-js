@@ -29,7 +29,7 @@ async function onDeny(interaction) {
 
     const ticketCreatorId = interaction.ticket.userId
     if (ticketCreatorId != interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.fromStaff));
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.hasPermission("STAFF")));
 
     const transcriber = interaction.client.transcriber;
     await transcriber.transcribe(
@@ -45,7 +45,7 @@ async function onAccept(interaction) {
 
     const ticketCreatorId = interaction.ticket.userId
     if (ticketCreatorId != interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.fromStaff));
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.hasPermission("STAFF")));
 
     const transcriber = interaction.client.transcriber; // Instance of TicketTranscriber created in bot.js
     await transcriber.transcribe(

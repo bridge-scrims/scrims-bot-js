@@ -1,3 +1,5 @@
+const { ApplicationCommandData, ApplicationCommandPermissionData } = require("discord.js");
+const ScrimsBot = require("./bot")
 
 class ApplicationCommandPermissionsCache extends Array {
 
@@ -15,6 +17,10 @@ class ApplicationCommandPermissionsCache extends Array {
 
 class ScrimsBotCommandInstaller {
 
+    /**
+     * @param  { ScrimsBot } client Scrims bot client to use as context
+     * @param  { ApplicationCommandData[] } commands Commands to add and to manage permissions of
+     */
     constructor(client, commands) {
         this.client = client
         this.rawCommands = commands
@@ -32,13 +38,13 @@ class ScrimsBotCommandInstaller {
         this.client.on('roleUpdate', async (oldRole, newRole) => {
             if (!(newRole.guild.id in this.commands)) return false; // Guild has not had commands installed
 
-            const changes = this.getCommandPermissionLevels().filter(level => this.hasPermission(oldRole, level) != this.hasPermission(newRole, level))
+            const changes = this.getCommandPermissionLevels().filter(level => this.client.hasPermission(oldRole, level) != this.client.hasPermission(newRole, level))
             if (changes.length < 1) return false; // This role update did not effect any command permissions
             await Promise.allSettled(
                 changes.map(permissionLevel => this.addPermissions(
                         newRole.guild, permissionLevel, newRole.members.map(
-                            member => this.hasPermission(member, permissionLevel) == this.hasPermission(newRole, permissionLevel)
-                        ), this.hasPermission(newRole, permissionLevel)
+                            member => this.client.hasPermission(member, permissionLevel) == this.client.hasPermission(newRole, permissionLevel)
+                        ), this.client.hasPermission(newRole, permissionLevel)
                     )
                 )
             )
@@ -47,10 +53,10 @@ class ScrimsBotCommandInstaller {
         this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
             if (!(newMember.guild.id in this.commands)) return false; // Guild has not had commands installed
 
-            const changes = this.getCommandPermissionLevels().filter(level => this.hasPermission(oldMember, level) != this.hasPermission(newMember, level))
+            const changes = this.getCommandPermissionLevels().filter(level => this.client.hasPermission(oldMember, level) != this.client.hasPermission(newMember, level))
             if (changes.length < 1) return false;
             await Promise.allSettled(
-                changes.map(permissionLevel => this.addPermissions(newMember.guild, permissionLevel, [newMember], this.hasPermission(newMember, permissionLevel)))
+                changes.map(permissionLevel => this.addPermissions(newMember.guild, permissionLevel, [newMember], this.client.hasPermission(newMember, permissionLevel)))
             )
         })
 
@@ -62,10 +68,10 @@ class ScrimsBotCommandInstaller {
     }
 
     async addMemberPermissions(member) {
-        const perms = this.getCommandPermissionLevels().filter(level => this.hasPermission(member, level))
+        const perms = this.getCommandPermissionLevels().filter(level => this.client.hasPermission(member, level))
         if (perms.length < 1) return false;
         await Promise.all(
-            perms.map(permissionLevel => this.addPermissions(member.guild, permissionLevel, [member], this.hasPermission(member, permissionLevel)))
+            perms.map(permissionLevel => this.addPermissions(member.guild, permissionLevel, [member], this.client.hasPermission(member, permissionLevel)))
         )
     }
 
@@ -100,27 +106,6 @@ class ScrimsBotCommandInstaller {
      */
     getCommandPermissionLevels() {
         return Object.values(this.commands)[0].map(cmd => cmd.permissionLevel);
-    }
-
-    /**
-     * Checks if the member or role has the given permissionlevel **OR** higher.
-     * 
-     * @param  { GuildMember | Role } permissible
-     * @param  { String } permissionLevel
-     */
-    hasPermission(permissible, permissionLevel) {
-        if (permissionLevel == "ALL") return true;
-
-        if (permissible?.permissions.has("ADMINISTRATOR")) return true;
-        if (permissionLevel == "ADMIN") return false;
-
-        if (this.client.staffRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true;
-        if (permissionLevel == "STAFF") return false;
-
-        if (this.client.supportRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true;
-        if (permissionLevel == "SUPPORT") return false;
-
-        return false;
     }
 
     /**
