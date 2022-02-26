@@ -5,27 +5,9 @@ async function onCommand(interaction) {
     if (!(interaction instanceof CommandInteraction)) // "Houston, we have a problem"
         return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
-    if (!interaction.hasPermission("SUPPORT")) return interaction.reply(getMissingPermissionPayload()); // Get outa here   
- 
-    /*
-    const commandHandler = getHandler(interaction?.options?.getSubcommand())
-    if (!commandHandler) return interaction.reply({ content: "This Subcommand does not have a handler. Please refrain from trying again.", ephemeral: true });
-    */
-
     return onClose(interaction);
 
 }
-
-/*
-function getHandler(subCommand) {
-    switch (subCommand) {
-        case ("reason"):
-            return reason;
-        default:
-            return false;
-    }
-}
-*/
 
 async function onClose(interaction) {
 
@@ -64,6 +46,7 @@ function getCloseRequestPayload(user, reason, ticket) {
             `${user} has requested to close this ticket. `
             + `Please accept or deny using the buttons below.`
         ).setTimestamp();
+
     return { content: `<@${ticket.userId}>`, embeds: [embed], components: [ getCloseRequestActions(ticket.id) ] };
 }
 
@@ -73,6 +56,7 @@ function getMissingTicketPayload() {
         .setTitle("Error")
         .setDescription("This isn't a ticket channel!")
         .setTimestamp();
+
     return { embeds: [embed], ephemeral: true };
 }
 

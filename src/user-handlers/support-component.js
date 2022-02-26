@@ -11,18 +11,18 @@ async function onComponent(interaction) {
 }
 
 async function createModal(interaction) {
-    const modal = new Modal() // We create a Modal
+    const modal = new Modal()
         .setCustomId(`support-modal/${SnowflakeUtil.generate()}`)
         .setTitle('Support Ticket')
         .addComponents(
-            new TextInputComponent() // We create an Text Input Component
+            new TextInputComponent()
                 .setCustomId('request-reason')
                 .setLabel('Reason for opening a ticket')
-                .setStyle('LONG') //IMPORTANT: Text Input Component Style can be 'SHORT' or 'LONG'
+                .setStyle('LONG') // Text Input Component Style can be 'SHORT' or 'LONG'
                 .setMinLength(5)
                 .setMaxLength(2000)
                 .setPlaceholder('Write here')
-                .setRequired(true) // If it's required or not
+                .setRequired(true)
         );
     return showModal(modal, { client: interaction.client, interaction });
 }

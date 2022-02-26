@@ -1,6 +1,5 @@
 const handleInteraction = require('./interaction-handler.js');
 const TicketTranscriber = require("./ticket-transcriber.js");
-const ScrimsBotCommandInstaller = require("./commands.js");
 const handleMessage = require('./message-handler.js');
 const Commands = require("./assets/commands.json");
 const discordModals = require('discord-modals');
@@ -19,7 +18,8 @@ class ScrimsBot extends Client {
 		});
 
         this.config = config;
-        this.commands = new ScrimsBotCommandInstaller(this, Commands);
+        this.rawCommands = Commands;
+        this.commandPermissions = {};
         this.transcriptChannel = null;
 
         this.prefix = config.prefix;
@@ -46,14 +46,26 @@ class ScrimsBot extends Client {
             console.log("TranscriptChannel found and on standby!")
         }
 
-        console.log("Installing commands...")
         const guilds = await this.guilds.fetch().then(oAuth2Guilds => Promise.all(oAuth2Guilds.map(oAuth2Guild => oAuth2Guild.fetch())))
-        await Promise.all(guilds.map(guild => this.commands.install(guild)))
+        await Promise.all(guilds.map(guild => this.installCommands(guild)))
         console.log("Commands successfully installed!")
 
         this.addEventListeners();
         console.log("Startup complete")
 
+    }
+
+    async installCommands(guild) {
+        await guild.commands.set([]) // Reset commands
+
+        const commands = await Promise.all(
+            this.rawCommands.map(
+                rawCmd => guild.commands.create({ ...rawCmd, permissionLevel: undefined })
+                    .then(appCmd => [appCmd, rawCmd])
+            )
+        )
+
+        commands.forEach(([appCmd, rawCmd]) => this.commandPermissions[appCmd.id] = rawCmd.permissionLevel)
     }
 
     /**
@@ -65,7 +77,7 @@ class ScrimsBot extends Client {
     hasPermission(permissible, permissionLevel) {
         if (permissionLevel == "ALL") return true;
 
-        if (permissible?.permissions?.has("ADMINISTRATOR")) return true;
+        //if (permissible?.permissions?.has("ADMINISTRATOR")) return true;
         if (permissionLevel == "ADMIN") return false;
 
         if (this.staffRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true;

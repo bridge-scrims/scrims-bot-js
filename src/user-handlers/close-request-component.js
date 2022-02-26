@@ -12,7 +12,7 @@ async function onComponent(interaction) {
     interaction.ticket = await dbClient.getTicket({ id: interaction.args.shift() })
     if (interaction.ticket === null) return interaction.message.delete() // The ticket no longer exists :/
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ ephemeral: true }); // Inform the user that the bot needs to do some thinking
     return handler(interaction);
 
 }
@@ -50,12 +50,12 @@ async function onAccept(interaction) {
     const transcriber = interaction.client.transcriber; // Instance of TicketTranscriber created in bot.js
     await transcriber.transcribe(
         interaction.ticket.id, { ...interaction, createdTimestamp: interaction.createdTimestamp, content: "accepted the close request" }
-    ).catch(console.error);
-    await transcriber.send(interaction.guild, interaction.ticket).catch(console.error);
+    ).catch(console.error); // Command should not abort just because the event was not logged
+    await transcriber.send(interaction.guild, interaction.ticket).catch(console.error); // Command should not abort just because their was an error with the log
 
     const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
-    await dbClient.deleteTicket(interaction.ticket.id);
-    await interaction.channel.delete();
+    await dbClient.deleteTicket(interaction.ticket.id)
+    await interaction.channel.delete()
 
 }
 

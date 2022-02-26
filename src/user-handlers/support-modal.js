@@ -25,7 +25,7 @@ async function onSubmit(interaction) {
 
 async function fetchChannel(guild, id) {
     if (!id) return null;
-    return guild.channels.fetch(id); // If id is falsley channel.fetch would fetch all
+    return guild.channels.fetch(id); // If id is falsley channel.fetch would fetch all channels
 }
 
 async function createTicket(interaction) {
@@ -63,10 +63,12 @@ function getIntroPayload(user, firstResponse) {
         .setTitle(`Support`)
         .addField("Reason", `\`\`\`${firstResponse}\`\`\``)
         .setDescription(
-            "Thank you for opening a support ticket on Ranked Bridge! "
-            + "If there is any way that we can assist you, please state it below and we will be glad to help! "
-            + "Regarding Staff/Scorer applications, Staff will send you a Google Document for you to fill out. "
-            + "We are working on automating the process for applications, so please be patient as we work on developing that!"
+            "Thank you for opening a support ticket on Bridge Scrims! "
+            + ""
+            + ""
+            + ""
+            + ""
+            + ""
         ).setTimestamp()
 
     return { content: `${user}`, embeds: [embed] };
@@ -81,7 +83,7 @@ async function createTicketChannel(client, guild, user) {
                 id: guild.roles.everyone,
                 deny: ["VIEW_CHANNEL", "SEND_MESSAGES", "READ_MESSAGE_HISTORY"],
             },
-            ...[ user.id, ...client.supportRoles ] // Support roles and the creator of the support ticket
+            ...[ user.id, ...client.supportRoles, ...client.staffRoles ] // Support/Staff roles and the creator of the support ticket
                 .map(id => ({ id, allow: ["VIEW_CHANNEL", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"] }))
         ],
     });
