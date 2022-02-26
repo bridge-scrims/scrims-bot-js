@@ -77,7 +77,7 @@ class ScrimsBot extends Client {
     hasPermission(permissible, permissionLevel) {
         if (permissionLevel == "ALL") return true;
 
-        //if (permissible?.permissions?.has("ADMINISTRATOR")) return true;
+        if (permissible?.permissions?.has("ADMINISTRATOR")) return true;
         if (permissionLevel == "ADMIN") return false;
 
         if (this.staffRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true;
