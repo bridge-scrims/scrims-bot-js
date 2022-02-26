@@ -7,18 +7,25 @@ It includes many features to enhance the user and staff experience aslong as the
 
 >Using private channels for each support ticket and components for user input, this system aims to make requesting and handling support easier for both the support team and the discord server members.
 
-The **Support Button** creates a modal with a textinputcomponent for users to type in their reason for requesting support.  Once submited (aslong as the user does not have another ticket open) a new **ticket** will be created.
+The **Support Button** allows users to create a ticket using a modal with a textinputcomponent to give their reason.  Once submited, aslong as the user does not already have another ticket open, a new **ticket** will be created.
 
-**Tickets** are saved in the table **tickets** with `id`, `userId` and `channelId` values.
+**Tickets** are saved in the table **ticket** with `id`, `userId` and `channelId` values.
 Ticket channels are only viewable by the ticket creator and the support/staff team and are removed once the ticket was closed.
 
 With permission of the ticket creator tickets can be closed with the **/close** command.
 The staff team also has the option to forably close tickets with the **/forceclose** command.
 
 While a ticket is open all activity will get saved using the **ticket-transcriber**.
-Each message is added to the table **transcript** with `id`, `ticketId`, `content`, `creation`, `author` and `authorTag` values.
+Each message is added to the table **message** with `id`, `ticketId`, `content`, `creation`, `author` and `authorTag` values.
 Once a ticket is closed the full transcript is sent to the ticket creator and into the configured transcription channel.
-The messages belonging to the ticket are also removed from the **transcript** table.
+During this process the messages belonging to the ticket are also removed from the **message** table.
+
+## Dependencies
+
+Following packages are required for the bot to run:
+ - [discord.js](https://discord.js.org/#/) Used to interact with the [Discord API](https://discord.com/developers/docs/intro) 
+ - [discord-modals](https://github.com/Mateo-tem/discord-modals#readme) At least until discord.js supports modals
+ - [mysql2](https://github.com/sidorares/node-mysql2#readme) Used to read and write data to and from the Bridge Scrims Mysql Database
 
 ## TODO
 
@@ -31,9 +38,10 @@ The messages belonging to the ticket are also removed from the **transcript** ta
 
 ## Contributing
 
-Changes to this code are limited to the `developers of the bridge scrims discord server`.
-During commits please make sure to update the documentation when necessary.
+This code is maintained by the `developers of the bridge scrims discord server`.
+If you found a problem feel free to create an issue, but also be sure to be exact with the description of your problem.
+When commiting to the project, please be sure to update the documentation when necessary.
 
 ## License
 
-This code is **private** and should not be distributed to anyone but the `developers of the bridge scrims discord server`.
+This software does not contain a license, that means the creators of the software have given no permission to use, modify, or share the software for any purpose.

@@ -4,11 +4,11 @@ class DBCache {
 
     constructor() {
         this.tickets = []
-        this.transcript = []
+        this.messages = []
     }
 
     isEmpty() {
-        return (this.tickets.length < 1 && this.transcript.length < 1);
+        return (this.tickets.length < 1 && this.messages.length < 1);
     }
 
     rmv(key, filter) {
@@ -38,11 +38,11 @@ class DBCache {
     removeTicket(id) { this.rmv("tickets", { id }) }
     pushTicket(ticketData) { return this.push("tickets", ticketData) }
 
-    getMessage(filter) { return this.get("transcript", filter) }
-    setTranscript(transcript) { this.set("transcript", transcript) }
+    getMessage(filter) { return this.get("messages", filter) }
+    setTranscript(transcript) { this.set("messages", transcript) }
     addTranscript(transcript) { transcript.forEach(message => this.pushMessage(message)) }
-    removeTranscript(ticketId) { this.rmv("transcript", { ticketId }) }
-    pushMessage(msg) { return this.push("transcript", msg) }
+    removeTranscript(ticketId) { this.rmv("messages", { ticketId }) }
+    pushMessage(msg) { return this.push("messages", msg) }
 
 }
 
@@ -62,8 +62,8 @@ class DBClient {
     }
 
     async initializeCache() {
-        await this.query(`SELECT * FROM tickets`).then(tickets => this.cache.setTickets(tickets))
-        await this.query(`SELECT * FROM transcript`).then(transcript => this.cache.setTranscript(transcript))
+        await this.query(`SELECT * FROM ticket`).then(tickets => this.cache.setTickets(tickets))
+        await this.query(`SELECT * FROM message`).then(transcript => this.cache.setTranscript(transcript))
     }
 
     async queryCallback(err, results, resolve) {
@@ -99,37 +99,37 @@ class DBClient {
     }
 
     async getTicket(selectCondition) {
-        const ticket = await this.query(`SELECT * FROM tickets ${this.createWhereClause(selectCondition)}`).then(rows => rows[0] ?? null)
+        const ticket = await this.query(`SELECT * FROM ticket ${this.createWhereClause(selectCondition)}`).then(rows => rows[0] ?? null)
         this.cache.pushTicket(ticket)
         return ticket;
     }
 
     async createTicket(id, channelId, userId) {
-        const ticket = await this.insert("tickets", { id, userId, channelId })
+        const ticket = await this.insert("ticket", { id, userId, channelId })
         this.cache.pushTicket(ticket);
         return ticket;
     }
 
     async deleteTicket(id) {
-        const response = await this.query(`DELETE FROM tickets ${this.createWhereClause({ id })}`)
+        const response = await this.query(`DELETE FROM ticket ${this.createWhereClause({ id })}`)
         this.cache.removeTicket(id)
         return response;
     }
 
     async removeTranscript(ticketId) {
-        const response = await this.query(`DELETE FROM transcript ${this.createWhereClause({ ticketId })}`)
+        const response = await this.query(`DELETE FROM message ${this.createWhereClause({ ticketId })}`)
         this.cache.removeTranscript(ticketId)
         return response;
     }
 
     async getTranscript(ticketId) {
-        const transcript = await this.query(`SELECT * FROM transcript ${this.createWhereClause({ ticketId })}`)
+        const transcript = await this.query(`SELECT * FROM message ${this.createWhereClause({ ticketId })}`)
         this.cache.addTranscript(transcript)
         return transcript;
     }
 
     async createTranscriptMessage(message, ticketId) {
-        const msg = await this.insert("transcript", { id: message.id, ticketId, content: message.content, creation: message.createdTimestamp, authorId: message.userId, authorTag: message.user.tag })
+        const msg = await this.insert("message", { id: message.id, ticketId, content: message.content, creation: message.createdTimestamp, authorId: message.userId, authorTag: message.user.tag })
         this.cache.pushMessage(msg)
         return msg;
     }
