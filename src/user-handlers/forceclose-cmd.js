@@ -9,6 +9,12 @@ async function onCommand(interaction) {
     const ticket = await dbClient.getTicket({ channelId: interaction.channel.id })
     if (ticket === null) return interaction.reply(getMissingTicketPayload()); // This is not a ticket channel (bruh moment)
     
+    const transcriber = interaction.client.transcriber; // Instance of TicketTranscriber created in bot.js
+    await transcriber.transcribe(
+        ticket.id, { ...interaction, createdTimestamp: interaction.createdTimestamp, content: "forcibly closed this request" }
+    ).catch(console.error); // Command should not abort just because the event was not logged
+    await transcriber.send(interaction.guild, ticket).catch(console.error); // Command should not abort just because their was an error with the log
+
     await dbClient.deleteTicket(ticket.id)
     await interaction.channel.delete();
 

@@ -34,7 +34,7 @@ async function createTicket(interaction) {
 
     await dbClient.createTicket(interaction.ticketId, channel.id, interaction.userId)
     await interaction.followUp(getCreatedPayload(channel))
-    await channel.send(getIntroPayload(interaction.user, interaction.firstResponse))
+    await channel.send(getIntroPayload(interaction.member, interaction.firstResponse))
 }
 
 function getAlreadyCreatedPayload(channel) {
@@ -57,21 +57,17 @@ function getCreatedPayload(channel) {
     return { embeds: [embed] };
 }
 
-function getIntroPayload(user, firstResponse) {
+function getIntroPayload(member, firstResponse) {
     const embed = new MessageEmbed()
         .setColor("#5D9ACF")
         .setTitle(`Support`)
         .addField("Reason", `\`\`\`${firstResponse}\`\`\``)
         .setDescription(
-            "Thank you for opening a support ticket on Bridge Scrims! "
-            + ""
-            + ""
-            + ""
-            + ""
-            + ""
+            `Hello ${member.displayName}, thank you for reaching out to the bridge scrims support team! `
+            + `Please describe your issue, and support will be with you any moment.`
         ).setTimestamp()
 
-    return { content: `${user}`, embeds: [embed] };
+    return { content: `${member}`, embeds: [embed] };
 }
 
 async function createTicketChannel(client, guild, user) {
