@@ -1,0 +1,16 @@
+{
+    "name": "scrims-bot-js",
+    "version": "1.0.0",
+    "description": "Bridge Scrims Discord Bot made with javascript",
+    "main": "./src/index.js",
+    "scripts": {
+        "start": "node ./src/index.js",
+        "test": "node ./tests/index.js"
+    },
+    "author": "Bridge Scrims Developer Team",
+    "dependencies": {
+        "discord-modals": "^1.2.3",
+        "discord.js": "^13.6.0",
+        "mysql2": "^2.3.3"
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "token": "",
+    "prefix": "",
+    "transcriptChannelId": "",
+    "supportRoles": [""],
+    "staffRoles": [""],
+
+    "host": "",
+    "username": "",
+    "password": "",
+    "database": ""
+}
