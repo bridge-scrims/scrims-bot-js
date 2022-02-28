@@ -33,7 +33,8 @@ async function handleMessage(message) {
             .setDescription("If you do not state your issue within 5 minutes of creating your ticket, it will be closed.")
             .setTimestamp();
         
-        message.channel.send({ embeds: [embed], components: [action] });
+        await message.delete().catch(console.error)
+        await message.channel.send({ embeds: [embed], components: [action] }).catch(console.error)
         return true;
     }
     

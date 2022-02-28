@@ -77,16 +77,16 @@ class ScrimsBot extends Client {
     hasPermission(permissible, permissionLevel) {
         if (permissionLevel == "ALL") return true;
 
-        if (permissible?.permissions?.has("ADMINISTRATOR")) return true;
-        if (permissionLevel == "ADMIN") return false;
+        if (permissible?.permissions?.has("ADMINISTRATOR")) return true; //Has ADMINISTRATOR -> has perms
+        if (permissionLevel == "ADMIN") return false; // Does not have ADMINISTRATOR and ADMINISTRATOR is required -> does not have perms
 
-        if (this.staffRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true;
-        if (permissionLevel == "STAFF") return false;
+        if (this.staffRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true; //Has STAFF role -> has perms
+        if (permissionLevel == "STAFF") return false; // Does not have STAFF role and STAFF is required -> does not have perms
 
-        if (this.supportRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true;
-        if (permissionLevel == "SUPPORT") return false;
+        if (this.supportRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true; //Has SUPPORT role -> has perms
+        if (permissionLevel == "SUPPORT") return false; // Does not have SUPPORT role and SUPPORT is required -> does not have perms
 
-        return false;
+        return false; // Default = does not have perms - for safety
     }
 
     addEventListeners() {
