@@ -5,10 +5,11 @@ class DBCache {
     constructor() {
         this.tickets = []
         this.messages = []
+        this.suggestions = []
     }
 
     isEmpty() {
-        return (this.tickets.length < 1 && this.messages.length < 1);
+        return (this.tickets.length < 1 && this.messages.length < 1 && this.suggestions.length < 1);
     }
 
     rmv(key, filter) {
@@ -34,15 +35,15 @@ class DBCache {
     }
 
     getTicket(filter) { return this.get("tickets", filter) }
-    setTickets(tickets) { this.set("tickets", tickets) }
     removeTicket(id) { this.rmv("tickets", { id }) }
     pushTicket(ticketData) { return this.push("tickets", ticketData) }
 
     getMessage(filter) { return this.get("messages", filter) }
-    setTranscript(transcript) { this.set("messages", transcript) }
     addTranscript(transcript) { transcript.forEach(message => this.pushMessage(message)) }
     removeTranscript(ticketId) { this.rmv("messages", { ticketId }) }
     pushMessage(msg) { return this.push("messages", msg) }
+
+    getSuggestion(id) { return this.get("suggestions", { id }) }
 
 }
 
@@ -62,8 +63,9 @@ class DBClient {
     }
 
     async initializeCache() {
-        await this.query(`SELECT * FROM ticket`).then(tickets => this.cache.setTickets(tickets))
-        await this.query(`SELECT * FROM message`).then(transcript => this.cache.setTranscript(transcript))
+        await this.query(`SELECT * FROM ticket`).then(tickets => this.cache.set("tickets", tickets))
+        await this.query(`SELECT * FROM suggestion`).then(suggestions => this.cache.set("suggestions", suggestions))
+        await this.query(`SELECT * FROM message`).then(transcript => this.cache.set("messages", transcript))
     }
 
     async queryCallback(err, results, resolve) {
@@ -132,6 +134,40 @@ class DBClient {
         const msg = await this.insert("message", { id: message.id, ticketId, content: message.content, creation: message.createdTimestamp, authorId: message.userId, authorTag: message.user.tag })
         this.cache.pushMessage(msg)
         return msg;
+    }
+
+    async getSuggestion(id) {
+        const suggestion = await this.query(`SELECT * FROM suggestion ${this.createWhereClause({ id })}`).then(rows => rows[0] ?? null)
+        this.cache.push("suggestions", suggestion)
+        return suggestion;
+    }
+
+    async getSuggestions(selectCondition) {
+        const suggestions = await this.query(`SELECT * FROM suggestion ${this.createWhereClause(selectCondition)}`)
+        suggestions.forEach(suggestion => this.cache.push("suggestions", suggestion))
+        return suggestions;
+    }
+
+    wrapSuggestion(message, creator, suggestionContent) {
+        return { 
+            id: message.id, 
+            channelId: message.channelId, 
+            creation: message.createdTimestamp, 
+            ...creator,
+            suggestion: suggestionContent  
+        };
+    }
+
+    async createSuggestion(message, creator, suggestionContent) {
+        const suggestion = await this.insert("suggestion", this.wrapSuggestion(message, creator, suggestionContent))
+        this.cache.push("suggestions", suggestion)
+        return suggestion;
+    }
+
+    async removeSuggestion(id) {
+        const response = await this.query(`DELETE FROM suggestion ${this.createWhereClause({ id })}`)
+        this.cache.rmv("suggestions", { id })
+        return response;
     }
     
 }

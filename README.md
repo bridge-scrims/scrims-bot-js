@@ -75,6 +75,7 @@ Following packages are required for the bot to run:
 
 ## TODO
 
+- [x] Suggestion feature using modals to replace the current suggestion bot
 - [ ] Add /give command to be used by the council heads for giving prime, private and premium roles
 - [ ] Post transcripts to website for better view ability (since its hard to display a lot of data using discord)
 - [ ] Complete the following tasks:
