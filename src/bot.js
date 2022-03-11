@@ -1,10 +1,13 @@
+const onReactionUpdate = require('./user-handlers/suggestion-reaction.js');
 const handleInteraction = require('./interaction-handler.js');
+const ResponseTemplates = require('./response-templates.js');
 const TicketTranscriber = require("./ticket-transcriber.js");
 const handleMessage = require('./message-handler.js');
 const Commands = require("./assets/commands.json");
 const discordModals = require('discord-modals');
 const DBClient = require("./db-client.js");
 const { Client } = require("discord.js");
+
 
 class ScrimsBot extends Client {
 
@@ -14,7 +17,7 @@ class ScrimsBot extends Client {
                 "GUILD_MEMBERS", "GUILDS", 'GUILD_MESSAGES', 
                 "GUILD_VOICE_STATES", "GUILD_MESSAGE_REACTIONS" 
             ],
-            partials: [ 'MESSAGE', 'CHANNEL' ]
+            partials: [ 'MESSAGE', 'CHANNEL', 'REACTION' ]
 		});
 
         this.config = config;
@@ -22,9 +25,12 @@ class ScrimsBot extends Client {
         this.commandPermissions = {};
         this.transcriptChannel = null;
 
-        this.prefix = config.prefix;
+        this.prefix = config?.prefix ?? "!";
+
         this.supportRoles = config?.supportRoles ?? [];
         this.staffRoles = config?.staffRoles ?? [];
+
+        this.suggestionsChannelId = config?.suggestionsChannelId ?? null;
 
         discordModals(this);
     }
@@ -33,6 +39,9 @@ class ScrimsBot extends Client {
 
         await super.login(this.config.token);
         console.log("Connected to discord!")
+
+        this.suggestionUpVote = this.emojis.resolve(this.config.suggestionUpVote) ?? "👍"
+        this.suggestionDownVote = this.emojis.resolve(this.config.suggestionDownVote) ?? "👎"
 
         this.database = new DBClient(this.config);
         await this.database.initializeCache();
@@ -51,6 +60,8 @@ class ScrimsBot extends Client {
         console.log("Commands successfully installed!")
 
         this.addEventListeners();
+        if (this.suggestionsChannelId !== null) await this.initSuggestions()
+        
         console.log("Startup complete")
 
     }
@@ -66,6 +77,15 @@ class ScrimsBot extends Client {
         )
 
         commands.forEach(([appCmd, rawCmd]) => this.commandPermissions[appCmd.id] = rawCmd.permissionLevel)
+    }
+
+    async initSuggestions() {
+        const channel = await this.channels.fetch(this.suggestionsChannelId)
+        const oldMessages = await channel.messages.fetchPinned()
+        await Promise.all(oldMessages.map(msg => msg.delete()))
+
+        this.suggestionsInfoMessage = await channel.send(ResponseTemplates.suggestionsInfoMessage(channel.guild.name))
+        await this.suggestionsInfoMessage.pin()
     }
 
     /**
@@ -103,16 +123,34 @@ class ScrimsBot extends Client {
 		});
 		
 		this.on('messageCreate', async (message) => {
-			if (message.type === 'CHANNEL_PINNED_MESSAGE') return false;
-            if (message?.author?.bot) return false;
-
 			if (message.partial) message = await message.fetch().catch(console.error)
 			if (!message || message.partial) return false;
 	
 			return handleMessage(message);
 		});
 
+        this.on('messageDelete', async (message) => {
+            // Suggestion info message was deleted
+            if (message.id == this?.suggestionsInfoMessage?.id) {
+                this.suggestionsInfoMessage = await message.channel.send(ResponseTemplates.suggestionsInfoMessage(message.guild.name)).catch(console.error)
+                await this.suggestionsInfoMessage.pin().catch(console.error)
+            }
+        })
+
+        this.on('messageReactionAdd', async (reaction, user) => {
+            if (user.id == this.user.id) return false;
+            if (reaction.partial) reaction = await reaction.fetch().catch(console.error)
+			await onReactionUpdate(reaction, user).catch(console.error)
+        })
+
+        this.on('messageReactionRemove', async (reaction, user) => {
+            if (user.id == this.user.id) return false;
+            if (reaction.partial) reaction = await reaction.fetch().catch(console.error)
+            await onReactionUpdate(reaction, user).catch(console.error)
+        })
+
     }
+
 
 }
 

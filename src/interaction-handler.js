@@ -1,15 +1,19 @@
 const onCloseRequestComponent = require("./user-handlers/close-request-component.js");
+const onSuggestionInteraction = require("./user-handlers/suggestion-interaction.js");
 const onSupportComponent = require("./user-handlers/support-component.js");
 const onForceCloseCommand = require("./user-handlers/forceclose-cmd.js");
 const onSupportSubmit = require("./user-handlers/support-modal.js");
 const onCloseCommand = require("./user-handlers/close-cmd.js");
 
 const { MessageEmbed } = require("discord.js");
+const ResponseTemplates = require("./response-templates.js");
 
 function getHandler(cmdName) {
 
     switch(cmdName) {
         case("TicketCloseRequest"): return onCloseRequestComponent;
+        case("Remove Suggestion"): return onSuggestionInteraction;
+        case("suggestion"): return onSuggestionInteraction;
         case("forceclose"): return onForceCloseCommand;
         case("support-modal"): return onSupportSubmit; 
         case("support"): return onSupportComponent;
@@ -52,12 +56,7 @@ async function handleInteraction(interaction) {
 }
 
 function getMissingPermissionPayload() {
-    const embed = new MessageEmbed()
-        .setColor("#FF2445")
-        .setTitle("You don't have permission to use this command!")
-        .setTimestamp()
-
-    return { embeds: [embed], ephemeral: true };
+    return ResponseTemplates.errorMessage("Insufficient Permissions", "You are missing the required permissions to use this command!");
 }
 
 module.exports = handleInteraction;

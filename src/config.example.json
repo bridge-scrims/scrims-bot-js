@@ -2,6 +2,11 @@
     "token": "",
     "prefix": "",
     "transcriptChannelId": "",
+    "suggestionsChannelId": "",
+
+    "suggestionUpVote": "899410212505661491",
+    "suggestionDownVote": "899410248392122430",
+    
     "supportRoles": [""],
     "staffRoles": [""],
 

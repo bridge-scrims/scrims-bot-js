@@ -19,5 +19,9 @@
         "default_permission": true,
         "permissionLevel": "STAFF",
         "options": []
+    },
+    {
+        "name": "Remove Suggestion",
+        "type": 3
     }
 ]
