@@ -69,7 +69,10 @@ async function onModalSubmit(interaction) {
         return interaction.editReply(ResponseTemplates.errorMessage("Suggestion Failed", "Sadly your suggestion was not able to be added. Please try again later."));
     }
 
-    Promise.all([interaction.client.suggestionUpVote, interaction.client.suggestionDownVote].map(emoji => response.react(emoji))).catch(console.error)
+    Promise.all([["suggestionUpVote", "👍"], ["suggestionDownVote", "👎"]]
+        .map(([key, def]) => interaction.guild.emojis.resolve(interaction.client[key]) ?? def)
+        .map(emoji => response.react(emoji))
+    ).catch(console.error)
 
     // Delete the current suggestions info message since it is no longer the last message
     await interaction.client?.suggestionsInfoMessage?.delete()?.catch(console.error);
@@ -89,7 +92,7 @@ async function onRemoveSuggestion(interaction) {
     if (interaction.targetId == interaction.client?.suggestionsInfoMessage)
         return interaction.reply({ content: "This should be used on suggestion messages. Not the suggestions channel info message!", ephemeral: true });
 
-    const suggestion = interaction.client.database.getSuggestion(interaction.targetId)
+    const suggestion = await interaction.client.database.getSuggestion(interaction.targetId)
     if (!suggestion) return interaction.reply(ResponseTemplates.errorMessage("Unkown Suggestion", "This can only be used on suggestion messages!"));
 
     if (!interaction.member.hasPermission("STAFF") && !(suggestion.userId == interaction.userId)) 

@@ -66,9 +66,7 @@ async function onSuggestionChannelMessage(message) {
     await infoMessage?.delete()?.catch(console.error);
     
     // Recreate the suggestions info message so that it is displayed at the bottom of the channel
-    const newMessage = await message.channel.send(ResponseTemplates.suggestionsInfoMessage(message.guild.name)).catch(console.error)
-    await newMessage.pin().catch(console.error)
-    if (newMessage) message.client.suggestionsInfoMessage = newMessage
+    await message.client.sendSuggestionInfoMessage(message.channel)
 
 }
 
