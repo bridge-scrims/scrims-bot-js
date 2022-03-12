@@ -65,6 +65,16 @@ Once a ticket is closed the full transcript is sent to the ticket creator and in
 During this process the messages belonging to the ticket are also removed from the **message** table.
 
 
+## Suggestion Feature
+
+>This allows Discord server members to make suggestions for the server in an orderly and manageable way.
+
+The configured **suggestions channel** will keep a info message at the bottom of the channel explaining how to suggest something.
+With the **suggest button** members can describe their suggestions and send it for it to be voted.
+Members can delete their own suggestions by right clicking on the message and clicking on `Apps` -> `Remove Suggestion`.
+
+All suggestions are saved in the table **suggestion** and are removed if the message is deleted.
+
 ## Dependencies
 
 Following packages are required for the bot to run:
