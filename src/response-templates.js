@@ -24,6 +24,7 @@ class ResponseTemplates {
 
     static suggestionBlue = "#198DD5"
     static successGreen = "#0BE468"
+    static epicPurple = "#9A00FF"
     static errorRed = "#DC0023"
 
     static suggestionsInfoActions() {
@@ -72,7 +73,7 @@ class ResponseTemplates {
     static suggestionEmbed(hue, suggestion) {
         return new MessageEmbed()
             .setAuthor({ name: suggestion.creator, iconURL: suggestion.creatorAvatar })
-            .setColor(hsv2rgb(hue, 1, 1))
+            .setColor((hue < 0 ? this.epicPurple : hsv2rgb(hue, 1, 1)))
             .setDescription(suggestion.suggestion)
     }
 

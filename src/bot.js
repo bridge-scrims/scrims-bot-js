@@ -25,16 +25,8 @@ class ScrimsBot extends Client {
         this.commandPermissions = {};
         this.transcriptChannel = null;
 
-        this.prefix = config?.prefix ?? "!";
-
-        this.suggestionUpVote = config.suggestionUpVote
-        this.suggestionDownVote = config.suggestionDownVote
-
-        this.devRoles = config?.devRoles ?? [];
-        this.supportRoles = config?.supportRoles ?? [];
-        this.staffRoles = config?.staffRoles ?? [];
-
-        this.suggestionsChannelId = config?.suggestionsChannelId ?? null;
+        
+        Object.entries(config).forEach(([key, value]) => this[key] = value)
 
         discordModals(this);
     }
@@ -44,15 +36,14 @@ class ScrimsBot extends Client {
         await super.login(this.config.token);
         console.log("Connected to discord!")
 
-        this.database = new DBClient(this.config);
+        this.database = new DBClient(this.mysqlLogin);
         await this.database.initializeCache();
         console.log("Connected to database!")
 
         this.transcriber = new TicketTranscriber(this.database);
         
-        const transcriptChannelId = this.config.transcriptChannelId
-        if (transcriptChannelId) {
-            this.transcriptChannel = await this.channels.fetch(transcriptChannelId)
+        if (this.transcriptChannelId) {
+            this.transcriptChannel = await this.channels.fetch(this.transcriptChannelId)
             console.log("TranscriptChannel found and on standby!")
         }
 
@@ -81,8 +72,8 @@ class ScrimsBot extends Client {
 
     async initSuggestions() {
         const channel = await this.channels.fetch(this.suggestionsChannelId)
-        const oldMessages = await channel.messages.fetchPinned()
-        await Promise.all(oldMessages.map(msg => msg.delete()))
+        const messages = await channel.messages.fetch()
+        await Promise.all(messages.filter(msg => (msg.components.length > 0)).map(msg => msg.delete()))
         await this.sendSuggestionInfoMessage(channel, true)
     }
 
@@ -91,7 +82,6 @@ class ScrimsBot extends Client {
 
         await this.suggestionsInfoMessage?.delete()?.catch(() => null);
         this.suggestionsInfoMessage = await channel.send(ResponseTemplates.suggestionsInfoMessage(channel.guild.name))
-        await this.suggestionsInfoMessage.pin()
 
         if (resend) this.suggestionsInfoMessageReload = setTimeout(() => this.sendSuggestionInfoMessage(channel, false)?.catch(console.error), 7*60*1000)
     }
