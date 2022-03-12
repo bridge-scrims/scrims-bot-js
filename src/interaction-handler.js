@@ -5,7 +5,6 @@ const onForceCloseCommand = require("./user-handlers/forceclose-cmd.js");
 const onSupportSubmit = require("./user-handlers/support-modal.js");
 const onCloseCommand = require("./user-handlers/close-cmd.js");
 
-const { MessageEmbed } = require("discord.js");
 const ResponseTemplates = require("./response-templates.js");
 
 function getHandler(cmdName) {
@@ -17,6 +16,7 @@ function getHandler(cmdName) {
         case("forceclose"): return onForceCloseCommand;
         case("support-modal"): return onSupportSubmit; 
         case("support"): return onSupportComponent;
+        case("reload"): return onReloadCommand;
         case("close"): return onCloseCommand;
         default: return false;
     }
@@ -57,6 +57,11 @@ async function handleInteraction(interaction) {
 
 function getMissingPermissionPayload() {
     return ResponseTemplates.errorMessage("Insufficient Permissions", "You are missing the required permissions to use this command!");
+}
+
+async function onReloadCommand(interaction) {
+    await interaction.client.installCommands().catch(console.error)
+    await interaction.reply({ content: "Commands reloaded!", ephemeral: true })
 }
 
 module.exports = handleInteraction;

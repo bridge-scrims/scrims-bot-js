@@ -27,6 +27,10 @@ class ScrimsBot extends Client {
 
         this.prefix = config?.prefix ?? "!";
 
+        this.suggestionUpVote = config.suggestionUpVote
+        this.suggestionDownVote = config.suggestionDownVote
+
+        this.devRoles = config?.devRoles ?? [];
         this.supportRoles = config?.supportRoles ?? [];
         this.staffRoles = config?.staffRoles ?? [];
 
@@ -40,9 +44,6 @@ class ScrimsBot extends Client {
         await super.login(this.config.token);
         console.log("Connected to discord!")
 
-        this.suggestionUpVote = this.emojis.resolve(this.config.suggestionUpVote) ?? "👍"
-        this.suggestionDownVote = this.emojis.resolve(this.config.suggestionDownVote) ?? "👎"
-
         this.database = new DBClient(this.config);
         await this.database.initializeCache();
         console.log("Connected to database!")
@@ -55,10 +56,11 @@ class ScrimsBot extends Client {
             console.log("TranscriptChannel found and on standby!")
         }
 
-        const guilds = await this.guilds.fetch().then(oAuth2Guilds => Promise.all(oAuth2Guilds.map(oAuth2Guild => oAuth2Guild.fetch())))
-        await Promise.all(guilds.map(guild => this.installCommands(guild)))
-        console.log("Commands successfully installed!")
-
+        if (this.application.commands.cache.size === 0) {
+            await this.installCommands()
+            console.log("Commands successfully installed!")
+        }
+    
         this.addEventListeners();
         if (this.suggestionsChannelId !== null) await this.initSuggestions()
         
@@ -66,24 +68,25 @@ class ScrimsBot extends Client {
 
     }
 
-    async installCommands(guild) {
-        await guild.commands.set([]) // Reset commands
-
-        const commands = await Promise.all(
+    async installCommands() {
+        const commands = await this.application.commands.set(
             this.rawCommands.map(
-                rawCmd => guild.commands.create({ ...rawCmd, permissionLevel: undefined })
-                    .then(appCmd => [appCmd, rawCmd])
+                rawCmd => ({ ...rawCmd, permissionLevel: undefined })
             )
         )
 
-        commands.forEach(([appCmd, rawCmd]) => this.commandPermissions[appCmd.id] = rawCmd.permissionLevel)
+        const getRawCommand = (appCmd) => this.rawCommands.filter(cmd => cmd.name == appCmd.name)[0]
+        commands.forEach(appCmd => this.commandPermissions[appCmd.id] = getRawCommand(appCmd).permissionLevel)
     }
 
     async initSuggestions() {
         const channel = await this.channels.fetch(this.suggestionsChannelId)
         const oldMessages = await channel.messages.fetchPinned()
         await Promise.all(oldMessages.map(msg => msg.delete()))
+        await this.sendSuggestionInfoMessage(channel)
+    }
 
+    async sendSuggestionInfoMessage(channel) {
         this.suggestionsInfoMessage = await channel.send(ResponseTemplates.suggestionsInfoMessage(channel.guild.name))
         await this.suggestionsInfoMessage.pin()
     }
@@ -98,6 +101,10 @@ class ScrimsBot extends Client {
         if (permissionLevel == "ALL") return true;
 
         if (permissible?.permissions?.has("ADMINISTRATOR")) return true; //Has ADMINISTRATOR -> has perms
+        
+        if (permissionLevel == "DEV" && this.devRoles.some(roleId => permissible?.roles?.cache?.has(roleId)))
+            return true; // Permission needed is DEV and they have developer role -> has perms
+
         if (permissionLevel == "ADMIN") return false; // Does not have ADMINISTRATOR and ADMINISTRATOR is required -> does not have perms
 
         if (this.staffRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true; //Has STAFF role -> has perms
@@ -135,6 +142,9 @@ class ScrimsBot extends Client {
                 this.suggestionsInfoMessage = await message.channel.send(ResponseTemplates.suggestionsInfoMessage(message.guild.name)).catch(console.error)
                 await this.suggestionsInfoMessage.pin().catch(console.error)
             }
+
+            const suggestion = message.client.database.cache.getSuggestion(message.id)
+            if (suggestion) return message.client.database.removeSuggestion(suggestion.id);
         })
 
         this.on('messageReactionAdd', async (reaction, user) => {

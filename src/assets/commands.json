@@ -21,6 +21,13 @@
         "options": []
     },
     {
+        "name": "reload",
+        "description": "Reloads application commands.",
+        "default_permission": true,
+        "permissionLevel": "DEV",
+        "options": []
+    },
+    {
         "name": "Remove Suggestion",
         "type": 3
     }
