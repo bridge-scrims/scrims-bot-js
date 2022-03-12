@@ -1,7 +1,7 @@
 const ResponseTemplates = require("../response-templates");
 
 const maxHue = 120
-const voteConst = 40
+const voteConst = 10
 
 async function onReactionUpdate(reaction, user) {
 

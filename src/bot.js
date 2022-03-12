@@ -83,12 +83,17 @@ class ScrimsBot extends Client {
         const channel = await this.channels.fetch(this.suggestionsChannelId)
         const oldMessages = await channel.messages.fetchPinned()
         await Promise.all(oldMessages.map(msg => msg.delete()))
-        await this.sendSuggestionInfoMessage(channel)
+        await this.sendSuggestionInfoMessage(channel, true)
     }
 
-    async sendSuggestionInfoMessage(channel) {
+    async sendSuggestionInfoMessage(channel, resend) {
+        clearTimeout(this.suggestionsInfoMessageReload)
+
+        await this.suggestionsInfoMessage?.delete()?.catch(() => null);
         this.suggestionsInfoMessage = await channel.send(ResponseTemplates.suggestionsInfoMessage(channel.guild.name))
         await this.suggestionsInfoMessage.pin()
+
+        if (resend) this.suggestionsInfoMessageReload = setTimeout(() => this.sendSuggestionInfoMessage(channel, false)?.catch(console.error), 7*60*1000)
     }
 
     /**
@@ -139,8 +144,7 @@ class ScrimsBot extends Client {
         this.on('messageDelete', async (message) => {
             // Suggestion info message was deleted
             if (message.id == this?.suggestionsInfoMessage?.id) {
-                this.suggestionsInfoMessage = await message.channel.send(ResponseTemplates.suggestionsInfoMessage(message.guild.name)).catch(console.error)
-                await this.suggestionsInfoMessage.pin().catch(console.error)
+                //await this.sendSuggestionInfoMessage(message.channel, false)
             }
 
             const suggestion = message.client.database.cache.getSuggestion(message.id)

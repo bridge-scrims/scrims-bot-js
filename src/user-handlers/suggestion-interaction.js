@@ -75,7 +75,7 @@ async function onModalSubmit(interaction) {
     ).catch(console.error)
 
     // Delete the current suggestions info message since it is no longer the last message
-    await interaction.client?.suggestionsInfoMessage?.delete()?.catch(console.error);
+    await interaction.client?.sendSuggestionInfoMessage(interaction.channel, true).catch(console.error);
 
     addCooldown(interaction.userId)
     const success = await interaction.client.database.createSuggestion(response, creator, suggestion).then(() => true).catch(console.error)

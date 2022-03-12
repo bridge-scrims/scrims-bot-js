@@ -60,13 +60,8 @@ async function onSuggestionChannelMessage(message) {
     // Bot sent the message so don't worry about it
     if (message.author.id == message.client.user.id) return false;
 
-    // Delete the current suggestions info message since it is no longer the last message
-    const infoMessage = message.client?.suggestionsInfoMessage
-    message.client.suggestionsInfoMessage = null
-    await infoMessage?.delete()?.catch(console.error);
-    
     // Recreate the suggestions info message so that it is displayed at the bottom of the channel
-    await message.client.sendSuggestionInfoMessage(message.channel)
+    await message.client.sendSuggestionInfoMessage(message.channel, false)
 
 }
 
