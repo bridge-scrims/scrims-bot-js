@@ -53,7 +53,7 @@ class ScrimsBot extends Client {
         }
     
         this.addEventListeners();
-        if (this.suggestionsChannelId !== null) await this.initSuggestions()
+        if (this.suggestionsChannelId) await this.initSuggestions()
         
         console.log("Startup complete")
 
