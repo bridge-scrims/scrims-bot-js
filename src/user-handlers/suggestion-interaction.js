@@ -62,7 +62,7 @@ async function onModalSubmit(interaction) {
     const suggestion = interaction.getTextInputValue('suggestion')
 
     const creator = { userId: interaction.userId, creatorAvatar: interaction.user.avatarURL({ dynamic: true }), creator: interaction.user.tag }
-    const embed = ResponseTemplates.suggestionEmbed(60, { ...creator, suggestion })
+    const embed = ResponseTemplates.suggestionEmbed(60, { ...creator, creation: Date.now(), suggestion })
     const response = await interaction.channel.send({ embeds: [embed] }).catch(error => error)
     if (response instanceof Error) {
         console.error(`Unexpected error while adding a suggestion for ${interaction.user.tag}!`, response)

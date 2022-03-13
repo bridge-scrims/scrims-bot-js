@@ -22,7 +22,7 @@ function hsv2rgb(h, s, v) {
 
 class ResponseTemplates {
 
-    static suggestionBlue = "#198DD5"
+    static suggestionBlue = "#5865F2"
     static successGreen = "#0BE468"
     static epicPurple = "#9A00FF"
     static errorRed = "#DC0023"
@@ -75,6 +75,7 @@ class ResponseTemplates {
             .setAuthor({ name: suggestion.creator, iconURL: suggestion.creatorAvatar })
             .setColor((hue < 0 ? this.epicPurple : hsv2rgb(hue, 1, 1)))
             .setDescription(suggestion.suggestion)
+            .setTimestamp(suggestion.creation)
     }
 
     static errorMessage(title, description) {
