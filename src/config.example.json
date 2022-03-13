@@ -1,12 +1,25 @@
 {
+  
     "token": "",
     "prefix": "",
+
     "transcriptChannelId": "",
+
+    "suggestionsChannelId": "",
+    "epicSuggestionsChannelId": "",
+    "suggestionUpVote": "899410212505661491",
+    "suggestionDownVote": "899410248392122430",
+    "suggestionVoteConst": 14,
+
+    "devRoles": [""],
     "supportRoles": [""],
     "staffRoles": [""],
 
-    "host": "",
-    "username": "",
-    "password": "",
-    "database": ""
+    "mysqlLogin": {
+        "host": "",
+        "username": "",
+        "password": "",
+        "database": ""
+    }
+
 }

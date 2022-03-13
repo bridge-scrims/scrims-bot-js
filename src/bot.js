@@ -1,10 +1,13 @@
+const onReactionUpdate = require('./user-handlers/suggestion-reaction.js');
 const handleInteraction = require('./interaction-handler.js');
+const ResponseTemplates = require('./response-templates.js');
 const TicketTranscriber = require("./ticket-transcriber.js");
 const handleMessage = require('./message-handler.js');
 const Commands = require("./assets/commands.json");
 const discordModals = require('discord-modals');
 const DBClient = require("./db-client.js");
 const { Client } = require("discord.js");
+
 
 class ScrimsBot extends Client {
 
@@ -14,7 +17,7 @@ class ScrimsBot extends Client {
                 "GUILD_MEMBERS", "GUILDS", 'GUILD_MESSAGES', 
                 "GUILD_VOICE_STATES", "GUILD_MESSAGE_REACTIONS" 
             ],
-            partials: [ 'MESSAGE', 'CHANNEL' ]
+            partials: [ 'MESSAGE', 'CHANNEL', 'REACTION' ]
 		});
 
         this.config = config;
@@ -22,9 +25,8 @@ class ScrimsBot extends Client {
         this.commandPermissions = {};
         this.transcriptChannel = null;
 
-        this.prefix = config.prefix;
-        this.supportRoles = config?.supportRoles ?? [];
-        this.staffRoles = config?.staffRoles ?? [];
+        
+        Object.entries(config).forEach(([key, value]) => this[key] = value)
 
         discordModals(this);
     }
@@ -34,38 +36,54 @@ class ScrimsBot extends Client {
         await super.login(this.config.token);
         console.log("Connected to discord!")
 
-        this.database = new DBClient(this.config);
+        this.database = new DBClient(this.mysqlLogin);
         await this.database.initializeCache();
         console.log("Connected to database!")
 
         this.transcriber = new TicketTranscriber(this.database);
         
-        const transcriptChannelId = this.config.transcriptChannelId
-        if (transcriptChannelId) {
-            this.transcriptChannel = await this.channels.fetch(transcriptChannelId)
+        if (this.transcriptChannelId) {
+            this.transcriptChannel = await this.channels.fetch(this.transcriptChannelId)
             console.log("TranscriptChannel found and on standby!")
         }
 
-        const guilds = await this.guilds.fetch().then(oAuth2Guilds => Promise.all(oAuth2Guilds.map(oAuth2Guild => oAuth2Guild.fetch())))
-        await Promise.all(guilds.map(guild => this.installCommands(guild)))
-        console.log("Commands successfully installed!")
-
+        if (this.application.commands.cache.size === 0) {
+            await this.installCommands()
+            console.log("Commands successfully installed!")
+        }
+    
         this.addEventListeners();
+        if (this.suggestionsChannelId) await this.initSuggestions()
+        
         console.log("Startup complete")
 
     }
 
-    async installCommands(guild) {
-        await guild.commands.set([]) // Reset commands
-
-        const commands = await Promise.all(
+    async installCommands() {
+        const commands = await this.application.commands.set(
             this.rawCommands.map(
-                rawCmd => guild.commands.create({ ...rawCmd, permissionLevel: undefined })
-                    .then(appCmd => [appCmd, rawCmd])
+                rawCmd => ({ ...rawCmd, permissionLevel: undefined })
             )
         )
 
-        commands.forEach(([appCmd, rawCmd]) => this.commandPermissions[appCmd.id] = rawCmd.permissionLevel)
+        const getRawCommand = (appCmd) => this.rawCommands.filter(cmd => cmd.name == appCmd.name)[0]
+        commands.forEach(appCmd => this.commandPermissions[appCmd.id] = getRawCommand(appCmd).permissionLevel)
+    }
+
+    async initSuggestions() {
+        const channel = await this.channels.fetch(this.suggestionsChannelId)
+        const messages = await channel.messages.fetch()
+        await Promise.all(messages.filter(msg => (msg.components.length > 0)).map(msg => msg.delete()))
+        await this.sendSuggestionInfoMessage(channel, true)
+    }
+
+    async sendSuggestionInfoMessage(channel, resend) {
+        clearTimeout(this.suggestionsInfoMessageReload)
+
+        await this.suggestionsInfoMessage?.delete()?.catch(() => null);
+        this.suggestionsInfoMessage = await channel.send(ResponseTemplates.suggestionsInfoMessage(channel.guild.name))
+
+        if (resend) this.suggestionsInfoMessageReload = setTimeout(() => this.sendSuggestionInfoMessage(channel, false)?.catch(console.error), 7*60*1000)
     }
 
     /**
@@ -78,6 +96,10 @@ class ScrimsBot extends Client {
         if (permissionLevel == "ALL") return true;
 
         if (permissible?.permissions?.has("ADMINISTRATOR")) return true; //Has ADMINISTRATOR -> has perms
+        
+        if (permissionLevel == "DEV" && this.devRoles.some(roleId => permissible?.roles?.cache?.has(roleId)))
+            return true; // Permission needed is DEV and they have developer role -> has perms
+
         if (permissionLevel == "ADMIN") return false; // Does not have ADMINISTRATOR and ADMINISTRATOR is required -> does not have perms
 
         if (this.staffRoles.some(roleId => permissible?.roles?.cache?.has(roleId))) return true; //Has STAFF role -> has perms
@@ -103,16 +125,36 @@ class ScrimsBot extends Client {
 		});
 		
 		this.on('messageCreate', async (message) => {
-			if (message.type === 'CHANNEL_PINNED_MESSAGE') return false;
-            if (message?.author?.bot) return false;
-
 			if (message.partial) message = await message.fetch().catch(console.error)
 			if (!message || message.partial) return false;
 	
 			return handleMessage(message);
 		});
 
+        this.on('messageDelete', async (message) => {
+            // Suggestion info message was deleted
+            if (message.id == this?.suggestionsInfoMessage?.id) {
+                //await this.sendSuggestionInfoMessage(message.channel, false)
+            }
+
+            const suggestion = message.client.database.cache.getSuggestion(message.id)
+            if (suggestion) return message.client.database.removeSuggestion(suggestion.id);
+        })
+
+        this.on('messageReactionAdd', async (reaction, user) => {
+            if (user.id == this.user.id) return false;
+            if (reaction.partial) reaction = await reaction.fetch().catch(console.error)
+			await onReactionUpdate(reaction, user).catch(console.error)
+        })
+
+        this.on('messageReactionRemove', async (reaction, user) => {
+            if (user.id == this.user.id) return false;
+            if (reaction.partial) reaction = await reaction.fetch().catch(console.error)
+            await onReactionUpdate(reaction, user).catch(console.error)
+        })
+
     }
+
 
 }
 
