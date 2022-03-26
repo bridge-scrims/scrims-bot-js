@@ -1,15 +1,44 @@
-const { MessageEmbed, MessageComponentInteraction } = require("discord.js");
+const { Modal, TextInputComponent, showModal } = require('discord-modals');
+const { SnowflakeUtil } = require("discord.js");
 
+
+const componentHandlers = { "support": createModal, "ticketCloseRequest": onCloseRequest }
 async function onComponent(interaction) {
 
-    if (!(interaction instanceof MessageComponentInteraction)) // "Houston, we have a problem"
-        return interaction.reply({ content: "How did we get here?", ephemeral: true });
+    const handler = componentHandlers[interaction.commandName]
+    if (handler) return handler(interaction).catch(console.error);
 
-    const handler = getHandler(interaction.args.shift());
+}
+
+
+async function createModal(interaction) {
+    const modal = new Modal()
+        .setCustomId(`support-modal/${SnowflakeUtil.generate()}`)
+        .setTitle('Support Ticket')
+        .addComponents(
+            new TextInputComponent()
+                .setCustomId('request-reason')
+                .setLabel('Reason for opening a ticket')
+                .setStyle('LONG')
+                .setMinLength(5)
+                .setMaxLength(2000)
+                .setPlaceholder('Write here')
+                .setRequired(true)
+        )
+
+    return showModal(modal, { client: interaction.client, interaction });
+}
+
+
+
+const closeRequestHandlers = { "ACCEPT": onAccept, "DENY": onDeny }
+async function onCloseRequest(interaction) {
+
+    const handler = closeRequestHandlers[interaction.args.shift()];
     if (!handler) return interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
 
-    const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
-    interaction.ticket = await dbClient.getTicket({ id: interaction.args.shift() })
+    const ticketClient = interaction.client.database.tickets; // Instance of DBClient created in bot.js
+    interaction.ticket = await ticketClient.get({ id: interaction.args.shift() })
     if (interaction.ticket === null) return interaction.message.delete() // The ticket no longer exists :/
 
     await interaction.deferReply({ ephemeral: true }); // Inform the user that the bot needs to do some thinking
@@ -17,19 +46,11 @@ async function onComponent(interaction) {
 
 }
 
-function getHandler(subCommand) {
-    switch (subCommand) {
-        case ("DENY"): return onDeny;
-        case ("ACCEPT"): return onAccept;
-        default: return false;
-    }
-}
-
 async function onDeny(interaction) {
 
     const ticketCreatorId = interaction.ticket.userId
-    if (ticketCreatorId != interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.hasPermission("STAFF")));
+    if (ticketCreatorId != interaction.userId)
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.member.hasPermission("STAFF")));
 
     const transcriber = interaction.client.transcriber;
     await transcriber.transcribe(
@@ -44,8 +65,8 @@ async function onDeny(interaction) {
 async function onAccept(interaction) {
 
     const ticketCreatorId = interaction.ticket.userId
-    if (ticketCreatorId != interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.hasPermission("STAFF")));
+    if (ticketCreatorId != interaction.user.Id)
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.member.hasPermission("STAFF")));
 
     const transcriber = interaction.client.transcriber; // Instance of TicketTranscriber created in bot.js
     await transcriber.transcribe(
@@ -53,8 +74,8 @@ async function onAccept(interaction) {
     ).catch(console.error); // Command should not abort just because the event was not logged
     await transcriber.send(interaction.guild, interaction.ticket).catch(console.error); // Command should not abort just because their was an error with the log
 
-    const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
-    await dbClient.deleteTicket(interaction.ticket.id)
+    const ticketTable = interaction.client.database.tickets; // Instance of DBClient created in bot.js
+    await ticketTable.remove(interaction.ticket.id)
     await interaction.channel.delete()
 
 }

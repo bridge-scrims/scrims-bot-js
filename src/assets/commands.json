@@ -2,7 +2,7 @@
     {
         "name": "close",
         "description": "Use this command in a support channel to request a ticket closure.",
-        "permissionLevel": "SUPPORT",
+        "permissionLevel": "support",
         "default_permission": true,
         "options": [
             {
@@ -17,14 +17,14 @@
         "name": "forceclose",
         "description": "Use this command in a support channel to request a ticket closure.",
         "default_permission": true,
-        "permissionLevel": "STAFF",
+        "permissionLevel": "staff",
         "options": []
     },
     {
         "name": "reload",
         "description": "Reloads application commands.",
         "default_permission": true,
-        "permissionLevel": "DEV",
+        "permissionLevel": "developer",
         "options": []
     },
     {

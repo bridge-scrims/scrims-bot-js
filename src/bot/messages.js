@@ -1,5 +1,4 @@
 const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
-const ResponseTemplates = require("./response-templates");
 
 function expandMessage(message) {
     message.user = message.author
@@ -9,8 +8,6 @@ function expandMessage(message) {
 
 async function handleMessage(message) {
     expandMessage(message);
-
-    if (message.channelId == message.client.suggestionsChannelId) return onSuggestionChannelMessage(message);
 
     if (message.type !== 'DEFAULT') return false;
     if (message.author.bot) return false;
@@ -51,19 +48,7 @@ async function createSupportMessage(message) {
 }
 
 
-async function onSuggestionChannelMessage(message) { 
 
-    // Messages like CHANNEL_PINNED_MESSAGE & THREAD_CREATED should get deleted
-    const badMessageTypes = ['CHANNEL_PINNED_MESSAGE', 'THREAD_STARTER_MESSAGE']
-    if (badMessageTypes.includes(message.type)) return message.delete().catch(console.error);
-
-    // Bot sent the message so don't worry about it
-    if (message.author.id == message.client.user.id) return false;
-
-    // Recreate the suggestions info message so that it is displayed at the bottom of the channel
-    await message.client.sendSuggestionInfoMessage(message.channel, false)
-
-}
 
 
 module.exports = handleMessage;
