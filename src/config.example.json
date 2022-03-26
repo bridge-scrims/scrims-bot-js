@@ -1,25 +1,25 @@
 {
-  
+
     "token": "",
-    "prefix": "",
 
-    "transcriptChannelId": "",
+    "suggestions": {
 
-    "suggestionsChannelId": "",
-    "epicSuggestionsChannelId": "",
-    "suggestionUpVote": "899410212505661491",
-    "suggestionDownVote": "899410248392122430",
-    "suggestionVoteConst": 14,
+        "channelId": "",
+        "epicSuggestionsChannelId": "",
 
-    "devRoles": [""],
-    "supportRoles": [""],
-    "staffRoles": [""],
+        "upVoteEmoji": "",
+        "downVoteEmoji": "",
+        "voteConst": 2
 
-    "mysqlLogin": {
+    },
+
+    "dbLogin": {
+
         "host": "",
         "username": "",
         "password": "",
         "database": ""
-    }
 
+    }
+    
 }

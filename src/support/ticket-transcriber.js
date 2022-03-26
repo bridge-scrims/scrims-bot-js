@@ -36,6 +36,7 @@ class TicketTranscriber {
     async send(guild, ticket) {
         
         try {
+
             const ticketTranscript = (await this.client.getTranscript(ticket.id)).map(message => `<b>${message.authorTag}:</b> ${message.content}`)
 
             const filePath = `./tickets/${ticket.id}.html`
@@ -57,8 +58,11 @@ class TicketTranscriber {
             
             if (user !== null) 
                 await user.send({ embeds: [embed], files: [file] }).catch(error => this.onUserDMMissed(channel, ticket.userId, `${error}`));
+
         }catch(error) {
+
             console.error(error)
+            
         }
 
     }

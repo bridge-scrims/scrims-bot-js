@@ -1,24 +1,20 @@
-const { ModalSubmitInteraction } = require("discord-modals");
 const { MessageEmbed } = require("discord.js");
 
 async function onSubmit(interaction) {
-
-    if (!(interaction instanceof ModalSubmitInteraction)) // "Houston, we have a problem"
-        return interaction.reply({ content: "How did we get here?", ephemeral: true });
 
     interaction.ticketId = interaction.args.shift()
     interaction.firstResponse = interaction.getTextInputValue('request-reason');
     await interaction.deferReply({ ephemeral: true }); // Why is this not async?
 
-    const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
-    const ticket = await dbClient.getTicket({ userId: interaction.userId })
+    const ticketClient = interaction.client.database.tickets
+    const ticket = await ticketClient.get({ userId: interaction.userId })
 
     if (ticket === null) return createTicket(interaction); // New ticket to be created
 
     const channel = await fetchChannel(interaction.guild, ticket.channelId)
     if (channel) return interaction.editReply(getAlreadyCreatedPayload(channel)); // Someone is trying to create a second ticket smh
     
-    await dbClient.deleteTicket(ticket.id)
+    await ticketClient.remove(ticket.id)
     await createTicket(interaction); // Ticket was created, but since channel was deleted create it again :D
 
 }
@@ -29,10 +25,10 @@ async function fetchChannel(guild, id) {
 }
 
 async function createTicket(interaction) {
-    const dbClient = interaction.client.database; // Instance of DBClient created in bot.js
+    const ticketClient = interaction.client.database.tickets; 
     const channel = await createTicketChannel(interaction.client, interaction.guild, interaction.user)
 
-    await dbClient.createTicket(interaction.ticketId, channel.id, interaction.userId)
+    await ticketClient.create(interaction.ticketId, channel.id, interaction.userId)
     await interaction.followUp(getCreatedPayload(channel))
     await channel.send(getIntroPayload(interaction.member, interaction.firstResponse))
 }
@@ -42,7 +38,7 @@ function getAlreadyCreatedPayload(channel) {
         .setColor("#2F3136")
         .setTitle(`Error`)
         .setDescription(`You already have a ticket open (${channel}).`)
-        .setTimestamp();
+        .setTimestamp()
 
     return { embeds: [embed] };
 }

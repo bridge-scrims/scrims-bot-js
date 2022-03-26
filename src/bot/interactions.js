@@ -1,11 +1,11 @@
-const onCloseRequestComponent = require("./user-handlers/close-request-component.js");
-const onSuggestionInteraction = require("./user-handlers/suggestion-interaction.js");
-const onSupportComponent = require("./user-handlers/support-component.js");
-const onForceCloseCommand = require("./user-handlers/forceclose-cmd.js");
-const onSupportSubmit = require("./user-handlers/support-modal.js");
-const onCloseCommand = require("./user-handlers/close-cmd.js");
+const onCloseRequestComponent = require("../support/close-request-component.js");
+const onSuggestionInteraction = require("../suggestions/interactions.js");
+const onSupportComponent = require("../support/components.js");
+const onForceCloseCommand = require("../support/forceclose-cmd.js");
+const onSupportSubmit = require("../support/modals.js");
+const onCloseCommand = require("../support/close-cmd.js");
 
-const ResponseTemplates = require("./response-templates.js");
+const ResponseTemplates = require("./responses.js");
 
 function getHandler(cmdName) {
 
@@ -59,9 +59,6 @@ function getMissingPermissionPayload() {
     return ResponseTemplates.errorMessage("Insufficient Permissions", "You are missing the required permissions to use this command!");
 }
 
-async function onReloadCommand(interaction) {
-    await interaction.client.installCommands().catch(console.error)
-    await interaction.reply({ content: "Commands reloaded!", ephemeral: true })
-}
+
 
 module.exports = handleInteraction;
