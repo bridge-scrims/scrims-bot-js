@@ -140,7 +140,7 @@ class DBTable {
 
     async get(selectCondition) { 
 
-        const [ formated, values1 ] = this.format(selectCondition)
+        const [ formated, values1 ] = this.format({ ...selectCondition })
         const query = (this.getFunction === null) ? this.createSelectQuery(formated, values1) : this.createFunctionSelectQuery(formated, values1)
         const result = await this.query( ...query )
         
@@ -152,22 +152,22 @@ class DBTable {
 
     async create(data) {
 
-        const [ formated, formatValues ] = this.format(data)
+        const [ formated, formatValues ] = this.format({ ...data })
 
         await this.query( ...this.createInsertQuery(formated, formatValues) )
         
         // Fetch what was just inserted to add it to cache
-        const result = await this.get( data )
+        const result = await this.get({ ...data })
         return result;
 
     }
 
     async update(data, selector) {
 
-        const [ formatedData, values1 ] = this.format(data)
+        const [ formatedData, values1 ] = this.format({ ...data })
         const [ setClause, values2 ] = this.createSetClause(formatedData, values1)
 
-        const [ formatedSelector, values3 ] = this.format(selector, values2)
+        const [ formatedSelector, values3 ] = this.format({ ...selector }, values2)
         const [ whereClause, values4 ] = this.createWhereClause(formatedSelector, values3)
 
         const result = await this.query(`UPDATE ${this.name} ${setClause} ${whereClause}`, values4)
@@ -179,7 +179,7 @@ class DBTable {
 
     async remove(selector) {
 
-        const [ formated, values1 ] = this.format(selector)
+        const [ formated, values1 ] = this.format({ ...selector })
         const [ whereClause, values2 ] = this.createWhereClause(formated, values1)
 
         const result = await this.query(`DELETE FROM ${this.name} ${whereClause}`, values2)

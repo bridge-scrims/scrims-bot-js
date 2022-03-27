@@ -30,5 +30,12 @@
     {
         "name": "Remove Suggestion",
         "type": 3
+    },
+    {
+        "name": "support-message",
+        "description": "Creates the support message.",
+        "default_permission": true,
+        "permissionLevel": "staff",
+        "options": []
     }
 ]

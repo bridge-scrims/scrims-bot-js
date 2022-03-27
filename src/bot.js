@@ -12,7 +12,7 @@ class ScrimsJSBot extends ScrimsBot {
 
         super(intents, partials, config);
 
-        //this.support = new SupportFeature(this, this.support)
+        this.support = new SupportFeature(this, this.support)
         this.suggestions = new SuggestionFeature(this, this.suggestions)
 
     }

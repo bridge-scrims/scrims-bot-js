@@ -1,4 +1,4 @@
-const ResponseTemplates = require("../bot/responses");
+const SuggestionsResponseMessageBuilder = require("./responses");
 const { SuggestionsTable } = require("./tables");
 const onInteraction = require("./interactions");
 const onReactionUpdate = require("./reactions");
@@ -96,7 +96,7 @@ class SuggestionsFeature {
         clearTimeout(this.suggestionsInfoMessageReload)
 
         await this.suggestionsInfoMessage?.delete()?.catch(() => null);
-        this.suggestionsInfoMessage = await channel.send(ResponseTemplates.suggestionsInfoMessage(channel.guild.name))
+        this.suggestionsInfoMessage = await channel.send(SuggestionsResponseMessageBuilder.suggestionsInfoMessage(channel.guild.name))
 
         if (resend) this.suggestionsInfoMessageReload = setTimeout(() => this.sendSuggestionInfoMessage(channel, false)?.catch(console.error), 7*60*1000)
 

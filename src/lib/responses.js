@@ -28,6 +28,22 @@ class ScrimsMessageBuilder {
             ]
         }
     }
+
+    static guildOnlyMessage() {
+
+        return this.errorMessage(
+            "Guild Only", "This command can only be used in discord servers!"
+        );
+    
+    }
+
+    static scrimsUserNeededMessage() {
+
+        return this.errorMessage(
+            "Unkown Scrims User", `You have not yet been properly identified by the bridge scrims server. Please try again in a moment.`
+        );
+    
+    }
     
 }
 

@@ -1,4 +1,5 @@
 CREATE TABLE scrims_suggestion (
+
     id_suggestion SERIAL PRIMARY KEY,
 
     channel_id text NULL,
@@ -10,6 +11,7 @@ CREATE TABLE scrims_suggestion (
 
     FOREIGN KEY(id_creator) 
         REFERENCES scrims_user(id_user)
+        
 );
 
 CREATE OR REPLACE FUNCTION get_suggestions(

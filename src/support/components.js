@@ -1,19 +1,24 @@
 const { Modal, TextInputComponent, showModal } = require('discord-modals');
-const { SnowflakeUtil } = require("discord.js");
 
 
-const componentHandlers = { "support": createModal, "ticketCloseRequest": onCloseRequest }
+const componentHandlers = { "support": createModal, "TicketCloseRequest": onCloseRequest }
 async function onComponent(interaction) {
 
     const handler = componentHandlers[interaction.commandName]
-    if (handler) return handler(interaction).catch(console.error);
+    if (handler) {
+
+        if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
+
+        return handler(interaction).catch(console.error);
+
+    }
 
 }
 
 
 async function createModal(interaction) {
     const modal = new Modal()
-        .setCustomId(`support-modal/${SnowflakeUtil.generate()}`)
+        .setCustomId(`support-modal`)
         .setTitle('Support Ticket')
         .addComponents(
             new TextInputComponent()
@@ -37,9 +42,10 @@ async function onCloseRequest(interaction) {
     const handler = closeRequestHandlers[interaction.args.shift()];
     if (!handler) return interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
 
-    const ticketClient = interaction.client.database.tickets; // Instance of DBClient created in bot.js
-    interaction.ticket = await ticketClient.get({ id: interaction.args.shift() })
-    if (interaction.ticket === null) return interaction.message.delete() // The ticket no longer exists :/
+    interaction.ticket = interaction.client.database.tickets.cache.get({ id_ticket: interaction.args.shift() })[0]
+    
+    // The ticket no longer exists :/
+    if (!interaction.ticket) return interaction.message.delete().catch(() => { /* Message could already be deleted */ }) 
 
     await interaction.deferReply({ ephemeral: true }); // Inform the user that the bot needs to do some thinking
     return handler(interaction);
@@ -48,14 +54,13 @@ async function onCloseRequest(interaction) {
 
 async function onDeny(interaction) {
 
-    const ticketCreatorId = interaction.ticket.userId
+    const ticketCreatorId = interaction.ticket.user.discord_id;
     if (ticketCreatorId != interaction.userId)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.member.hasPermission("STAFF")));
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.member.hasPermission("staff")));
 
     const transcriber = interaction.client.transcriber;
-    await transcriber.transcribe(
-        interaction.ticket.id, { ...interaction, createdTimestamp: interaction.createdTimestamp, content: "denied the close request" }
-    ).catch(console.error);
+    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "denied the close request" }
+    await transcriber.transcribe(interaction.ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
 
     await interaction.editReply("Close request denied.");
     await interaction.message.edit(getRequestDeniedPayload(interaction.user));
@@ -64,18 +69,16 @@ async function onDeny(interaction) {
 
 async function onAccept(interaction) {
 
-    const ticketCreatorId = interaction.ticket.userId
-    if (ticketCreatorId != interaction.user.Id)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.member.hasPermission("STAFF")));
+    const ticketCreatorId = interaction.ticket.user.discord_id;
+    if (ticketCreatorId != interaction.userId)
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.member.hasPermission("staff")));
 
-    const transcriber = interaction.client.transcriber; // Instance of TicketTranscriber created in bot.js
-    await transcriber.transcribe(
-        interaction.ticket.id, { ...interaction, createdTimestamp: interaction.createdTimestamp, content: "accepted the close request" }
-    ).catch(console.error); // Command should not abort just because the event was not logged
+    const transcriber = interaction.client.transcriber;
+    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "accepted the close request" }
+    await transcriber.transcribe(interaction.ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
     await transcriber.send(interaction.guild, interaction.ticket).catch(console.error); // Command should not abort just because their was an error with the log
 
-    const ticketTable = interaction.client.database.tickets; // Instance of DBClient created in bot.js
-    await ticketTable.remove(interaction.ticket.id)
+    await interaction.client.database.tickets.remove({ id_ticket: interaction.ticket.id_ticket })
     await interaction.channel.delete()
 
 }

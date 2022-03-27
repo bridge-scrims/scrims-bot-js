@@ -1,20 +1,25 @@
 const { MessageEmbed } = require("discord.js");
+const ScrimsMessageBuilder = require("../lib/responses");
 
 async function onSubmit(interaction) {
 
-    interaction.ticketId = interaction.args.shift()
+    if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
+    
     interaction.firstResponse = interaction.getTextInputValue('request-reason');
     await interaction.deferReply({ ephemeral: true }); // Why is this not async?
 
     const ticketClient = interaction.client.database.tickets
-    const ticket = await ticketClient.get({ userId: interaction.userId })
+    const ticket = ticketClient.cache.get({ user: { discord_id: interaction.userId } })[0]
 
-    if (ticket === null) return createTicket(interaction); // New ticket to be created
+    if (!ticket) return createTicket(interaction); // New ticket to be created
 
-    const channel = await fetchChannel(interaction.guild, ticket.channelId)
-    if (channel) return interaction.editReply(getAlreadyCreatedPayload(channel)); // Someone is trying to create a second ticket smh
+    const channel = await fetchChannel(interaction.guild, ticket.channel_id).catch(() => null)
+
+    // Someone is trying to create a second ticket smh
+    if (channel) return interaction.editReply(ScrimsMessageBuilder.errorMessage("Already Created", `You already have a ticket open (${channel}).`)); 
     
-    await ticketClient.remove(ticket.id)
+    await ticketClient.remove({ id_ticket: ticket.id_ticket })
+    await interaction.client.database.transcript.remove({ id_ticket: ticket.id_ticket })
     await createTicket(interaction); // Ticket was created, but since channel was deleted create it again :D
 
 }
@@ -25,22 +30,20 @@ async function fetchChannel(guild, id) {
 }
 
 async function createTicket(interaction) {
+    
+    if (!interaction.scrimsUser) return interaction.editReply(ScrimsMessageBuilder.scrimsUserNeededMessage())
+    
     const ticketClient = interaction.client.database.tickets; 
     const channel = await createTicketChannel(interaction.client, interaction.guild, interaction.user)
 
-    await ticketClient.create(interaction.ticketId, channel.id, interaction.userId)
+    await ticketClient.create({ 
+        id_user: interaction.scrimsUser.id_user, 
+        guild_id: interaction.guild.id, 
+        channel_id: channel.id, 
+        created_at: Math.round(Date.now()/1000) 
+    })
     await interaction.followUp(getCreatedPayload(channel))
     await channel.send(getIntroPayload(interaction.member, interaction.firstResponse))
-}
-
-function getAlreadyCreatedPayload(channel) {
-    const embed = new MessageEmbed()
-        .setColor("#2F3136")
-        .setTitle(`Error`)
-        .setDescription(`You already have a ticket open (${channel}).`)
-        .setTimestamp()
-
-    return { embeds: [embed] };
 }
 
 function getCreatedPayload(channel) {
@@ -66,6 +69,12 @@ function getIntroPayload(member, firstResponse) {
     return { content: `${member}`, embeds: [embed] };
 }
 
+function getSupportLevelRoles(client, guild) {
+
+    return client.permissions.getPermissionLevelPositions("support").map(position => client.permissions.getPositionRequiredRoles(guild.id, position)).flat();
+
+}
+
 async function createTicketChannel(client, guild, user) {
     const title = `support-${user.username.toLowerCase()}`;
 
@@ -75,7 +84,7 @@ async function createTicketChannel(client, guild, user) {
                 id: guild.roles.everyone,
                 deny: ["VIEW_CHANNEL", "SEND_MESSAGES", "READ_MESSAGE_HISTORY"],
             },
-            ...[ user.id, ...client.supportRoles, ...client.staffRoles ] // Support/Staff roles and the creator of the support ticket
+            ...[ user.id, ...getSupportLevelRoles(client, guild) ] 
                 .map(id => ({ id, allow: ["VIEW_CHANNEL", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"] }))
         ],
     });

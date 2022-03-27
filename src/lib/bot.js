@@ -109,6 +109,19 @@ class ScrimsBot extends Client {
 
     }
 
+    async ensureScrimsUser(interactEvent) {
+
+        interactEvent.scrimsUser = this.database.users.cache.get({ discord_id: interactEvent.user.id })[0]
+        if (!interactEvent.scrimsUser && interactEvent.member) {
+            interactEvent.scrimsUser = await this.database.users.create({ 
+                discord_id: interactEvent.userId, 
+                discord_tag: interactEvent.user.tag, 
+                joined_at: Math.round(interactEvent.member.joinedTimestamp/1000) 
+            }).catch(error => console.error(`Unable to make scrims user for ${interactEvent.userId}!`, error))
+        }
+            
+    }
+
     async onInteractEvent(interactEvent, event) {
 
         if (interactEvent.partial) interactEvent = await interactEvent.fetch().catch(console.error)
@@ -122,6 +135,8 @@ class ScrimsBot extends Client {
         if (isComponentInteraction || isModalSumbitInteraction) this.expandComponentInteraction(interactEvent)
 
         interactEvent.userId = interactEvent.user.id
+        await this.ensureScrimsUser(interactEvent)
+
         if (interactEvent.member instanceof GuildMember)
             interactEvent.member.hasPermission = (permissionLevel, allowedPositions, requiredPositions) => this.permissions.hasPermission(interactEvent.member, permissionLevel, allowedPositions, requiredPositions)
         
