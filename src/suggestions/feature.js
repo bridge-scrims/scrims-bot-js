@@ -32,8 +32,7 @@ class SuggestionsFeature {
         this.bot.on('scrimsReactionRemove', reaction => this.onReactionUpdate(reaction))
         this.bot.on('scrimsReactionAdd', reaction => this.onReactionUpdate(reaction))
 
-        this.bot.on('scrimsInteractionCreate', interaction => this.onScrimsInteraction(interaction))
-        this.bot.on('scrimsModalSubmit', interaction => this.onScrimsInteraction(interaction))
+        this.addEventHandlers()
 
     }
 
@@ -75,11 +74,11 @@ class SuggestionsFeature {
         
     }
 
-    async onScrimsInteraction(interaction) {
+    addEventHandlers() {
 
-        const cmd = interaction?.commandName || null;
-        if (cmd == "suggestion" || cmd == "Remove Suggestion") return onInteraction(interaction).catch(console.error);
-
+        this.bot.addEventHandler("suggestion", onInteraction)
+        this.bot.addEventHandler("Remove Suggestion", onInteraction)
+        
     }
 
     async initSuggestions() {

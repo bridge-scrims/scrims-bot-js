@@ -22,8 +22,9 @@ async function onReactionUpdate(reaction) {
     const hue = (ratio === -1) ? (maxHue/2) : (ratio * ((maxHue/2) / voteConst)) + (maxHue/2)
 
     const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(
-        hue, suggestionData.suggestion, suggestionData.created_at*1000, client.users.resolve(suggestion.creator.discord_id)
+        hue, suggestionData.suggestion, suggestionData.created_at*1000, reaction.client.users.resolve(suggestion.creator.discord_id)
     )
+    
     await reaction.message.edit({ embeds: [embed] })
     
 }

@@ -71,7 +71,9 @@ async function onRemoveSuggestion(interaction) {
     const suggestion = interaction.client.database.suggestions.cache.get({ message_id: interaction.targetId })[0]
     if (!suggestion) return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Unkown Suggestion", "This can only be used on suggestion messages!"));
 
-    if (!interaction.member.hasPermission("staff") && !(suggestion.creator.discord_id == interaction.userId)) 
+    const interactorIsAuthor = (suggestion.creator.discord_id == interaction.userId);
+
+    if (!interaction.member.hasPermission("staff") && !interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
 
     const response = await interaction.targetMessage.delete().catch(error => error)
@@ -81,7 +83,8 @@ async function onRemoveSuggestion(interaction) {
     }
 
     await interaction.client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion }).catch(console.error)
-    return interaction.reply({ content: "Suggestion successfully removed.", ephemeral: true });
+    const content = (interactorIsAuthor) ? `Your suggestion was successfully removed.` : `The suggestion was foribly removed.`
+    await interaction.reply({ content: "Suggestion successfully removed.", ephemeral: true });
 
 }
 
@@ -117,7 +120,8 @@ async function onModalSubmit(interaction) {
         creator: { discord_id: interaction.user.id }
     }
 
-    addCooldown(interaction.userId)
+    if (!interaction.member.hasPermission("support")) addCooldown(interaction.userId)
+
     await interaction.client.database.suggestions.create(newSuggestion).catch(console.error)
     return interaction.editReply(SuggestionsResponseMessageBuilder.suggestionSentMessage());
 }

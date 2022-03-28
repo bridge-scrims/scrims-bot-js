@@ -35,10 +35,8 @@ class SupportFeature {
             console.log("Transcript channel found and on standby!")
         }
 
+        this.addEventHandlers()
         this.bot.on('scrimsMessageCreate', message => this.onScrimsMessage(message))
-        this.bot.on('scrimsCommandCreate', interaction => this.onScrimsCommand(interaction))
-        this.bot.on('scrimsComponentCreate', interaction => this.onScrimsComponent(interaction))
-        this.bot.on('scrimsModalSubmit', interaction => this.onScrimsModalSubmit(interaction))
 
     }
 
@@ -65,22 +63,16 @@ class SupportFeature {
 
     }
 
-    async onScrimsCommand(interaction) {
+    addEventHandlers() {
 
-        await onCommand(interaction).catch(console.error)
+        this.bot.addEventHandler("support", onComponent)
+        this.bot.addEventHandler("TicketCloseRequest", onComponent)
 
-    }
+        this.bot.addEventHandler("close", onCommand)
+        this.bot.addEventHandler("forceclose", onCommand)
+        this.bot.addEventHandler("support-message", onCommand)
 
-    async onScrimsComponent(interaction) {
-
-        await onComponent(interaction).catch(console.error)
-
-    }
-
-    async onScrimsModalSubmit(interaction) {
-
-        const cmd = interaction?.commandName || null;
-        if (cmd == "support-modal") return onSubmit(interaction).catch(console.error);
+        this.bot.addEventHandler("support-modal", onSubmit)
 
     }
     

@@ -1,4 +1,4 @@
 node_modules
 tests
-tickets
+.vscode
 package-lock.json

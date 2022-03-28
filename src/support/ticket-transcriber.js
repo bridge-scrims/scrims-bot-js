@@ -39,11 +39,13 @@ class TicketTranscriber {
             + `function onReady() {`
                 + `const tableBody = $("#transcript-table-body");`
                 + `const clientOptions = Intl.DateTimeFormat().resolvedOptions();`
+                + `function getDate(timestamp) { return (new Date(timestamp)).toLocaleString(clientOptions.locale, { timeZone: clientOptions.timeZone, year: "numeric", month: "2-digit", day: "2-digit" }) };`
+                + `function getTime(timestamp) { return (new Date(timestamp)).toLocaleString(clientOptions.locale, { timeZone: clientOptions.timeZone, hour: "numeric", minute: "numeric" }) };`
                 + ticketMessages.map(message => (
                     `tableBody.append(\``
                         + `<tr>`
-                            + `<td>\${(new Date(${message.created_at*1000})).toLocaleString(clientOptions.locale, { timeZone: clientOptions.timeZone, year: "numeric", month: "2-digit", day: "2-digit" })}</td>`
-                            + `<td>\${(new Date(${message.created_at*1000})).toLocaleString(clientOptions.locale, { timeZone: clientOptions.timeZone, hour: "numeric", minute: "numeric" })}</td>`
+                            + `<td>\${getDate(${message.created_at*1000})}</td>`
+                            + `<td>\${getTime(${message.created_at*1000})}</td>`
                             + `<td>${message.author.discord_tag}</td>`
                             + `<td class="last">${message.content}</td>`
                         + `</tr>`

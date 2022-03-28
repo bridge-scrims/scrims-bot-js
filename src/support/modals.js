@@ -18,8 +18,9 @@ async function onSubmit(interaction) {
     // Someone is trying to create a second ticket smh
     if (channel) return interaction.editReply(ScrimsMessageBuilder.errorMessage("Already Created", `You already have a ticket open (${channel}).`)); 
     
-    await ticketClient.remove({ id_ticket: ticket.id_ticket })
     await interaction.client.database.transcript.remove({ id_ticket: ticket.id_ticket })
+    await ticketClient.remove({ id_ticket: ticket.id_ticket })
+
     await createTicket(interaction); // Ticket was created, but since channel was deleted create it again :D
 
 }

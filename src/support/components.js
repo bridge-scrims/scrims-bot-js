@@ -9,7 +9,7 @@ async function onComponent(interaction) {
 
         if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
 
-        return handler(interaction).catch(console.error);
+        return handler(interaction);
 
     }
 

@@ -2,7 +2,10 @@ const { Client, Message, Interaction, CommandInteraction, MessageComponentIntera
 const discordModals = require('discord-modals');
 
 const ScrimsPermissionsClient = require("./permissions");
+const HypixelClient = require("./middleware/hypixel");
 const ScrimsCommandInstaller = require("./commands");
+const ScrimsMessageBuilder = require("./responses");
+const MojangClient = require("./middleware/mojang");
 const ResponseTemplates = require("./responses");
 const DBTable = require("./postgresql/database");
 
@@ -12,8 +15,12 @@ class ScrimsBot extends Client {
         
         super({ intents, partials });
 
-        this.commands = new ScrimsCommandInstaller(this);
+        this.eventHandlers = {};
         this.config = config;
+
+        this.commands = new ScrimsCommandInstaller(this);
+        this.hypixel = new HypixelClient(config.hypixelToken);
+        this.mojang = new MojangClient();
         
         Object.entries(config).forEach(([key, value]) => this[key] = value)
 
@@ -28,9 +35,21 @@ class ScrimsBot extends Client {
         
     }
 
+    addEventHandler(handlerId, handler) {
+
+        this.eventHandlers[handlerId] = handler
+
+    }
+
+    removeEventHandler(handlerId) {
+
+        delete this.eventHandlers[handlerId]
+
+    }
+
     async login() {
 
-        await super.login(this.config.token);
+        await super.login(this.config.discordToken);
         console.log("Connected to discord!")
 
         this.database = new DBTable(this.config.dbLogin)
@@ -85,16 +104,46 @@ class ScrimsBot extends Client {
 
     }
 
-    emitInteractEvent(interactEvent, event) {
+    async runHandler(handler, interactEvent, event) {
 
-        if (interactEvent instanceof Message) this.emit(`scrimsMessage${event}`, interactEvent)
-        if (interactEvent instanceof Interaction) this.emit(`scrimsInteraction${event}`, interactEvent)
-        if (interactEvent instanceof MessageReaction) this.emit(`scrimsReaction${event}`, interactEvent)
+        try {
 
-        if (interactEvent instanceof CommandInteraction) this.emit(`scrimsCommand${event}`, interactEvent)
-        if (interactEvent instanceof AutocompleteInteraction) this.emit(`scrimsAutocomplete${event}`, interactEvent)
-        if (interactEvent instanceof MessageComponentInteraction) this.emit(`scrimsComponent${event}`, interactEvent)
-        if (interactEvent instanceof discordModals.ModalSubmitInteraction) this.emit(`scrimsModal${event}`, interactEvent)
+            await handler(interactEvent, event)
+
+        }catch(error) {
+
+            console.error(`Unexpected error while handling a ${event}!`, error, interactEvent)
+
+            if (interactEvent instanceof Interaction || interactEvent instanceof discordModals.ModalSubmitInteraction) {
+                
+                const payload = ScrimsMessageBuilder.errorMessage(
+                    "Unexpected Exception", `Unfortunately your command could not be handleld due to an unexpected error.`
+                    + ` This error was automatically reported to the bridge scrims developer team.`
+                    + ` Sorry for any inconvenience and please try again later.`
+                )
+
+                if (interactEvent.replied) await interactEvent.editReply(payload)
+                else await interactEvent.reply(payload)
+
+            }
+
+        }
+
+    }
+
+    async handleInteractEvent(interactEvent, event) {
+
+        const handlerIdentifier = interactEvent?.commandName || null;
+        const handler = this.eventHandlers[handlerIdentifier]
+        if (handler) return this.runHandler(handler, interactEvent, event)
+
+        if (interactEvent instanceof Interaction || interactEvent instanceof discordModals.ModalSubmitInteraction) {
+
+            await interactEvent.reply({ content: "This command does not have a handler. Please refrain from trying again.", ephemeral: true });
+
+        }
+
+        this.emit(`scrims${event}`, interactEvent)
 
     }
 
@@ -124,7 +173,7 @@ class ScrimsBot extends Client {
 
     async onInteractEvent(interactEvent, event) {
 
-        if (interactEvent.partial) interactEvent = await interactEvent.fetch().catch(console.error)
+        if (interactEvent.partial) interactEvent = await interactEvent.fetch().catch(() => null)
         if (!interactEvent || interactEvent.partial) return false;
 
         if (interactEvent instanceof Message) this.expandMessage(interactEvent)
@@ -144,7 +193,7 @@ class ScrimsBot extends Client {
             if (!this.isPermitted(interactEvent)) 
                 return interactEvent.reply(ResponseTemplates.errorMessage("Insufficient Permissions", "You are missing the required permissions to use this command!")).catch(console.error);
         
-        this.emitInteractEvent(interactEvent, event)
+        return this.handleInteractEvent(interactEvent, event)
         
     }
 
@@ -157,14 +206,14 @@ class ScrimsBot extends Client {
 
     addEventListeners() {
 
-        this.on('modalSubmit', interaction => this.onInteractEvent(interaction, "Submit"))
-        this.on('interactionCreate', interaction => this.onInteractEvent(interaction, "Create"))
+        this.on('modalSubmit', interaction => this.onInteractEvent(interaction, "ModalSubmit"))
+        this.on('interactionCreate', interaction => this.onInteractEvent(interaction, "InteractionCreate"))
 		
-        this.on('messageCreate', message => this.onInteractEvent(message, "Create"))
-        this.on('messageDelete', message => this.onInteractEvent(message, "Delete"))
+        this.on('messageCreate', message => this.onInteractEvent(message, "MessageCreate"))
+        this.on('messageDelete', message => this.onInteractEvent(message, "MessageDelete"))
 
-        this.on('messageReactionAdd', (reaction, user) => this.onReaction(reaction, user, "Add"))
-        this.on('messageReactionRemove', (reaction, user) => this.onReaction(reaction, user, "Remove"))
+        this.on('messageReactionAdd', (reaction, user) => this.onReaction(reaction, user, "ReactionAdd"))
+        this.on('messageReactionRemove', (reaction, user) => this.onReaction(reaction, user, "ReactionRemove"))
 
         this.on('guildCreate', guild => this.commands.updateGuildCommandsPermissions(guild))
 

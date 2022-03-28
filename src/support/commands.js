@@ -9,7 +9,7 @@ async function onCommand(interaction) {
 
         if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
 
-        return handler(interaction).catch(console.error);
+        return handler(interaction);
 
     }
     
@@ -105,7 +105,7 @@ async function closeTicket(interaction, ticket, content) {
 async function forceCloseTicket(interaction) {
 
     const ticketTable = interaction.client.database.tickets; 
-    const ticket = ticketTable.cache.get({ channel_id: interaction.channel.id })
+    const ticket = ticketTable.cache.get({ channel_id: interaction.channel.id })[0]
     if (!ticket) return interaction.reply(getMissingTicketPayload()); // This is no support channel (bruh moment)
     
     await closeTicket(interaction, ticket, "forcibly closed this request")

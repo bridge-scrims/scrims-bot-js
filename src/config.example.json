@@ -1,6 +1,7 @@
 {
 
-    "token": "",
+    "discordToken": "",
+    "hypixelToken": "",
 
     "suggestions": {
 
