@@ -3,6 +3,12 @@
     "discordToken": "",
     "hypixelToken": "",
 
+    "sync-host": {
+
+        "mainDiscordServer": "",
+        
+    },
+
     "suggestions": {
 
         "channelId": "",

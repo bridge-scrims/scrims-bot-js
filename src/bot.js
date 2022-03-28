@@ -1,4 +1,5 @@
 
+const ScrimsSyncHostFeature = require("./sync-host/feature");
 const SuggestionFeature = require("./suggestions/feature");
 const SupportFeature = require("./support/feature");
 const ScrimsBot = require("./lib/bot");
@@ -14,6 +15,7 @@ class ScrimsJSBot extends ScrimsBot {
 
         this.support = new SupportFeature(this, this.support)
         this.suggestions = new SuggestionFeature(this, this.suggestions)
+        this.syncHost = new ScrimsSyncHostFeature(this)
 
     }
 
