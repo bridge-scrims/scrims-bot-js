@@ -13,9 +13,9 @@ class ScrimsJSBot extends ScrimsBot {
 
         super(intents, partials, config);
 
-        this.support = new SupportFeature(this, this.support)
-        this.suggestions = new SuggestionFeature(this, this.suggestions)
-        this.syncHost = new ScrimsSyncHostFeature(this)
+        this.support = new SupportFeature(this, config.support)
+        this.suggestions = new SuggestionFeature(this, config.suggestions)
+        this.syncHost = new ScrimsSyncHostFeature(this, config.syncHost)
 
     }
 

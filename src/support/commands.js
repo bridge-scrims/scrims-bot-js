@@ -1,3 +1,4 @@
+const { SlashCommandBuilder } = require("@discordjs/builders");
 const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
 
@@ -126,5 +127,46 @@ function getMissingTicketPayload() {
 
 }
 
+function buildCloseCommand() {
+        
+    const closeCommand = new SlashCommandBuilder()
+        .setName("close")
+        .setDescription("Use this command in a support channel to request a ticket closure.")
+        .addStringOption(option => (
+            option
+                .setName('reason')
+                .setDescription('The reason for this request.')
+                .setRequired(false)
+        ))
 
-module.exports = onCommand;
+    return [ closeCommand, { permissionLevel: "support" } ];
+
+}
+
+function buildForceCloseCommand() {
+        
+    const forceCloseCommand = new SlashCommandBuilder()
+        .setName("forceclose")
+        .setDescription("Use this command in a support channel to force a ticket closure.")
+
+    return [ forceCloseCommand, { permissionLevel: "staff" } ];
+
+}
+
+function buildSupportMessageCommand() {
+
+    const supportMessageCommand = new SlashCommandBuilder()
+        .setName("support-message")
+        .setDescription("Sends the support message in the channel.")
+
+    return [ supportMessageCommand, { permissionLevel: "support" } ];
+
+}
+
+
+module.exports = {
+
+    commandHandler: onCommand,
+    commands: [ buildCloseCommand(), buildForceCloseCommand(), buildSupportMessageCommand() ]
+
+}

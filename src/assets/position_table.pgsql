@@ -6,9 +6,11 @@ CREATE TABLE scrims_position (
     level INT NULL
 );
 
-INSERT INTO scrims_position (name, level, sticky) VALUES('artist', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('developer', NULL, true);
+INSERT INTO scrims_position (name, level, sticky) VALUES('server_booster', NULL, true);
 INSERT INTO scrims_position (name, level, sticky) VALUES('screensharer', NULL, true);
+INSERT INTO scrims_position (name, level, sticky) VALUES('developer', NULL, true);
+INSERT INTO scrims_position (name, level, sticky) VALUES('artist', NULL, true);
+INSERT INTO scrims_position (name, level, sticky) VALUES('editor', NULL, true);
 
 INSERT INTO scrims_position (name, level, sticky) VALUES('prime', NULL, true);
 INSERT INTO scrims_position (name, level, sticky) VALUES('private', NULL, true);

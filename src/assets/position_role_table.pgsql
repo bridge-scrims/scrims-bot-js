@@ -8,18 +8,18 @@ CREATE TABLE scrims_position_role (
     REFERENCES scrims_position(id_position)
 );
 
-/* Bridge Scrims Server */
+-- Bridge Scrims Server 
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'developer'), '904492690043990046', '759894401957888031');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'support'), '834247683484024893', '759894401957888031');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '913083965215227925', '759894401957888031');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'owner'), '760148398857912380', '759894401957888031');
 
-/* Bridge Scrims Test Server */
+-- Bridge Scrims Test Server
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'developer'), '911778679141597185', '911760601926217819');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'support'), '913084031191633920', '911760601926217819');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '913083965215227925', '911760601926217819');
 
-/* Other Test Server */
+-- Other Test Server 
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'bridge_scrims_member'), '936942269423038556', '936349840223371305');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'developer'), '954375653493465129', '936349840223371305');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'support'), '954375761119285298', '936349840223371305');

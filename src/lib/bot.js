@@ -1,4 +1,5 @@
-const { Client, Message, Interaction, CommandInteraction, MessageComponentInteraction, GuildMember, MessageReaction, AutocompleteInteraction } = require("discord.js");
+const { Client, Message, Interaction, CommandInteraction, MessageComponentInteraction, GuildMember } = require("discord.js");
+const { SlashCommandBuilder } = require("@discordjs/builders");
 const discordModals = require('discord-modals');
 
 const ScrimsPermissionsClient = require("./permissions");
@@ -8,6 +9,7 @@ const ScrimsMessageBuilder = require("./responses");
 const MojangClient = require("./middleware/mojang");
 const ResponseTemplates = require("./responses");
 const DBTable = require("./postgresql/database");
+
 
 class ScrimsBot extends Client {
 
@@ -24,6 +26,7 @@ class ScrimsBot extends Client {
         
         Object.entries(config).forEach(([key, value]) => this[key] = value)
 
+        this.addReloadCommand()
         discordModals(this);
 
     }
@@ -33,6 +36,16 @@ class ScrimsBot extends Client {
         super.destroy()
         this.database.destroy()
         
+    }
+
+    addReloadCommand() {
+        
+        const reloadCommand = new SlashCommandBuilder()
+            .setName("reload")
+            .setDescription("Reloads the application commands and permissions.")
+
+        this.commands.add(reloadCommand, { permissionLevel: "developer" })
+
     }
 
     addEventHandler(handlerId, handler) {

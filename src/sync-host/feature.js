@@ -127,6 +127,9 @@ class ScrimsSyncHostFeature {
 
     async initializeMembers(guild) {
 
+        // First add the bot as a scrims user so that it can be an executor
+        await this.initializeMember(await guild.members.fetch(this.bot.user.id))
+
         const members = await guild.members.fetch()
             .catch(error => console.error(`Unable to fetch main guild member for initialization!`, error))
 
@@ -135,7 +138,7 @@ class ScrimsSyncHostFeature {
         const memberPositionUsers = await this.bot.database.userPositions.get({ position: { name: "bridge_scrims_member" } })  
             .catch(error => console.error(`Unable to fetch the users that have the bridge_scrims_member position!`, error))
         
-        const ghostUsers = memberPositionUsers.filter(userPosition => !guild.members.cache.has(userPosition.discord_id))
+        const ghostUsers = this.bot.database.users.cache.filter(scrimsUser => !guild.members.cache.has(scrimsUser.discord_id))
         await Promise.allSettled(ghostUsers.map(ghost => this.scrimsMemberRemove(ghost.discord_id))).then(this.logErrors)
 
         console.log("Members initialized!")

@@ -1,7 +1,8 @@
 const SuggestionsResponseMessageBuilder = require("./responses");
 const { SuggestionsTable } = require("./tables");
-const onInteraction = require("./interactions");
 const onReactionUpdate = require("./reactions");
+
+const { interactionHandler, commands } = require("./interactions");
 
 class SuggestionsFeature {
 
@@ -12,10 +13,12 @@ class SuggestionsFeature {
         
         Object.entries(config).forEach(([key, value]) => this[key] = value)
 
+        commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
+
         // The message at the bottom of the suggestions channel
         this.suggestionsInfoMessage = null
 
-        bot.on('startupComplete', () => this.onReady())
+        bot.on('ready', () => this.onReady())
 
     }
 
@@ -76,8 +79,9 @@ class SuggestionsFeature {
 
     addEventHandlers() {
 
-        this.bot.addEventHandler("suggestion", onInteraction)
-        this.bot.addEventHandler("Remove Suggestion", onInteraction)
+        this.bot.addEventHandler("suggestion", interactionHandler)
+
+        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, interactionHandler))
         
     }
 

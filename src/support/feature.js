@@ -1,7 +1,8 @@
 const { TicketTable, TicketMessagesTable } = require("./tables");
 const TicketTranscriber = require("./ticket-transcriber");
 
-const onCommand = require("./commands");
+const { commandHandler, commands } = require("./commands");
+
 const onComponent = require("./components");
 const onSubmit = require("./modals");
 
@@ -14,9 +15,11 @@ class SupportFeature {
         
         Object.entries(config).forEach(([key, value]) => this[key] = value)
 
+        commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
+        
         this.transcriptChannel = null
         
-        bot.on('startupComplete', () => this.onReady())
+        bot.on('ready', () => this.onReady())
 
     }
 
@@ -68,9 +71,7 @@ class SupportFeature {
         this.bot.addEventHandler("support", onComponent)
         this.bot.addEventHandler("TicketCloseRequest", onComponent)
 
-        this.bot.addEventHandler("close", onCommand)
-        this.bot.addEventHandler("forceclose", onCommand)
-        this.bot.addEventHandler("support-message", onCommand)
+        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
 
         this.bot.addEventHandler("support-modal", onSubmit)
 

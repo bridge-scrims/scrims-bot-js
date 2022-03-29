@@ -3,10 +3,10 @@
     "discordToken": "",
     "hypixelToken": "",
 
-    "sync-host": {
+    "syncHost": {
 
-        "mainDiscordServer": "",
-        
+        "mainDiscordServer": ""
+
     },
 
     "suggestions": {

@@ -5,6 +5,7 @@ CREATE TABLE scrims_user_position (
 
     id_executor INT NULL,
     given_at BIGINT NOT NULL,
+    expires_at BIGINT NULL,
 
     UNIQUE(id_user, id_position),
     FOREIGN KEY(id_user) 
@@ -16,12 +17,23 @@ CREATE TABLE scrims_user_position (
 );
 
 
+CREATE OR REPLACE FUNCTION is_expired( expires_at bigint ) 
+RETURNS boolean
+AS $$ BEGIN
+
+RETURN (select extract(epoch from current_timestamp)) >= expires_at;
+
+END $$ 
+LANGUAGE plpgsql;
+
 
 CREATE OR REPLACE FUNCTION get_user_positions(
     id_user int default null,
     id_position int default null,
     id_executor int default null,
-    given_at bigint default null
+    given_at bigint default null,
+    expires_at bigint default null,
+    show_expired boolean default false
 ) 
 RETURNS json
 AS $$
@@ -36,6 +48,7 @@ EXECUTE '
                 ''executor'', to_json(executor),
                 ''position'', to_json(position),
                 ''given_at'', scrims_user_position.given_at,
+                ''expires_at'', scrims_user_position.expires_at,
                 ''id_user'', scrims_user_position.id_user,
                 ''id_executor'', scrims_user_position.id_executor,
                 ''id_position'', scrims_user_position.id_position
@@ -48,11 +61,13 @@ EXECUTE '
     LEFT JOIN scrims_position position ON position.id_position = scrims_user_position.id_position
 
     WHERE 
+    ((scrims_user_position.expires_at is null or $6) OR NOT is_expired(scrims_user_position.expires_at)) AND
     ($1 is null or scrims_user_position.id_user = $1) AND
     ($2 is null or scrims_user_position.id_executor = $2) AND
     ($3 is null or scrims_user_position.id_position = $3) AND
-    ($4 is null or scrims_user_position.given_at = $4)
-' USING id_user, id_executor, id_position, given_at
+    ($4 is null or scrims_user_position.given_at = $4) AND
+    ($5 is null or scrims_user_position.expires_at = $5)
+' USING id_user, id_executor, id_position, given_at, expires_at, show_expired
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
@@ -71,7 +86,7 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    EXECUTE 'SELECT get_user_positions( id_user => $1, id_position => $2, id_executor => $3, given_at => $4 )'
+    EXECUTE 'SELECT get_user_positions( id_user => $1, id_position => $2, id_executor => $3, given_at => $4, show_expired => true )'
     USING NEW.id_user, NEW.id_position, NEW.id_executor, NEW.given_at
     INTO user_positions;
 

@@ -27,12 +27,12 @@ class DBTable {
 
     async connect() {
 
-        this.initializeCache()
+        this.initializeListeners()
         await this.initializeCache()
 
     }
 
-    initializeListener() {
+    initializeListeners() {
 
 
 

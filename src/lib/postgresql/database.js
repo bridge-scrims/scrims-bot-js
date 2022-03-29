@@ -3,6 +3,7 @@ const Pool = require('pg-pool');
 const pgIPC = require('pg-ipc');
 
 const DBTable = require("./table.js");
+const DBCache = require('./cache.js');
 
 class DBClient {
 
@@ -101,7 +102,7 @@ class PositionTable extends DBTable {
 
 
     // @Overrites
-    initializeListener() {
+    initializeListeners() {
 
         this.ipc.on('user_position_update', message => this._onPositionInstance(message.payload.data.position))
         this.ipc.on('user_position_create', message => this._onPositionInstance(message.payload.position))
@@ -112,6 +113,24 @@ class PositionTable extends DBTable {
 
         const updated = this.cache.update(position, { id_position: position.id_position })
         if (!updated) this.cache.push(position)
+
+    }
+
+
+}
+
+
+class UserPositionCache extends DBCache {
+
+
+    // @Overrides
+    get( ...args ) {
+
+        // Get them expired boys out of here
+        const expired = this.filter(userPosition => userPosition.expires_at !== null && userPosition.expires_at <= (Date.now()/1000))
+        expired.forEach(userPosition => delete this[this.indexOf(userPosition)])
+
+        return super.get( ...args )
 
     }
 
@@ -131,12 +150,13 @@ class UserPositionsTable extends DBTable {
         ]
 
         super(client, "scrims_user_position", "get_user_positions", foreigners);
+        this.cache = new UserPositionCache()
 
     }
 
 
-    // @Overrites
-    initializeListener() {
+    // @Overrides
+    initializeListeners() {
 
         this.ipc.on('user_position_remove', message => this.cache.remove(message.payload))
         this.ipc.on('user_position_update', message => this.cache.update(message.payload.data, message.payload.selector))
@@ -163,7 +183,7 @@ class PositionRolesTable extends DBTable {
 
 
     // @Overrites
-    initializeListener() {
+    initializeListeners() {
 
         this.ipc.on('position_role_remove', message => this.cache.remove(message.payload))
         this.ipc.on('position_role_update', message => this.cache.update(message.payload.data, message.payload.selector))

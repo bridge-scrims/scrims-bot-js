@@ -1,3 +1,4 @@
+const { SlashCommandBuilder, ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { Modal, TextInputComponent, showModal, ModalSubmitInteraction } = require('discord-modals');
 const { MessageComponentInteraction, MessageContextMenuInteraction } = require("discord.js");
 const SuggestionsResponseMessageBuilder = require('./responses');
@@ -96,6 +97,7 @@ function addCooldown(userId) {
 }
 
 async function onModalSubmit(interaction) {
+
     await interaction.deferReply({ ephemeral: true })
 
     const suggestion = interaction.getTextInputValue('suggestion')
@@ -124,6 +126,18 @@ async function onModalSubmit(interaction) {
 
     await interaction.client.database.suggestions.create(newSuggestion).catch(console.error)
     return interaction.editReply(SuggestionsResponseMessageBuilder.suggestionSentMessage());
+
 }
 
-module.exports = onInteraction;
+function buildRemoveSuggestionContextMenuCommand() {
+
+    return [ new ContextMenuCommandBuilder().setName("Remove Suggestion").setType(3), {} ];
+
+}
+
+module.exports = {
+
+    interactionHandler: onInteraction,
+    commands: [ buildRemoveSuggestionContextMenuCommand() ]
+
+};
