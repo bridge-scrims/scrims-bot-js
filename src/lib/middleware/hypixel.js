@@ -1,6 +1,6 @@
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-const NodeCache = require("node-cache");
+const FIFOCache = require("./cache");
 const got = require('got');
 
 class HypixelAPIError extends Error {
@@ -26,7 +26,7 @@ class HypixelClient {
     static server = 'api.hypixel.net';
     static unavailable = false;
 
-    static cache = new NodeCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 500 });
+    static cache = new FIFOCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 500 });
 
     static getCachedPlayer(uuid) {
 
