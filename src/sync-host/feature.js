@@ -72,7 +72,7 @@ class ScrimsSyncHostFeature {
 
     getMemberMissingPositions(member) {
 
-        const positions = this.bot.database.userPositions.cache.get({ user: { discord_id: member } })
+        const positions = this.bot.database.userPositions.cache.get({ user: { discord_id: member.id } })
         
         const allPositionRoles = this.permissions.getGuildPositionRoles(member.guild.id)
         const allowedPositionRoles = allPositionRoles.filter(pRole => this.permissions.hasRequiredPositionRoles(member, pRole.id_position))
@@ -216,20 +216,24 @@ class ScrimsSyncHostFeature {
     async transferPositionsForMember(member) {
 
         const remove = this.getMemberUnallowedPositions(member)
-        await Promise.all(
-            remove.map(userPos => this.bot.database.userPositions.remove( userPos )
+        const removeResults = await Promise.all(
+            remove.map(userPos => this.bot.database.userPositions.remove({ id_user: userPos.id_user, id_position: userPos.id_position }).then(() => true)
                 .catch(error => console.error(`Unable to remove user position because of ${error}!`, userPos))
             )
         )
 
+        if (!removeResults.every(v => v === true)) throw new Error(`TransferPositionsForMember failed.`) 
+
         const create = this.getMemberMissingPositions(member)
             .map(posRole => ({ user: { discord_id: member.id }, id_position: posRole.id_position, given_at: Math.round(Date.now()/1000), executor: { discord_id: this.bot.user.id } }))
         
-        await Promise.all(
-            create.map(userPos => this.bot.database.userPositions.create( userPos )
+        const createResults = await Promise.all(
+            create.map(userPos => this.bot.database.userPositions.create( userPos ).then(() => true)
                 .catch(error => console.error(`Unable to create user position because of ${error}!`, userPos))
             )
         )
+
+        if (!createResults.every(v => v === true)) throw new Error(`TransferPositionsForMember failed.`) 
 
     }
 

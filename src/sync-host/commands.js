@@ -48,8 +48,8 @@ async function onTransferPositionsCommand(interaction) {
     const wrongUserPositions = memberChanges.map(([ _, v ]) => v).flat().length
     const newPositions = memberChanges.map(([ v, _ ]) => v).flat().length
 
-    const message = `Are you sure you want to do this? This will remove ${wrongUserPositions} incorrect user positions`
-        + ` from the scrims database and add ${newPositions} new user positions!`
+    const message = `Are you sure you want to do this? This will remove **${wrongUserPositions}**\`incorrect user positions\``
+        + ` from the scrims database and add **${newPositions}**\`new user positions\`!`
 
     const actions = new MessageActionRow()
         .addComponents( 
@@ -61,9 +61,12 @@ async function onTransferPositionsCommand(interaction) {
 
 }
 
+
 async function onTransferPositionsComponent(interaction) {
 
-    if (!(await membersInitialized(interaction))) return interaction.reply( getNonInitializedErrorPayload() );
+    if (interaction.args.shift() === "CANCEL") return interaction.update( { content: `Operation cancelled.`, embeds: [], components: [] } );
+
+    if (!(await membersInitialized(interaction))) return interaction.update( getNonInitializedErrorPayload() );
 
     await interaction.deferUpdate({ ephemeral: true })
 

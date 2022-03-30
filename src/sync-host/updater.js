@@ -112,7 +112,7 @@ class ScrimsPositionUpdater {
 
     async onMemberUpdate(oldMember, newMember) {
 
-        if (newMember.guild.id != this.mainDiscordServer) return false;
+        if (newMember.guild.id != this.hostGuildId) return false;
 
         if (oldMember.roles.cache.size != newMember.roles.cache.size) {
 

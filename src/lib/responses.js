@@ -10,6 +10,7 @@ class ScrimsMessageBuilder {
         return {
             ephemeral: true,
             components: [],
+            content: null,
             embeds: [
                 new MessageEmbed()
                     .setColor(this.errorRed)
@@ -25,6 +26,7 @@ class ScrimsMessageBuilder {
         return {
             ephemeral: true,
             components: [],
+            content: null,
             embeds: [
                 new MessageEmbed()
                     .setColor(this.warningYellow)
