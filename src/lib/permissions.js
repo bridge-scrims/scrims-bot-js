@@ -33,7 +33,9 @@ class ScrimsPermissionsClient {
      * @returns { PositionRole[] } All the position roles in the guild.
      */
     getGuildPositionRoles(guildId) {
+
         return this.database.positionRoles.cache.get({ id_guild: guildId })
+        
     }
 
 
@@ -45,7 +47,9 @@ class ScrimsPermissionsClient {
      * @returns { String[] } The discord role ids that are required for the position
      */
     getPositionRequiredRoles(guildId, positionResolvable) {
+
         return this.getGuildPositionRoles(guildId).filter(p => (p.position.name == positionResolvable || p.id_position == positionResolvable)).map(p => p.id_role);
+    
     }
 
 
@@ -55,8 +59,10 @@ class ScrimsPermissionsClient {
      * @returns  { String[] } The positions that have permission to run the command
      */
     getCommandAllowedPositions(cmd) {
+
         const permissionLevelRoles = (cmd?.permissionLevel ? this.getPermissionLevelPositions(cmd.permissionLevel) : [])
         return permissionLevelRoles.concat(cmd?.allowedPositions || []).concat(cmd?.requiredPositions || []);
+
     }
 
 
@@ -69,8 +75,10 @@ class ScrimsPermissionsClient {
      * @returns { Boolean } If the permissible has the given permissionlevel **OR** higher **OR** all the given requiredPositions
      */
     hasPermission(permissible, permissionLevel, allowedPositions=[], requiredPositions=[]) {
+
         return this.hasRequiredPositions(permissible, requiredPositions) 
             && (this.hasPermissionLevel(permissible, permissionLevel) || this.hasAllowedPositions(permissible, allowedPositions));
+
     }
 
 
@@ -86,7 +94,11 @@ class ScrimsPermissionsClient {
         const userPositions = this.database.userPositions.cache.get({ user: { discord_id: permissible.id } })
         if (userPositions.filter(userPos => userPos.position.name == requiredPosition || userPos.id_position == requiredPosition).length > 0) return true;
 
+        // If the user has the required discord roles for the position
+        if (this.hasRequiredPositionRoles(permissible, requiredPosition)) return true;
+
         return false;
+
     }
 
 
@@ -103,6 +115,7 @@ class ScrimsPermissionsClient {
         if (requiredRoles.every(roleId => permissible?.roles?.cache?.has(roleId))) return true;
        
         return false;
+
     }
 
 
@@ -113,7 +126,9 @@ class ScrimsPermissionsClient {
      * @returns { Boolean } If the permissible has all the requiredPositions
      */
     hasRequiredPositions(permissible, requiredPositions) {
+
         return requiredPositions.every(position => this.hasRequiredPosition(permissible, position))
+
     }
 
     /**
@@ -123,7 +138,9 @@ class ScrimsPermissionsClient {
      * @returns { Boolean } If the permissible has any of the allowedPositions
      */
     hasAllowedPositions(permissible, allowedPositions) {
+
         return allowedPositions.some(position => this.hasRequiredPosition(permissible, position))
+
     }
 
     /**
@@ -132,10 +149,12 @@ class ScrimsPermissionsClient {
      * @return { String[] } Any positions that are above or at the permissionLevel in the scrims hierarchy
      */
     getPermissionLevelPositions(permissionLevel) {
+
         const requiredIndex = this.hierarchy.indexOf(permissionLevel)
         if (requiredIndex === -1) return [ permissionLevel ]; // Not in hierarchy so only that position gives you permission
 
         return this.hierarchy.slice(0, requiredIndex+1); // Removed all levels of the hierarchy below the required one
+
     }
 
     /**
@@ -145,8 +164,10 @@ class ScrimsPermissionsClient {
      * @return { Boolean } If the permissible has the permissionLevel
      */
     hasPermissionLevel(permissible, permissionLevel) {
+
         const allowedPositions = this.getPermissionLevelPositions(permissionLevel)
         return this.hasAllowedPositions(permissible, allowedPositions);
+
     }
 
 

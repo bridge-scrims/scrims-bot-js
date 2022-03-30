@@ -1,4 +1,4 @@
-const FIFOCache = require("./cache");
+const BridgeScrimsCache = require("../cache");
 const got = require('got');
 
 class MojangAPIError extends Error {
@@ -20,7 +20,7 @@ class MojangClient {
     static server = 'api.mojang.com';
     static unavailable = false;
 
-    static cache = new FIFOCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 500 });
+    static cache = new BridgeScrimsCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 10000 });
 
     static async getName(uuid) {
 

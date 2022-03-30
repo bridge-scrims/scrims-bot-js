@@ -6,27 +6,33 @@ class ScrimsMessageBuilder {
     static errorRed = "#DC0023"
 
     static errorMessage(title, description) {
+
         return {
             ephemeral: true,
+            components: [],
             embeds: [
                 new MessageEmbed()
                     .setColor(this.errorRed)
                     .setTitle(title)
                     .setDescription(description)
             ]
-        }
+        };
+
     }
 
     static warningMessage(title, description) {
+
         return {
             ephemeral: true,
+            components: [],
             embeds: [
                 new MessageEmbed()
                     .setColor(this.warningYellow)
                     .setTitle(title)
                     .setDescription(description)
             ]
-        }
+        };
+
     }
 
     static guildOnlyMessage() {
@@ -43,6 +49,29 @@ class ScrimsMessageBuilder {
             "Unkown Scrims User", `You have not yet been properly identified by the bridge scrims server. Please try again in a moment.`
         );
     
+    }
+
+    static missingPermissionsMessage(message) {
+
+        return this.errorMessage("Insufficient Permissions", message);
+    
+    }
+
+    static createMultipleEmbeds(items, getEmbed) {
+        
+        const max = 25
+        
+        const containers = Array.from(Array(Math.ceil(items.length / max)).keys())
+        const containerSize = Math.floor(items.length / containers.length)
+        const overflow = items.length % containerSize
+
+        const embedData = containers.map((_, i) => items.slice(i*containerSize, containerSize))
+
+        const lastIdx = embedData.length-1
+        if (overflow > 0) embedData[lastIdx] = embedData[lastIdx].concat(items.slice(-overflow))
+
+        return embedData.map((items, idx, containers) => getEmbed(items, idx, containers))
+
     }
     
 }

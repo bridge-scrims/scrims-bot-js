@@ -67,6 +67,7 @@ class ScrimsBot extends Client {
 
         this.database = new DBTable(this.config.dbLogin)
         await this.database.connect();
+        this.emit("databaseConnected")
         console.log("Connected to database!")
 
         this.permissions = new ScrimsPermissionsClient(this.database)
@@ -107,6 +108,7 @@ class ScrimsBot extends Client {
 
         cmdInteraction.params = cmdInteraction.options
         cmdInteraction.scrimsCommand = this.commands.getScrimsCommand(cmdInteraction.commandName) ?? null
+        cmdInteraction.scrimsPermissions = this.commands.getScrimsCommandPermissions(cmdInteraction.commandName) ?? null
 
     }
 
@@ -162,9 +164,9 @@ class ScrimsBot extends Client {
 
     isPermitted(interactEvent) {
 
-        if (!interactEvent.member || !interactEvent.scrimsCommand) return false;
+        if (!interactEvent.member || !interactEvent.scrimsPermissions) return false;
 
-        const { permissionLevel, allowedPositions, requiredPositions } = interactEvent.scrimsCommand
+        const { permissionLevel, allowedPositions, requiredPositions } = interactEvent.scrimsPermissions
         if (!permissionLevel && !allowedPositions && !requiredPositions) return true;
         
         return interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions);

@@ -1,12 +1,21 @@
 const NodeCache = require("node-cache");
 
-class FIFOCache extends NodeCache {
+class BridgeScrimsCache extends NodeCache {
 
     
-    constructor(options) {
+    constructor(options={}) {
 
-        super({ ...options, maxKeys: undefined });
+        super({ ...options, maxKeys: -1 });
         this.__maxKeys = options.maxKeys || -1;
+
+    }
+
+    
+    // @Overrites
+    get(key) {
+
+        if (this.options.stdTTL > 0) this.ttl(key, this.options.stdTTL)
+        return super.get(key)
 
     }
 
@@ -25,4 +34,4 @@ class FIFOCache extends NodeCache {
 
 }
 
-module.exports = FIFOCache;
+module.exports = BridgeScrimsCache;

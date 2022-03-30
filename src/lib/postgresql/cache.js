@@ -1,11 +1,31 @@
+const BridgeScrimsCache = require("../cache");
 
-class DBCache extends Array {
+class DBCache extends BridgeScrimsCache {
 
-    remove(filter) {
+    constructor(options) {
 
-        const remove = this.get(filter)
-        remove.forEach(obj => delete this[this.indexOf(obj)])
-        return remove;
+        super(options);
+        
+        this.index = 0
+
+    }
+
+    push(value, ttl) {
+
+        if (value === null) return null;
+
+        this.emit('push', value)
+
+        const entries = this.getEntrys(value)
+        if (entries.length > 0) entries.forEach(([ key, _ ]) => this.set( key, value, ttl ))
+        else {
+
+            this.set( this.index, value, ttl )
+            this.index += 1
+
+        }
+        
+        return value;
 
     }
 
@@ -16,37 +36,42 @@ class DBCache extends Array {
 
     }
 
-    get(filter) {
-
-        return this.filter(obj => this.valuesMatch(filter, obj));
-
-    }
-
-    set(values) {
-
-        values.forEach(value => this.push(value))
-
-    }
-
-    update(data, filter) {
-
-        const idx = this.indexOf(this.get(filter)[0])
-        if (idx === -1) return false;
+    getEntrys(filter={}, invert=false) {
         
-        this[idx] = { ...this[idx], ...data }
-        return true;
+        const entries = Object.entries(this.data).map(([ key, value ]) => ([ key, value.v ]))
+        
+        if (invert) return entries.filter(([ _, value ]) => !this.valuesMatch(filter, value));
+        else return entries.filter(([ _, value ]) => this.valuesMatch(filter, value));
 
     }
 
-    push(value) {
+    get(filter, invert) {
 
-        if (value === null) return null;
+        const entrys = this.getEntrys(filter, invert)
+        return entrys.map(([ _, value ]) => value);
 
-        const idx = this.indexOf(this.get({ ...value })[0])
-        if (idx == -1) super.push(value);
-        else this[idx] = value;
+    }
 
-        return value;
+    remove(filter) {
+
+        const entrys = this.getEntrys(filter, false)
+
+        entrys.forEach(([ _, value ]) => this.emit('remove', value))
+        entrys.forEach(([ key, _ ]) => this.del(key))
+
+        return entrys.map(([ _, value ]) => value);
+
+    }
+
+    update(newValue, filter) {
+
+        const entries = this.getEntrys(filter, false)
+            .map(([ key, oldValue ]) => [ key, { ...oldValue, ...newValue } ])
+
+        entries.forEach(([ _, value ]) => this.emit('update', value))
+        entries.forEach(([ key, value ]) => this.set(key, value))
+
+        return true;
 
     }
 

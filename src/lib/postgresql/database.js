@@ -127,8 +127,10 @@ class UserPositionCache extends DBCache {
     get( ...args ) {
 
         // Get them expired boys out of here
-        const expired = this.filter(userPosition => userPosition.expires_at !== null && userPosition.expires_at <= (Date.now()/1000))
-        expired.forEach(userPosition => delete this[this.indexOf(userPosition)])
+        const expired = this.getEntrys().filter(([ _, userPos ]) => userPos.expires_at !== null && userPos.expires_at <= (Date.now()/1000))
+        
+        expired.forEach(([ _, value ]) => this.emit('remove', value))
+        expired.forEach(([ key, _ ]) => this.del(key))
 
         return super.get( ...args )
 

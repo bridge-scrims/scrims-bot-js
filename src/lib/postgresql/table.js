@@ -9,7 +9,7 @@ class DBTable {
         this.getFunction = getFunction
         this.foreigners = foreigners
 
-        this.cache = new DBCache()
+        this.cache = new DBCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 10000 })
 
     }
 
@@ -140,6 +140,9 @@ class DBTable {
 
     async get(selectCondition) { 
 
+        const cached = this.cache.get(selectCondition)
+        if (cached.length > 0) return cached;
+
         const [ formated, values1 ] = this.format({ ...selectCondition })
         const query = (this.getFunction === null) ? this.createSelectQuery(formated, values1) : this.createFunctionSelectQuery(formated, values1)
         const result = await this.query( ...query )
@@ -182,7 +185,7 @@ class DBTable {
         const [ formated, values1 ] = this.format({ ...selector })
         const [ whereClause, values2 ] = this.createWhereClause(formated, values1)
 
-        const result = await this.query(`DELETE FROM ${this.name} ${whereClause}`, values2)
+        await this.query(`DELETE FROM ${this.name} ${whereClause}`, values2)
         
         const removed = this.cache.remove(selector)
         return removed;

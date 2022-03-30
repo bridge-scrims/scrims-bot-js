@@ -1,6 +1,6 @@
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-const FIFOCache = require("./cache");
+const BridgeScrimsCache = require("../cache");
 const got = require('got');
 
 class HypixelAPIError extends Error {
@@ -26,7 +26,7 @@ class HypixelClient {
     static server = 'api.hypixel.net';
     static unavailable = false;
 
-    static cache = new FIFOCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 500 });
+    static cache = new BridgeScrimsCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 10000 });
 
     static getCachedPlayer(uuid) {
 

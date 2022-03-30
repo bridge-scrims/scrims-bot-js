@@ -26,7 +26,7 @@ class ScrimsCommandInstaller {
 
         const guildPermissions = guilds.map(guild => this.getCommandPermissionsGuildCommandPermissions(guild, scrimsPermissions))
         const defaultPermission = guildPermissions.some(perms => perms.length > 10) && guildPermissions.some(perms => perms.length > 0)
-        scrimsCommand.setDefaultPermission(defaultPermission)
+        scrimsCommand.defaultPermission = (defaultPermission)
 
     }
 
@@ -38,6 +38,9 @@ class ScrimsCommandInstaller {
     }
 
     add(commandData, commandPermissionData={}) {
+
+        const options = commandData.options
+        if (options) options.filter(option => (!option.type)).forEach(option => option.type = "SUB_COMMAND")
 
         this.cmdData.push([ commandData, commandPermissionData ])
 
