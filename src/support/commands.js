@@ -16,22 +16,71 @@ async function onCommand(interaction) {
     
 }
 
+async function getSupportRole(interaction) {
+
+    const positionRoles = await interaction.client.database.positionRoles.get({ guild_id: interaction.guild.id, position: { name: 'support' } })
+    if (positionRoles.length === 0) {
+
+        return interaction.reply(
+            ScrimsMessageBuilder.errorMessage(`No Support Role`, `To send this message you first need to add a role connected to the support position!`)
+        ).then(() => false);
+
+    }
+    
+    const role = interaction.guild.roles.resolve(positionRoles[0].role_id)
+    if (!role) {
+
+        return interaction.reply(
+            ScrimsMessageBuilder.errorMessage(`Invalid Support Role`, `To send this message you first need to add a role connected to the support position!`)
+        ).then(() => false);
+
+    }
+
+    return role;
+
+}
 
 async function supportMessage(interaction) {
 
+    const supportRole = await getSupportRole(interaction)
+    if (!supportRole) return false;
+
     const action = new MessageActionRow()
         .addComponents(
+
             new MessageButton()
                 .setCustomId("support")
-                .setLabel("✉️ Support")
-                .setStyle("PRIMARY")
+                .setLabel("Support")
+                .setEmoji("📩")
+                .setStyle(1),
+
+            new MessageButton()
+                .setCustomId("report")
+                .setLabel("Report")
+                .setEmoji("⚖️")
+                .setStyle(4)
+
         );
 
     const embed = new MessageEmbed()
-        .setColor("#5D9ACF")
-        .setTitle("Bridge Scrims Support")
-        .setDescription("If you do not state your issue within 5 minutes of creating your ticket, it will be closed.")
-        .setTimestamp();
+        .setColor(supportRole.hexColor)
+        .setTitle("Bridge Scrims Support and Report")
+        .setDescription(`Get in contact with the ${supportRole} team here.`)
+        .addField(`Report Tickets`, `Report user(s) for breaking in-game rules, discord rules, or being troublemakers.`)
+        .addField(`Support Tickets`, `Ask questions, post tournaments, post overlays, etc.`)
+        .addField(
+            `Hints`, 
+            `If you are trying to send a tournament make sure that you have a gamemode, `
+            + `a prize, and a discord server setup with proper roles/permissions/channels.`
+            + `\n _ _ \n`
+            + `If you are sending an overlay make sure you have an image/video, and a MediaFire `
+            + `link for your pack. If the video has anything not allowed in the rules you will be `
+            + `banned and if the MediaFire download is a virus you will be banned. `
+            + `\n _ _ \n`
+            + `If you are sending a montage make sure that it is in cooperation with rules and if `
+            + `there is NSFW, racism, etc. you will be blacklisted from sending montages. `
+            + `Sending montages are for **privates** and Above!`
+        ).setFooter({ text: `Managed by the support team`, iconURL: supportRole.iconURL() })
 
     await interaction.channel.send({ embeds: [embed], components: [action] })
     await interaction.reply({ content: "Message created.", ephemeral: true })
@@ -59,6 +108,7 @@ async function requestTicketClosure(interaction) {
 }
 
 function getCloseRequestActions(ticketId) {
+
     return new MessageActionRow()
         .addComponents([
 
@@ -73,6 +123,7 @@ function getCloseRequestActions(ticketId) {
                 .setStyle("PRIMARY")
 
         ])
+        
 }
 
 function getCloseRequestPayload(user, reason, ticket) {
@@ -92,16 +143,14 @@ function getCloseRequestPayload(user, reason, ticket) {
 
 async function closeTicket(interaction, ticket, content) {
 
-    const transcriber = interaction.client.support.transcriber;
-    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content }
-    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
-    await transcriber.send(interaction.guild, ticket).catch(console.error); // Command should not abort just because their was an error with the transcriber
+    await interaction.reply({ content: `Support ticket closing...` })
 
-    await interaction.client.database.tickets.remove({ id_ticket: ticket.id_ticket })
-    await interaction.channel.delete();
+    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content }
+    await interaction.client.support.transcriber.transcribe(ticket.id_ticket, message)
+
+    await interaction.client.support.closeTicket(interaction.channel, ticket)
 
 }
-
 
 async function forceCloseTicket(interaction) {
 

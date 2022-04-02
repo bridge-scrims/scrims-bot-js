@@ -37,6 +37,32 @@ class ScrimsMessageBuilder {
 
     }
 
+    static button(label, style, customId) {
+
+        return new MessageButton()
+            .setLabel(label)
+            .setStyle(style)
+            .setCustomId(customId);
+
+    }
+
+    static cancelButton() {
+
+        return this.button("Cancel", 2, `CANCEL`);
+
+    }
+
+    /**
+     * Creates a `Command Failed` message payload.
+     * 
+     * @param {string} action (Unable to **action** at the moment) 
+     */
+    static failedMessage(action) {
+
+        return this.errorMessage(`Command Failed`, `Unable to ${action} at the moment. Please try again later.`);
+
+    }
+
     static guildOnlyMessage() {
 
         return this.errorMessage(

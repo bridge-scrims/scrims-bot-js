@@ -1,5 +1,6 @@
 
 CREATE TABLE scrims_user_position (
+
     id_user INT NOT NULL,
     id_position INT NOT NULL,
 
@@ -14,6 +15,7 @@ CREATE TABLE scrims_user_position (
         REFERENCES scrims_user(id_user),
     FOREIGN KEY(id_position) 
         REFERENCES scrims_position(id_position)
+        
 );
 
 

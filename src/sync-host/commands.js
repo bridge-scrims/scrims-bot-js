@@ -21,7 +21,8 @@ async function onInteraction(interaction) {
 async function membersInitialized(interaction) {
 
     const members = await interaction.guild.members.fetch()
-    return (members.each(member => interaction.client.database.users.cache.get({ discord_id: member.id })[0]))
+    const scrimsMembers = await Promise.all(members.map(member => interaction.client.database.users.get({ discord_id: member.id })))
+    return (scrimsMembers.every(scrimsMembers => scrimsMembers.length > 0));
 
 }
 
@@ -68,13 +69,13 @@ async function onTransferPositionsComponent(interaction) {
 
     if (!(await membersInitialized(interaction))) return interaction.update( getNonInitializedErrorPayload() );
 
-    await interaction.deferUpdate({ ephemeral: true })
+    await interaction.update({ content: `Transfering...`, embeds: [], components: [] })
 
     const result = await interaction.client.syncHost.transferPositions(interaction.guild).catch(error => error)
     if (result instanceof Error) {
 
         console.error(`Transfer user positions failed!`, result)
-        return interaction.editReply(ScrimsMessageBuilder.errorMessage("Command Failed", `Unable to transfer the user positions. Please try again later.`));
+        return interaction.editReply(ScrimsMessageBuilder.failedMessage(`transfer the user positions`));
 
     }
 

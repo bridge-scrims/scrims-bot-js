@@ -1,11 +1,13 @@
 
 CREATE TABLE scrims_position_role (
+
     id_position INT NOT NULL,
-    id_role text NOT NULL,
-    id_guild text NOT NULL,
+    role_id text NOT NULL,
+    guild_id text NOT NULL,
 
     FOREIGN KEY(id_position) 
-    REFERENCES scrims_position(id_position)
+        REFERENCES scrims_position(id_position)
+
 );
 
 -- Bridge Scrims Server 
@@ -26,10 +28,10 @@ INSERT INTO scrims_position_role VALUES (get_position_id( name => 'support'), '9
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '954375559314567272', '936349840223371305');
 
 
-CREATE OR REPLACE FUNCTION get_position_roles(
+CREATE OR REPLACE FUNCTION get_position_roles (
     id_position int default null,
-    id_role text default null,
-    id_guild text default null
+    role_id text default null,
+    guild_id text default null
 ) 
 returns json
 AS $$
@@ -42,8 +44,8 @@ EXECUTE '
         json_build_object(
             ''id_position'', scrims_position_role.id_position,
             ''position'', to_json(position), 
-            ''id_role'', scrims_position_role.id_role,
-            ''id_guild'', scrims_position_role.id_guild
+            ''role_id'', scrims_position_role.role_id,
+            ''guild_id'', scrims_position_role.guild_id
         )
     )
     FROM 
@@ -51,9 +53,9 @@ EXECUTE '
     LEFT JOIN scrims_position position ON position.id_position = scrims_position_role.id_position
     WHERE 
     ($1 is null or scrims_position_role.id_position = $1) AND
-    ($2 is null or scrims_position_role.id_role = $2) AND
-    ($3 is null or scrims_position_role.id_guild = $3)
-' USING id_position, id_role, id_guild
+    ($2 is null or scrims_position_role.role_id = $2) AND
+    ($3 is null or scrims_position_role.guild_id = $3)
+' USING id_position, role_id, guild_id
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
@@ -73,8 +75,8 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    EXECUTE 'SELECT get_position_roles( id_position => $1, id_role => $2, id_guild => $3 )'
-    USING NEW.id_position, NEW.id_role, NEW.id_guild
+    EXECUTE 'SELECT get_position_roles( id_position => $1, role_id => $2, guild_id => $3 )'
+    USING NEW.id_position, NEW.role_id, NEW.guild_id
     INTO position_roles;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(

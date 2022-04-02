@@ -19,6 +19,8 @@ class DBClient {
 
         })
 
+        this.pool.on('error', error => console.error(`Unexpected pgsql pool error ${error}!`))
+
         this.users = new UserTable(this)
         this.positions = new PositionTable(this)
         this.userPositions = new UserPositionsTable(this)
@@ -29,6 +31,8 @@ class DBClient {
     async connect() {
 
         this.ipcClient = await this.pool.connect()
+        this.ipcClient.on('error', error => console.error(`Unexpected pgsql ipc client error ${error}!`))
+        
         this.ipc = pgIPC(this.ipcClient)
         this.ipc.on('end', () => this.ipcClient?.end())
 

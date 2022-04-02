@@ -1,3 +1,4 @@
+
 CREATE TABLE scrims_ticket_message (
 
     id_ticket int NOT NULL,

@@ -1,9 +1,11 @@
 
 CREATE TABLE scrims_position (
+
     id_position SERIAL PRIMARY KEY,
     name text NOT NULL,
     sticky boolean NOT NULL,
     level INT NULL
+    
 );
 
 INSERT INTO scrims_position (name, level, sticky) VALUES('server_booster', NULL, true);
@@ -16,6 +18,7 @@ INSERT INTO scrims_position (name, level, sticky) VALUES('prime', NULL, true);
 INSERT INTO scrims_position (name, level, sticky) VALUES('private', NULL, true);
 INSERT INTO scrims_position (name, level, sticky) VALUES('premium', NULL, true);
 
+INSERT INTO scrims_position (name, level, sticky) VALUES('ticket_open_mention', NULL, true);
 INSERT INTO scrims_position (name, level, sticky) VALUES('suggestion_blacklisted', NULL, true);
 INSERT INTO scrims_position (name, level, sticky) VALUES('support_blacklisted', NULL, true);
 

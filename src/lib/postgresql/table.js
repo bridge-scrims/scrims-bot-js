@@ -138,10 +138,10 @@ class DBTable {
 
     }
 
-    async get(selectCondition) { 
+    async get(selectCondition, useCache=true) { 
 
         const cached = this.cache.get(selectCondition)
-        if (cached.length > 0) return cached;
+        if (cached.length > 0 && useCache) return cached;
 
         const [ formated, values1 ] = this.format({ ...selectCondition })
         const query = (this.getFunction === null) ? this.createSelectQuery(formated, values1) : this.createFunctionSelectQuery(formated, values1)
@@ -165,7 +165,7 @@ class DBTable {
 
     }
 
-    async update(data, selector) {
+    async update(selector, data) {
 
         const [ formatedData, values1 ] = this.format({ ...data })
         const [ setClause, values2 ] = this.createSetClause(formatedData, values1)

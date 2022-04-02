@@ -17,13 +17,26 @@ class TicketMessagesTable extends DBTable {
 
 }
 
+class TicketTypeTable extends DBTable {
+
+
+    constructor(client) {
+
+        super(client, "scrims_ticket_type");
+
+    }
+
+
+}
+
 class TicketTable extends DBTable {
 
 
     constructor(client) {
 
         const foreigners = [
-            [ "user", "id_user", "get_user_id" ]
+            [ "user", "id_user", "get_user_id" ],
+            [ "type", "id_type", "get_ticket_type_id" ]
         ]
 
         super(client, "scrims_ticket", "get_tickets", foreigners);
@@ -33,4 +46,4 @@ class TicketTable extends DBTable {
 
 }
 
-module.exports = { TicketMessagesTable, TicketTable };
+module.exports = { TicketMessagesTable, TicketTypeTable, TicketTable };

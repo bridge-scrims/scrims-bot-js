@@ -1,7 +1,8 @@
 const { Modal, TextInputComponent, showModal } = require('discord-modals');
+const ScrimsMessageBuilder = require('../lib/responses');
 
 
-const componentHandlers = { "support": createModal, "TicketCloseRequest": onCloseRequest }
+const componentHandlers = { "support": onSupportComponent, "report": onReportComponent, "TicketCloseRequest": onCloseRequest }
 async function onComponent(interaction) {
 
     const handler = componentHandlers[interaction.commandName]
@@ -15,23 +16,42 @@ async function onComponent(interaction) {
 
 }
 
+async function onSupportComponent(interaction) {
 
-async function createModal(interaction) {
+    const allowed = await interaction.client.support.verifyTicketRequest(interaction, "support")
+    if (!allowed) return false;
+
+    await createModal(interaction, "support")
+
+}
+
+async function onReportComponent(interaction) {
+
+    const allowed = await interaction.client.support.verifyTicketRequest(interaction, "report")
+    if (!allowed) return false;
+
+    await createModal(interaction, "report")
+
+}
+
+async function createModal(interaction, typeName) {
+
     const modal = new Modal()
-        .setCustomId(`support-modal`)
-        .setTitle('Support Ticket')
+        .setCustomId(`support-modal/${typeName}`)
+        .setTitle(`${typeName.charAt(0).toUpperCase() + typeName.slice(1)} Ticket`)
         .addComponents(
             new TextInputComponent()
                 .setCustomId('request-reason')
                 .setLabel('Reason for opening a ticket')
                 .setStyle('LONG')
                 .setMinLength(5)
-                .setMaxLength(2000)
+                .setMaxLength(1000)
                 .setPlaceholder('Write here')
                 .setRequired(true)
         )
 
     return showModal(modal, { client: interaction.client, interaction });
+
 }
 
 
@@ -84,6 +104,7 @@ async function onAccept(interaction) {
 }
 
 function getNotAllowedPayload(ticketCreatorId, isStaffMember) {
+
     const embed = new MessageEmbed()
         .setColor("#2F3136")
         .setTitle(`Error`)
@@ -93,9 +114,11 @@ function getNotAllowedPayload(ticketCreatorId, isStaffMember) {
         ).setTimestamp();
 
     return { embeds: [embed] };
+
 }
 
 function getRequestDeniedPayload(user) {
+
     const embed = new MessageEmbed()
         .setColor("#ff2445")
         .setTitle(`Close Request Denied`)
@@ -103,6 +126,7 @@ function getRequestDeniedPayload(user) {
         .setTimestamp();
 
     return { content: null, embeds: [embed], components: [] };
+    
 }
 
 module.exports = onComponent;

@@ -1,5 +1,6 @@
 
 CREATE TABLE scrims_user (
+
     id_user SERIAL PRIMARY KEY,
 
     joined_at bigint NOT NULL,
@@ -12,6 +13,7 @@ CREATE TABLE scrims_user (
 
     country text NULL,
     timezone text NULL
+    
 );
 
 

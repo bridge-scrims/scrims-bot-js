@@ -43,7 +43,7 @@ class ScrimsPositionUpdater {
 
     async onPositionRoleChange(positionRole) {
 
-        if (positionRole.id_guild == this.hostGuildId)
+        if (positionRole.guild_id == this.hostGuildId)
             return this.reloadPositionMembers(positionRole.id_position);
 
     }
@@ -127,7 +127,7 @@ class ScrimsPositionUpdater {
             }
                 
             if (newPositionRoles.length > 0) {
-                const logEntry = await this.getRoleUpdateAuditLogEntry(newMember, lostPositionRoles.map(v => v.id_role), newPositionRoles.map(v => v.id_role)).catch(console.error)
+                const logEntry = await this.getRoleUpdateAuditLogEntry(newMember, lostPositionRoles.map(v => v.role_id), newPositionRoles.map(v => v.role_id)).catch(console.error)
                 await Promise.allSettled(newPositionRoles.map(role => this.addScrimsUserPosition(newMember, role, logEntry))).then(this.logErrors)
             }
             
@@ -178,7 +178,7 @@ class ScrimsPositionUpdater {
 
     getPositionRoles(guildId, roles) {
         const positionRoles = this.bot.permissions.getGuildPositionRoles(guildId)
-        return [ ...new Set(roles.map(role => positionRoles.filter(roleP => roleP.id_role == role.id)).flat()) ];
+        return [ ...new Set(roles.map(role => positionRoles.filter(roleP => roleP.role_id == role.id)).flat()) ];
     }
 
     getPositionRolesDifference(guildId, rolesA, rolesB) {

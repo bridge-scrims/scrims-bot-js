@@ -74,23 +74,21 @@ class ScrimsBot extends Client {
 
         await this.commands.initializeCommands()
 
+        this.addEventHandler("reload", interaction => this.onReloadCommand(interaction))
         this.addEventListeners();
-        this.on("scrimsCommandCreate", interaction => this.onScrimsCommand(interaction));
 
         this.emit("startupComplete")
         console.log("Startup complete")
 
     }
 
-    async onScrimsCommand(interaction) {
-
-        if (interaction?.commandName == "reload") return this.onReloadCommand(interaction);
-
-    }
-
     async onReloadCommand(interaction) {
 
         await interaction.deferReply({ ephemeral: true })
+
+        await this.database.positions.get({ }, false)
+        await this.database.userPositions.get({ }, false)
+        await this.database.positionRoles.get({ }, false)
 
         await this.commands.update().catch(console.error)
 
@@ -119,6 +117,20 @@ class ScrimsBot extends Client {
 
     }
 
+    getErrorPayload(error) {
+
+        if (error?.code == 'ECONNREFUSED') return ScrimsMessageBuilder.errorMessage(
+            "Command Failed", `Unfortunately your command cannot be handled at the moment. Please try again later.`
+        );
+
+        return ScrimsMessageBuilder.errorMessage(
+            "Unexpected Exception", `Unfortunately your command could not be handled due to an unexpected error.`
+            + ` This error was automatically reported to the bridge scrims developer team.`
+            + ` Sorry for any inconvenience. Please try again later.`
+        );
+
+    }
+
     async runHandler(handler, interactEvent, event) {
 
         try {
@@ -131,14 +143,12 @@ class ScrimsBot extends Client {
 
             if (interactEvent instanceof Interaction || interactEvent instanceof discordModals.ModalSubmitInteraction) {
                 
-                const payload = ScrimsMessageBuilder.errorMessage(
-                    "Unexpected Exception", `Unfortunately your command could not be handleld due to an unexpected error.`
-                    + ` This error was automatically reported to the bridge scrims developer team.`
-                    + ` Sorry for any inconvenience and please try again later.`
-                )
+                if (interactEvent instanceof Interaction && interactEvent.isAutocomplete()) return false;
 
-                if (interactEvent.replied) await interactEvent.editReply(payload)
-                else await interactEvent.reply(payload)
+                const payload = this.getErrorPayload(error)
+
+                if (interactEvent.replied || interactEvent.deferred) await interactEvent.editReply(payload).catch(console.error)
+                else await interactEvent.reply(payload).catch(console.error)
 
             }
 
@@ -175,7 +185,9 @@ class ScrimsBot extends Client {
 
     async ensureScrimsUser(interactEvent) {
 
-        interactEvent.scrimsUser = this.database.users.cache.get({ discord_id: interactEvent.user.id })[0]
+        interactEvent.scrimsUser = await this.database.users.get({ discord_id: interactEvent.user.id }).then(users => users[0] ?? null)
+            .catch(error => console.error(`Unable to get scrims user for ${interactEvent.userId}!`, error))
+            
         if (!interactEvent.scrimsUser && interactEvent.member) {
             interactEvent.scrimsUser = await this.database.users.create({ 
                 discord_id: interactEvent.userId, 
@@ -199,6 +211,9 @@ class ScrimsBot extends Client {
         if (isComponentInteraction || isModalSumbitInteraction) this.expandComponentInteraction(interactEvent)
 
         interactEvent.userId = interactEvent.user.id
+        if (interactEvent.commandName == "CANCEL" && isComponentInteraction) 
+            return interactEvent.update({ content: `Operation cancelled.`, embeds: [], components: [] });
+
         await this.ensureScrimsUser(interactEvent)
 
         if (interactEvent.member instanceof GuildMember)

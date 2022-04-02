@@ -28,6 +28,7 @@ class TicketTranscriber {
         const style = (
             `body { margin: 20px; }`
             + `.table { width: auto; }`
+            + `th { background: #A14F50; color: #FFFFFF }`
             + `td { white-space: nowrap; }`
             + `td.last { white-space: normal; width: 100%; }`
             + `h1 { color: #A14F50; margin-bottom: 16px; }`
@@ -46,8 +47,8 @@ class TicketTranscriber {
                         + `<tr>`
                             + `<td>\${getDate(${message.created_at*1000})}</td>`
                             + `<td>\${getTime(${message.created_at*1000})}</td>`
-                            + `<td>${message.author.discord_tag}</td>`
-                            + `<td class="last">${message.content}</td>`
+                            + `<td>${message.author.discord_tag.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "\\`")}</td>`
+                            + `<td class="last">${message.content.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "\\`")}</td>`
                         + `</tr>`
                     + `\`);`
                 )).join("")

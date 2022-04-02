@@ -15,9 +15,7 @@ class ScrimsCommandInstaller {
     async initializeCommands() {
 
         this.appCommands = await this.bot.application.commands.fetch()
-        const guilds = await this.bot.guilds.fetch()
         
-        this.cmdData.forEach(([ cmd, perms ]) => this.setScrimsCommandDefaultPermission(cmd, perms, guilds))
         await this.update()
 
     }
@@ -25,13 +23,16 @@ class ScrimsCommandInstaller {
     setScrimsCommandDefaultPermission(scrimsCommand, scrimsPermissions, guilds) {
 
         const guildPermissions = guilds.map(guild => this.getCommandPermissionsGuildCommandPermissions(guild, scrimsPermissions))
-        const defaultPermission = guildPermissions.some(perms => perms.length > 10) && guildPermissions.some(perms => perms.length > 0)
+        const defaultPermission = guildPermissions.some(perms => perms.length > 10) || guildPermissions.every(perms => perms.length === 0)
         scrimsCommand.defaultPermission = (defaultPermission)
 
     }
 
     async update() {
 
+        const guilds = await this.bot.guilds.fetch()
+        this.cmdData.forEach(([ cmd, perms ]) => this.setScrimsCommandDefaultPermission(cmd, perms, guilds))
+        
         await this.updateCommands()
         await this.updateCommandsPermissions()
 
@@ -40,7 +41,10 @@ class ScrimsCommandInstaller {
     add(commandData, commandPermissionData={}) {
 
         const options = commandData.options
+        
+        // Important so that we can tell if the command changed or not
         if (options) options.filter(option => (!option.type)).forEach(option => option.type = "SUB_COMMAND")
+        if (options) options.filter(option => (option?.options?.length === 0)).forEach(option => option.options = undefined)
 
         this.cmdData.push([ commandData, commandPermissionData ])
 

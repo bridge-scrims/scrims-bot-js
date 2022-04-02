@@ -14,13 +14,15 @@ CREATE TABLE scrims_suggestion (
         
 );
 
-CREATE OR REPLACE FUNCTION get_suggestions(
+CREATE OR REPLACE FUNCTION get_suggestions (
+
     id_suggestion int default null,
     channel_id text default null,
     message_id text default null,
     suggestion text default null,
     created_at bigint default null,
     id_creator bigint default null
+
 ) 
 returns json
 AS $$

@@ -34,7 +34,7 @@ class ScrimsPermissionsClient {
      */
     getGuildPositionRoles(guildId) {
 
-        return this.database.positionRoles.cache.get({ id_guild: guildId })
+        return this.database.positionRoles.cache.get({ guild_id: guildId });
         
     }
 
@@ -48,7 +48,7 @@ class ScrimsPermissionsClient {
      */
     getPositionRequiredRoles(guildId, positionResolvable) {
 
-        return this.getGuildPositionRoles(guildId).filter(p => (p.position.name == positionResolvable || p.id_position == positionResolvable)).map(p => p.id_role);
+        return this.getGuildPositionRoles(guildId).filter(p => (p.position.name == positionResolvable || p.id_position == positionResolvable)).map(p => p.role_id);
     
     }
 
@@ -112,9 +112,9 @@ class ScrimsPermissionsClient {
 
         // If the user has the required discord roles for the position
         const requiredRoles = this.getPositionRequiredRoles(permissible.guild.id, requiredPosition) 
-        if (requiredRoles.every(roleId => permissible?.roles?.cache?.has(roleId))) return true;
-       
-        return false;
+        if (requiredRoles.length === 0) return false;
+
+        return (requiredRoles.every(roleId => permissible?.roles?.cache?.has(roleId)));
 
     }
 

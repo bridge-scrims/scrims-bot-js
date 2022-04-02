@@ -155,7 +155,7 @@ class ScrimsSyncHostFeature {
 
     async updateScrimsUserTag(discordId, oldTag, discordTag) {
 
-        await this.bot.database.users.update({ discord_tag: discordTag }, { discord_id: discordId })
+        await this.bot.database.users.update({ discord_id: discordId }, { discord_tag: discordTag })
             .catch(error => console.error(`Unable to apply change (${oldTag} -> ${discordTag}) to scrims user with discord id ${discordId}!`, error))
 
     }

@@ -1,5 +1,6 @@
-const { TicketTable, TicketMessagesTable } = require("./tables");
+const { TicketTable, TicketMessagesTable, TicketTypeTable } = require("./tables");
 const TicketTranscriber = require("./ticket-transcriber");
+const ScrimsMessageBuilder = require("../lib/responses");
 
 const { commandHandler, commands } = require("./commands");
 
@@ -26,9 +27,11 @@ class SupportFeature {
     async onReady() {
 
         this.bot.database.tickets = new TicketTable(this.bot.database)
+        this.bot.database.ticketTypes = new TicketTypeTable(this.bot.database)
         this.bot.database.transcript = new TicketMessagesTable(this.bot.database)
         
         await this.bot.database.tickets.connect()
+        await this.bot.database.ticketTypes.connect()
         await this.bot.database.transcript.connect()
 
         this.transcriber = new TicketTranscriber(this.bot.database.transcript)
@@ -40,6 +43,7 @@ class SupportFeature {
 
         this.addEventHandlers()
         this.bot.on('scrimsMessageCreate', message => this.onScrimsMessage(message))
+        this.bot.on('channelDelete', channel => this.onChannelDelete(channel))
 
     }
 
@@ -66,9 +70,49 @@ class SupportFeature {
 
     }
 
+    async verifyTicketRequest(interaction, typeName) {
+
+        if (!interaction.scrimsUser)
+            return interaction.reply( ScrimsMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
+    
+        const bannedPosition = await interaction.client.database.userPositions.get({ id_user: interaction.scrimsUser.id_user, position: { name: "support_blacklisted" } })
+        if (bannedPosition.length > 0) {
+    
+            const length = bannedPosition[0].expires_at ? `until <t:${bannedPosition[0].expires_at}:f>` : `permanently`;
+            return interaction.reply( 
+                ScrimsMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to create tickets ${length} since you didn't follow the rules.`) 
+            ).then(() => false);
+    
+        }
+            
+        const existing = await interaction.client.database.tickets.get({ type: { name: typeName }, id_user: interaction.scrimsUser.id_user })
+        if (existing.length > 0)
+            return interaction.reply( ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (<#${existing[0].channel_id}>)!`) ).then(() => false);
+    
+        return true;
+    
+    }
+
+    async onChannelDelete(channel) {
+
+        const tickets = await this.bot.database.tickets.get({ channel_id: channel.id }).catch(console.error)
+        await Promise.all(tickets.map(ticket => this.closeTicket(channel, ticket))).catch(console.error)
+
+    }
+
+    async closeTicket(channel, ticket) {
+
+        await this.transcriber.send(channel.guild, ticket)
+
+        await this.bot.database.tickets.remove({ id_ticket: ticket.id_ticket })
+        await channel.delete().catch(() => { /* Channel could already be deleted. */ })
+
+    }
+
     addEventHandlers() {
 
         this.bot.addEventHandler("support", onComponent)
+        this.bot.addEventHandler("report", onComponent)
         this.bot.addEventHandler("TicketCloseRequest", onComponent)
 
         commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))

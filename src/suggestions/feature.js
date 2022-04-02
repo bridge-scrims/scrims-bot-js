@@ -65,8 +65,7 @@ class SuggestionsFeature {
     async onMessageDelete(message) {
 
         // If a suggestion message was delted it should also be deleted in the database
-        const suggestion = message.client.database.suggestions.cache.get({ message_id: message.id })[0]
-        if (suggestion) return message.client.database.suggestions.remove({ id_suggestion: suggestion.id });
+        await message.client.database.suggestions.remove({ message_id: message.id }).catch(console.error);
 
     }
 

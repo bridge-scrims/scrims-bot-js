@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ContextMenuCommandBuilder } = require('@discordjs/builders');
+const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { Modal, TextInputComponent, showModal, ModalSubmitInteraction } = require('discord-modals');
 const { MessageComponentInteraction, MessageContextMenuInteraction } = require("discord.js");
 const SuggestionsResponseMessageBuilder = require('./responses');
@@ -21,28 +21,60 @@ async function onInteraction(interaction) {
     if (interaction instanceof MessageContextMenuInteraction) return onContextMenu(interaction);
     if (interaction instanceof ModalSubmitInteraction) return onModalSubmit(interaction);
     
-    return interaction.reply({ content: "How did we get here?", ephemeral: true });
+    await interaction.reply({ content: "How did we get here?", ephemeral: true });
+
+}
+
+async function verifySuggestionRequest(interaction) {
+
+    if (!interaction.scrimsUser)
+        return interaction.reply( ScrimsMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
+
+    const bannedPosition = await interaction.client.database.userPositions.get({ id_user: interaction.scrimsUser.id_user, position: { name: "suggestion_blacklisted" } })
+    if (bannedPosition.length > 0) {
+
+        const length = bannedPosition[0].expires_at ? `until <t:${bannedPosition[0].expires_at}:f>` : `permanently`;
+        return interaction.reply( 
+            SuggestionsResponseMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to create suggestions ${length} since you didn't follow the rules.`) 
+        ).then(() => false);
+
+    }
+        
+    const cooldown = cooldowns[interaction.userId] ?? null
+    if (cooldown) {
+
+        return interaction.reply({ 
+            content: `You are currently on suggestion cooldown! You can create a suggestion again <t:${Math.round(cooldown/1000)}:R>.`, 
+            ephemeral: true 
+        }).then(() => false);
+
+    }
+
+    return true;
+
 }
 
 const componentHandlers = { 'create': onSuggestionCreate }
 async function onComponent(interaction) {
+
     const handler = componentHandlers[interaction.args.shift()]
     if (handler) return handler(interaction);
 
-    return interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
+    await interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
+
 }
 
 async function onSuggestionCreate(interaction) {
-    const cooldown = cooldowns[interaction.userId] ?? null
-    if (cooldown === null) return createModal(interaction)
 
-    return interaction.reply({ 
-        content: `You are currently on suggestion cooldown! You can create a suggestion again <t:${Math.round(cooldown/1000)}:R>.`, 
-        ephemeral: true 
-    });
+    const allowed = await verifySuggestionRequest(interaction)
+    if (!allowed) return false;
+
+    await createModal(interaction)
+
 }
 
 async function createModal(interaction) {
+
     const modal = new Modal()
         .setCustomId(`suggestion`)
         .setTitle('Suggestion')
@@ -58,10 +90,13 @@ async function createModal(interaction) {
         )
 
     return showModal(modal, { client: interaction.client, interaction });
+
 }
 
 async function onContextMenu(interaction) {
+
     return onRemoveSuggestion(interaction);
+    
 }
 
 async function onRemoveSuggestion(interaction) {
@@ -84,8 +119,9 @@ async function onRemoveSuggestion(interaction) {
     }
 
     await interaction.client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion }).catch(console.error)
-    const content = (interactorIsAuthor) ? `Your suggestion was successfully removed.` : `The suggestion was foribly removed.`
-    await interaction.reply({ content: "Suggestion successfully removed.", ephemeral: true });
+
+    const message = (interactorIsAuthor) ? `Your suggestion was successfully removed.` : `The suggestion was foribly removed.`
+    await interaction.reply({ content: message, ephemeral: true });
 
 }
 
@@ -97,6 +133,9 @@ function addCooldown(userId) {
 }
 
 async function onModalSubmit(interaction) {
+
+    const allowed = await verifySuggestionRequest(interaction)
+    if (!allowed) return false;
 
     await interaction.deferReply({ ephemeral: true })
 
@@ -115,17 +154,26 @@ async function onModalSubmit(interaction) {
     await interaction.client.suggestions.sendSuggestionInfoMessage(interaction.channel, true).catch(console.error);
 
     const newSuggestion = { 
+
         channel_id: message.channel.id, 
         message_id: message.id, 
         created_at: Math.round(interaction.createdTimestamp/1000),
         suggestion,
-        creator: { discord_id: interaction.user.id }
+        id_creator: interaction.scrimsUser.id_user
+
     }
 
     if (!interaction.member.hasPermission("support")) addCooldown(interaction.userId)
 
-    await interaction.client.database.suggestions.create(newSuggestion).catch(console.error)
-    return interaction.editReply(SuggestionsResponseMessageBuilder.suggestionSentMessage());
+    const createResult = await interaction.client.database.suggestions.create(newSuggestion).catch(error => error)
+    if (createResult instanceof Error) {
+
+        await message.delete().catch(console.error)
+        throw createResult;
+
+    }
+
+    await interaction.editReply(SuggestionsResponseMessageBuilder.suggestionSentMessage());
 
 }
 
