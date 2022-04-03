@@ -264,7 +264,7 @@ function getPositionsCommandGroup() {
         .addSubcommand( getPositionsGiveSubcommand() )
         .addSubcommand( getPositionsTakeSubcommand() )
 
-    return [ positionsCommandGroup, { permissionLevel: "support"} ];
+    return [ positionsCommandGroup, { permissionLevel: "support" } ];
 
 }
 
@@ -274,7 +274,7 @@ function getBridgeScrimsSyncCommand() {
         .setName("scrims-sync-members")
         .setDescription("Use this command to sync everyones bridge scrims position roles.")
 
-    return [ syncCommand, { permissionLevel: "staff"} ];
+    return [ syncCommand, { permissionLevel: "staff" } ];
 
 }
 

@@ -2,14 +2,14 @@ const DBCache = require("./cache")
 
 class DBTable {
 
-    constructor(client, name, getFunction=null, foreigners=[]) {
+    constructor(client, name, getFunction=null, foreigners=[], maxKeys=5000) {
 
         this.client = client
         this.name = name
         this.getFunction = getFunction
         this.foreigners = foreigners
 
-        this.cache = new DBCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 10000 })
+        this.cache = new DBCache({ stdTTL: 3600, checkperiod: 300, maxKeys })
 
     }
 

@@ -29,6 +29,16 @@ class TicketTypeTable extends DBTable {
 
 }
 
+class TicketStatusTable extends DBTable {
+
+    constructor(client) {
+
+        super(client, "scrims_ticket_status");
+
+    }
+
+}
+
 class TicketTable extends DBTable {
 
 
@@ -36,7 +46,8 @@ class TicketTable extends DBTable {
 
         const foreigners = [
             [ "user", "id_user", "get_user_id" ],
-            [ "type", "id_type", "get_ticket_type_id" ]
+            [ "type", "id_type", "get_ticket_type_id" ],
+            [ "status", "id_status", "get_ticket_status_id" ]
         ]
 
         super(client, "scrims_ticket", "get_tickets", foreigners);
@@ -46,4 +57,4 @@ class TicketTable extends DBTable {
 
 }
 
-module.exports = { TicketMessagesTable, TicketTypeTable, TicketTable };
+module.exports = { TicketMessagesTable, TicketTypeTable, TicketStatusTable, TicketTable };

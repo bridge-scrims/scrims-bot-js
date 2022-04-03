@@ -109,7 +109,7 @@ async function onRemoveSuggestion(interaction) {
 
     const interactorIsAuthor = (suggestion.creator.discord_id == interaction.userId);
 
-    if (!interaction.member.hasPermission("staff") && !interactorIsAuthor) 
+    if (!(await interaction.member.hasPermission("staff")) && !interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
 
     const response = await interaction.targetMessage.delete().catch(error => error)
@@ -163,7 +163,7 @@ async function onModalSubmit(interaction) {
 
     }
 
-    if (!interaction.member.hasPermission("support")) addCooldown(interaction.userId)
+    if (!(await interaction.member.hasPermission("support"))) addCooldown(interaction.userId)
 
     const createResult = await interaction.client.database.suggestions.create(newSuggestion).catch(error => error)
     if (createResult instanceof Error) {

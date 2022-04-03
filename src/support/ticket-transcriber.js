@@ -12,8 +12,8 @@ class TicketTranscriber {
 
         await this.client.create({ 
 
-            message_id: message.id, 
             id_ticket: ticketId, 
+            message_id: message.id, 
             content: message.content, 
             author: { discord_id: message.author.id },
             created_at: Math.round(message.createdTimestamp/1000)
@@ -24,9 +24,15 @@ class TicketTranscriber {
 
     getHTMLContent(ticketMessages) {
 
+        const escape = (value) => value.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "\\`");
+        const getMessageExtra = (message) => message.edits ? `<div class="extra edited">(edited)</div>` : (message.deleted ? `<div class="extra deleted">(deleted)</div>` : ``)
+
         // Will make everything look pretty
         const style = (
             `body { margin: 20px; }`
+            + `.extra { font-size: 10px }`
+            + `.deleted { color: #FF0000 }`
+            + `.edited { color: #909090 }`
             + `.table { width: auto; }`
             + `th { background: #A14F50; color: #FFFFFF }`
             + `td { white-space: nowrap; }`
@@ -47,8 +53,8 @@ class TicketTranscriber {
                         + `<tr>`
                             + `<td>\${getDate(${message.created_at*1000})}</td>`
                             + `<td>\${getTime(${message.created_at*1000})}</td>`
-                            + `<td>${message.author.discord_tag.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "\\`")}</td>`
-                            + `<td class="last">${message.content.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "\\`")}</td>`
+                            + `<td>${escape(message.author.discord_tag)}</td>`
+                            + `<td class="last">${escape(message.content)}${getMessageExtra(message)}</td>`
                         + `</tr>`
                     + `\`);`
                 )).join("")
@@ -92,18 +98,30 @@ class TicketTranscriber {
 
     }
 
+    async getTicketMessages(ticket) {
+
+        const allMessages = await this.client.get({ id_ticket: ticket.id_ticket }, false)
+        allMessages.sort((a, b) => b.created_at - a.created_at).forEach((v, idx, arr) => {
+            const existing = arr.filter(msg => msg.message_id == v.message_id)[0]
+            if (existing && existing !== v) {
+                existing.edits = [ ...(existing.edits ?? []), v ]
+                delete allMessages[idx]
+            }
+        })
+        return allMessages.sort((a, b) => a.created_at - b.created_at);
+
+    }
+
     async send(guild, ticket) {
         
         try {
 
-            const ticketTranscript = (await this.client.get({ id_ticket: ticket.id_ticket })).sort((a, b) => a.created_at - b.created_at)
-            const transcriptContent = this.getHTMLContent(ticketTranscript)
+            const ticketMessages = await this.getTicketMessages(ticket)
+            const transcriptContent = this.getHTMLContent(ticketMessages)
 
             const buff = Buffer.from(transcriptContent, "utf-8");
             const file = new MessageAttachment(buff, `Bridge_Scrims_Support_Transcript_${ticket.id_ticket}.html`);
 
-            await this.client.remove({ id_ticket: ticket.id_ticket })
-            
             const embed = new MessageEmbed()
                 .setColor("#FFFFFF")
                 .setTitle(`Support Ticket Transcript`)

@@ -1,4 +1,5 @@
 const { Modal, TextInputComponent, showModal } = require('discord-modals');
+const { MessageEmbed } = require("discord.js");
 const ScrimsMessageBuilder = require('../lib/responses');
 
 
@@ -76,9 +77,9 @@ async function onDeny(interaction) {
 
     const ticketCreatorId = interaction.ticket.user.discord_id;
     if (ticketCreatorId != interaction.userId)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.member.hasPermission("staff")));
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, await interaction.member.hasPermission("staff")));
 
-    const transcriber = interaction.client.transcriber;
+    const transcriber = interaction.client.support.transcriber;
     const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "denied the close request" }
     await transcriber.transcribe(interaction.ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
 
@@ -91,15 +92,13 @@ async function onAccept(interaction) {
 
     const ticketCreatorId = interaction.ticket.user.discord_id;
     if (ticketCreatorId != interaction.userId)
-        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, interaction.member.hasPermission("staff")));
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, await interaction.member.hasPermission("staff")));
 
-    const transcriber = interaction.client.transcriber;
+    const transcriber = interaction.client.support.transcriber;
     const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "accepted the close request" }
     await transcriber.transcribe(interaction.ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
-    await transcriber.send(interaction.guild, interaction.ticket).catch(console.error); // Command should not abort just because their was an error with the log
-
-    await interaction.client.database.tickets.remove({ id_ticket: interaction.ticket.id_ticket })
-    await interaction.channel.delete()
+    
+    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket)
 
 }
 

@@ -1,4 +1,4 @@
-const { TicketTable, TicketMessagesTable, TicketTypeTable } = require("./tables");
+const { TicketTable, TicketMessagesTable, TicketStatusTable, TicketTypeTable } = require("./tables");
 const TicketTranscriber = require("./ticket-transcriber");
 const ScrimsMessageBuilder = require("../lib/responses");
 
@@ -28,10 +28,12 @@ class SupportFeature {
 
         this.bot.database.tickets = new TicketTable(this.bot.database)
         this.bot.database.ticketTypes = new TicketTypeTable(this.bot.database)
+        this.bot.database.ticketStatus = new TicketStatusTable(this.bot.database)
         this.bot.database.transcript = new TicketMessagesTable(this.bot.database)
         
         await this.bot.database.tickets.connect()
         await this.bot.database.ticketTypes.connect()
+        await this.bot.database.ticketStatus.connect()
         await this.bot.database.transcript.connect()
 
         this.transcriber = new TicketTranscriber(this.bot.database.transcript)
@@ -42,31 +44,59 @@ class SupportFeature {
         }
 
         this.addEventHandlers()
-        this.bot.on('scrimsMessageCreate', message => this.onScrimsMessage(message))
+
+        this.bot.on('messageCreate', message => this.onMessageCreate(message))
+        this.bot.on('messageDelete', message => this.onMessageDelete(message))
+        this.bot.on('messageDeleteBulk', messages => this.onMessageDeleteBulk(messages))
+        this.bot.on('messageUpdate', (oldMessage, newMessage) => this.onMessageUpdate(oldMessage, newMessage))
+
         this.bot.on('channelDelete', channel => this.onChannelDelete(channel))
 
     }
 
-    async onScrimsMessage(message) {
+    async onMessageCreate(message) {
 
         const ticket = this.bot.database.tickets.cache.get({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
         if (message.author.id == this.bot.user.id) return false;
-        if (!message.scrimsUser) return false;
+        if (!message.content) return false;
 
         const ticketMessage = {
 
             id_ticket: ticket.id_ticket,
-            id_author: message.scrimsUser.id_user,
+            author: { discord_id: message.author.id },
             message_id: message.id,
             content: message.content,
-            created_at: Math.round(message.createdTimestamp/1000)
+            created_at: Math.round(Date.now()/1000)
 
         }
 
         await this.bot.database.transcript.create(ticketMessage)
             .catch(error => console.error(`Unable to log support ticket message because of ${error}`, ticketMessage))
+
+    }
+
+    async onMessageUpdate(oldMessage, newMessage) {
+
+        const changed = (oldMessage.content != newMessage.content)
+        if (changed) return this.onMessageCreate(newMessage);
+
+    }
+
+    async onMessageDelete(message) {
+
+        const ticket = this.bot.database.tickets.cache.get({ channel_id: message.channel.id })[0]
+        if (!ticket) return false;
+
+        await this.bot.database.transcript.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now()/1000) })
+            .catch(error => console.error(`Unable to log support ticket message deletion because of ${error}`, ticket))
+
+    }
+
+    async onMessageDeleteBulk(messages) {
+
+        await Promise.all(messages.map(msg => this.onMessageDelete(msg)))
 
     }
 
@@ -85,7 +115,7 @@ class SupportFeature {
     
         }
             
-        const existing = await interaction.client.database.tickets.get({ type: { name: typeName }, id_user: interaction.scrimsUser.id_user })
+        const existing = await interaction.client.database.tickets.get({ type: { name: typeName }, id_user: interaction.scrimsUser.id_user, status: { name: "open" } })
         if (existing.length > 0)
             return interaction.reply( ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (<#${existing[0].channel_id}>)!`) ).then(() => false);
     
@@ -95,7 +125,7 @@ class SupportFeature {
 
     async onChannelDelete(channel) {
 
-        const tickets = await this.bot.database.tickets.get({ channel_id: channel.id }).catch(console.error)
+        const tickets = await this.bot.database.tickets.get({ channel_id: channel.id, status: { name: "open" } }).catch(console.error)
         await Promise.all(tickets.map(ticket => this.closeTicket(channel, ticket))).catch(console.error)
 
     }
@@ -104,7 +134,7 @@ class SupportFeature {
 
         await this.transcriber.send(channel.guild, ticket)
 
-        await this.bot.database.tickets.remove({ id_ticket: ticket.id_ticket })
+        await this.bot.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })
         await channel.delete().catch(() => { /* Channel could already be deleted. */ })
 
     }

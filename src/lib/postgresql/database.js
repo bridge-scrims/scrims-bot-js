@@ -22,9 +22,13 @@ class DBClient {
         this.pool.on('error', error => console.error(`Unexpected pgsql pool error ${error}!`))
 
         this.users = new UserTable(this)
+
         this.positions = new PositionTable(this)
         this.userPositions = new UserPositionsTable(this)
         this.positionRoles = new PositionRolesTable(this)
+
+        this.guildEntryTypes = new DBTable(this, "scrims_guild_entry_type")
+        this.guildEntrys = new DBTable(this, "scrims_guild_entry", "get_guild_entrys", [ "type", "id_type", "get_guild_entry_type_id" ])
 
     }
 
@@ -58,9 +62,13 @@ class DBClient {
     async initializeCache() {
 
         await this.users.connect()
+
         await this.positions.connect()
         await this.userPositions.connect()
         await this.positionRoles.connect()
+
+        await this.guildEntryTypes.connect()
+        await this.guildEntrys.connect()
 
     }
     
@@ -71,6 +79,7 @@ class DBClient {
     }
   
 }
+
 
 class UserTable extends DBTable {
 

@@ -74,10 +74,13 @@ class ScrimsPermissionsClient {
      * @param  { String[] } requiredPositions Positions that are all required for permission (and)
      * @returns { Boolean } If the permissible has the given permissionlevel **OR** higher **OR** all the given requiredPositions
      */
-    hasPermission(permissible, permissionLevel, allowedPositions=[], requiredPositions=[]) {
+    async hasPermission(permissible, permissionLevel, allowedPositions=[], requiredPositions=[]) {
 
-        return this.hasRequiredPositions(permissible, requiredPositions) 
-            && (this.hasPermissionLevel(permissible, permissionLevel) || this.hasAllowedPositions(permissible, allowedPositions));
+        const hasRequiredPositions = await this.hasRequiredPositions(permissible, requiredPositions)
+        const hasPermissionLevel = await this.hasPermissionLevel(permissible, permissionLevel)
+        const hasAllowedPositions = await this.hasAllowedPositions(permissible, allowedPositions)
+        
+        return hasRequiredPositions && (hasPermissionLevel || hasAllowedPositions);
 
     }
 
@@ -85,17 +88,16 @@ class ScrimsPermissionsClient {
     /**
      * 
      * @param  { GuildMember | Role } permissible
-     * @param  { String } requiredPosition
+     * @param  { String | Integer } positionResolvable
      * @returns { Boolean } If the permissible has the requiredPosition according to the database
      */
-    hasRequiredPosition(permissible, requiredPosition) {
+    async hasRequiredPosition(permissible, positionResolvable) {
 
+        const positionSelector = (typeof positionResolvable === "number") ? { id_position: positionResolvable } : { position: { name: positionResolvable } };
+        
         // If the user has the position according to the scrims database
-        const userPositions = this.database.userPositions.cache.get({ user: { discord_id: permissible.id } })
-        if (userPositions.filter(userPos => userPos.position.name == requiredPosition || userPos.id_position == requiredPosition).length > 0) return true;
-
-        // If the user has the required discord roles for the position
-        if (this.hasRequiredPositionRoles(permissible, requiredPosition)) return true;
+        const userPositions = await this.database.userPositions.get({ user: { discord_id: permissible.id }, ...positionSelector })
+        if (userPositions.length > 0) return true;
 
         return false;
 
@@ -123,11 +125,11 @@ class ScrimsPermissionsClient {
      * 
      * @param  { GuildMember | Role } permissible
      * @param  { String[] } requiredPositions
-     * @returns { Boolean } If the permissible has all the requiredPositions
+     * @returns { Promise<Boolean> } If the permissible has all the requiredPositions
      */
-    hasRequiredPositions(permissible, requiredPositions) {
+    async hasRequiredPositions(permissible, requiredPositions) {
 
-        return requiredPositions.every(position => this.hasRequiredPosition(permissible, position))
+        return Promise.all(requiredPositions.map(position => this.hasRequiredPosition(permissible, position))).then(results => results.every(v => v));
 
     }
 
@@ -135,11 +137,11 @@ class ScrimsPermissionsClient {
      * 
      * @param  { GuildMember | Role } permissible
      * @param  { String[] } allowedPositions
-     * @returns { Boolean } If the permissible has any of the allowedPositions
+     * @returns { Promise<Boolean> } If the permissible has any of the allowedPositions
      */
-    hasAllowedPositions(permissible, allowedPositions) {
+    async hasAllowedPositions(permissible, allowedPositions) {
 
-        return allowedPositions.some(position => this.hasRequiredPosition(permissible, position))
+        return Promise.all(allowedPositions.map(position => this.hasRequiredPosition(permissible, position))).then(results => results.some(v => v));
 
     }
 
@@ -161,9 +163,9 @@ class ScrimsPermissionsClient {
      * 
      * @param  { GuildMember | Role } permissible
      * @param  { String } permissionLevel
-     * @return { Boolean } If the permissible has the permissionLevel
+     * @return { Promise<Boolean> } If the permissible has the permissionLevel
      */
-    hasPermissionLevel(permissible, permissionLevel) {
+    async hasPermissionLevel(permissible, permissionLevel) {
 
         const allowedPositions = this.getPermissionLevelPositions(permissionLevel)
         return this.hasAllowedPositions(permissible, allowedPositions);

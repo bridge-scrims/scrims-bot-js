@@ -87,8 +87,15 @@ async function addPositionRole(interaction, role, position) {
     const positionRoles = interaction.client.database.positionRoles.cache.get({ guild_id: interaction.guild.id })
     const sortedPositionRoles = sortPositionRoles(interaction, positionRoles)
     const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles)
+
+    const warning = (
+        interaction.client.positions.botHasRolePermissions(role) ? `` 
+        : `\n_ _\n ⚠️ ${interaction.client.user} is missing permissions to give/remove this role!`
+            + `\n To fix this in **Server Settings** -> **Roles** drag ${interaction.client.user} over ${role}.`
+    )
+
     await interaction.editReply({ 
-        ...payload, content: `${role} is now connected to bridge scrims **${position.name}**.`, 
+        ...payload, content: `${role} is now connected to bridge scrims **${position.name}**. ${warning}`, 
         allowedMentions: { parse: [] },
         ephemeral: true 
     })

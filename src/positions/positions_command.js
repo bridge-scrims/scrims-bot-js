@@ -108,7 +108,7 @@ async function onTakeSubcommand(interaction) {
 
 async function hasPositionPermissions(interaction, position, action) {
 
-    if (!interaction.member.hasPermission("staff")) {
+    if (!(await interaction.member.hasPermission("staff"))) {
         
         if (position.name != "suggestion_blacklisted" && position.name != "support_blacklisted") {
 
@@ -123,7 +123,7 @@ async function hasPositionPermissions(interaction, position, action) {
     if (typeof position.level === "number") {
 
         // For example if staff wants to add someone to owner position 
-        if (!interaction.client.permissions.hasPermissionLevel(interaction.member, position.name)) {
+        if (!(await interaction.client.permissions.hasPermissionLevel(interaction.member, position.name))) {
 
             return interaction.reply(
                 PositionsResponseMessageBuilder.missingPermissionsMessage(`You are not allowed to ${action}!`)
@@ -147,7 +147,7 @@ async function onGiveSubcommand(interaction) {
     const expires_at = await getExpiration(interaction)
     if (expires_at === false) return false;
 
-    if (!interaction.member.hasPermission("staff")) {
+    if (!(await interaction.member.hasPermission("staff"))) {
 
         if (expires_at === null) {
 

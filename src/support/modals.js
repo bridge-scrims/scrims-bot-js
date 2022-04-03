@@ -22,11 +22,14 @@ async function createTicket(interaction) {
     const channel = await createTicketChannel(interaction.client, interaction.guild, interaction.channel.parentId, interaction.user, interaction.ticketType)
 
     const result = await interaction.client.database.tickets.create({ 
+
         id_user: interaction.scrimsUser.id_user, 
         type: { name: interaction.ticketType },
         guild_id: interaction.guild.id, 
+        status: { name: "open" },
         channel_id: channel.id, 
         created_at: Math.round(Date.now()/1000) 
+
     }).catch(error => error)
 
     if (result instanceof Error) {

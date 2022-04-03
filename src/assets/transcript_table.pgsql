@@ -6,9 +6,10 @@ CREATE TABLE scrims_ticket_message (
 
     message_id text NOT NULL,
     content text NOT NULL,
+    deleted bigint NULL,
     created_at bigint NOT NULL,
 
-    UNIQUE(id_ticket, message_id),
+    UNIQUE(id_ticket, message_id, created_at),
     FOREIGN KEY(id_ticket) 
         REFERENCES scrims_ticket(id_ticket),
     FOREIGN KEY(id_author) 
@@ -16,11 +17,12 @@ CREATE TABLE scrims_ticket_message (
 
 );
 
-CREATE OR REPLACE FUNCTION get_ticket_messages(
+CREATE OR REPLACE FUNCTION get_ticket_messages (
     id_ticket int default null,
     id_author int default null,
     message_id text default null,
     content text default null,
+    deleted bigint default null,
     created_at bigint default null
 ) 
 returns json
@@ -38,6 +40,7 @@ EXECUTE '
             ''author'', to_json(author),
             ''message_id'', scrims_ticket_message.message_id,
             ''content'', scrims_ticket_message.content,
+            ''deleted'', scrims_ticket_message.deleted,
             ''created_at'', scrims_ticket_message.created_at
         )
     )
@@ -51,8 +54,9 @@ EXECUTE '
     ($2 is null or scrims_ticket_message.id_author = $2) AND
     ($3 is null or scrims_ticket_message.message_id = $3) AND
     ($4 is null or scrims_ticket_message.content = $4) AND
-    ($5 is null or scrims_ticket_message.created_at = $5)
-' USING id_ticket, id_author, message_id, content, created_at
+    ($5 is null or scrims_ticket_message.deleted = $5) AND
+    ($6 is null or scrims_ticket_message.created_at = $6)
+' USING id_ticket, id_author, message_id, content, deleted, created_at
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 

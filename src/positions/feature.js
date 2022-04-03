@@ -39,6 +39,16 @@ class PositionsFeature {
 
     }
 
+    botHasRolePermissions(role) {
+
+        const botMember = role.guild.members.cache.get(this.bot.user.id)
+        if (!botMember) return false;
+        
+        const largest = Math.max( ...botMember.roles.cache.map(role => role.position) )
+        return (largest > role.position);
+
+    }
+
     async onRoleDelete(role) {
 
         await this.bot.database.positionRoles.remove({ guild_id: role.guild.id, role_id: role.id }).catch(console.error)

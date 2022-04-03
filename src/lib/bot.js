@@ -27,6 +27,7 @@ class ScrimsBot extends Client {
         Object.entries(config).forEach(([key, value]) => this[key] = value)
 
         this.addReloadCommand()
+        this.addConfigCommand()
         discordModals(this);
 
     }
@@ -44,7 +45,30 @@ class ScrimsBot extends Client {
             .setName("reload")
             .setDescription("Reloads the application commands and permissions.")
 
-        this.commands.add(reloadCommand, { permissionLevel: "developer" })
+        this.commands.add(reloadCommand, { permissionLevel: "staff" })
+
+    }
+
+    addConfigCommand() {
+        
+        const configCommand = new SlashCommandBuilder()
+            .setName("config")
+            .setDescription("Used to configure the bot for this discord server.")
+            .addIntegerOption(option => (
+                option
+                    .setName("key")
+                    .setDescription("What exact you are trying to configure.")
+                    .setAutocomplete(true)
+                    .setRequired(true)
+            ))
+            .addStringOption(option => (
+                option
+                    .setName("value")
+                    .setDescription("The new value of the key you choose.")
+                    .setRequired(false)
+            ))
+
+        this.commands.add(configCommand, { permissionLevel: "owner" })
 
     }
 
@@ -75,6 +99,7 @@ class ScrimsBot extends Client {
         await this.commands.initializeCommands()
 
         this.addEventHandler("reload", interaction => this.onReloadCommand(interaction))
+        this.addEventHandler("config", interaction => this.onConfigCommand(interaction))
         this.addEventListeners();
 
         this.emit("startupComplete")
@@ -95,6 +120,38 @@ class ScrimsBot extends Client {
         await interaction.editReply({ content: "Commands reloaded!", ephemeral: true })
 
     }
+
+    async onConfigAutocomplete(interaction) {
+
+        const entryTypes = await this.database.guildEntryTypes.get({ })
+        await interaction.respond(entryTypes.map(type => ({ name: type.name, value: type.id_type })))
+
+    }
+
+    async onConfigCommand(interaction) {
+
+        if (interaction.isAutocomplete()) return this.onConfigAutocomplete(interaction);
+        if (!interaction.guild) return interaction.reply( ScrimsMessageBuilder.guildOnlyMessage() );
+
+        const entryTypeId = interaction.options.getInteger("key")
+        const value = interaction.options.getString("value") ?? null
+
+        const selector = { guild_id: interaction.guild.id, id_type: entryTypeId }
+        const entry = await this.database.guildEntrys.get(selector)
+
+        if (!value) return interaction.reply({ content: `${entry[0]?.value || null}`, allowedMentions: { parse: [] }, ephemeral: true });
+        
+        if (entry.length > 0) {
+
+            await this.database.guildEntrys.update(selector, { value })
+            return interaction.reply({ content: `${entry[0].value} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
+
+        }
+
+        await this.database.guildEntrys.create({ ...selector, value })
+        await interaction.reply({ content: `${value}`, allowedMentions: { parse: [] }, ephemeral: true });
+
+    } 
 
     expandMessage(message) {
 
@@ -172,14 +229,21 @@ class ScrimsBot extends Client {
 
     }
 
-    isPermitted(interactEvent) {
+    async isPermitted(interactEvent) {
 
         if (!interactEvent.member || !interactEvent.scrimsPermissions) return false;
 
         const { permissionLevel, allowedPositions, requiredPositions } = interactEvent.scrimsPermissions
         if (!permissionLevel && !allowedPositions && !requiredPositions) return true;
         
-        return interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions);
+        const hasPermission = interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions).catch(error => error);
+        if (hasPermission instanceof Error) {
+
+            console.error(`Unable to check if user has permission because of ${hasPermission}!`)
+            return false;
+
+        }
+        return hasPermission;
 
     }
 
@@ -217,10 +281,10 @@ class ScrimsBot extends Client {
         await this.ensureScrimsUser(interactEvent)
 
         if (interactEvent.member instanceof GuildMember)
-            interactEvent.member.hasPermission = (permissionLevel, allowedPositions, requiredPositions) => this.permissions.hasPermission(interactEvent.member, permissionLevel, allowedPositions, requiredPositions)
+            interactEvent.member.hasPermission = async (permissionLevel, allowedPositions, requiredPositions) => this.permissions.hasPermission(interactEvent.member, permissionLevel, allowedPositions, requiredPositions)
         
         if (interactEvent instanceof CommandInteraction)
-            if (!this.isPermitted(interactEvent)) 
+            if (!(await this.isPermitted(interactEvent))) 
                 return interactEvent.reply(ResponseTemplates.errorMessage("Insufficient Permissions", "You are missing the required permissions to use this command!")).catch(console.error);
         
         return this.handleInteractEvent(interactEvent, event)

@@ -6,7 +6,9 @@ const { MessageActionRow, MessageButton } = require("discord.js");
 const interactionHandlers = {
 
     "transfer-user-positions": onTransferPositionsCommand, 
-    "TransferUserPositions": onTransferPositionsComponent 
+    "TransferUserPositions": onTransferPositionsComponent,
+    "create-position": onCreatePositionCommand,
+    "remove-position": onRemovePositionCommand
 
 }
 async function onInteraction(interaction) {
@@ -83,6 +85,45 @@ async function onTransferPositionsComponent(interaction) {
 
 }
 
+async function onCreatePositionCommand(interaction) {
+
+
+
+}
+
+async function onPositionAutoComplete(interaction) {
+
+    const focused = interaction.options.getFocused().toLowerCase()
+    const positions = await interaction.client.database.positions.get({ }, false).catch(error => error)
+    if (positions instanceof Error) {
+
+        console.error(`Unable to get bridge scrims position because of ${positions}!`)
+        return interaction.respond([]);
+
+    }
+
+    const relevantPositions = positions.filter(position => position.name.toLowerCase().includes(focused))
+    await interaction.respond(relevantPositions.map(position => ({ name: position.name, value: position.id_position })))
+
+}
+
+async function onRemovePositionCommand(interaction) {
+
+    if (interaction.isAutocomplete()) return onPositionAutoComplete(interaction); 
+
+    const positionId = interaction.options.getInteger("position")
+    const position = await interaction.client.database.positions.get({ id_position: positionId })
+    if (position.length === 0)
+        return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
+
+    const result = await interaction.client.database.positions.remove({ id_position: position[0].id_position }).catch(error => error)
+    if (result instanceof Error)
+        return interaction.reply(ScrimsMessageBuilder.failedMessage(`remove the **${position[0].name}** position`));
+
+    await interaction.reply({ content: `Removed **${position[0].name}**.`, ephemeral: true })
+    
+}
+
 
 function getTransferPositionsCommand() {
 
@@ -94,10 +135,34 @@ function getTransferPositionsCommand() {
 
 }
 
+function getCreatePositionCommand() {
+
+    const createPositionCommand = new SlashCommandBuilder()
+        .setName("create-position")
+        .setDescription("Creates a bridge scrims position.")
+        .addStringOption(option => option.setName("name").setDescription("The name of the new position."))
+        .addBooleanOption(option => option.setName("sticky").setDescription("Whether the position should always stay."))
+        .addIntegerOption(option => option.setName("level").setDescription("The level in the bridge scrims hierarchy."))
+    
+    return [ createPositionCommand, { permissionLevel: "owner" } ];
+
+}
+
+function getRemovePositionCommand() {
+
+    const removePositionCommand = new SlashCommandBuilder()
+        .setName("remove-position")
+        .setDescription("Removes a bridge scrims position.")
+        .addIntegerOption(option => option.setName("position").setDescription("The name of the position that should be removed.").setAutocomplete(true))
+    
+    return [ removePositionCommand, { permissionLevel: "owner" } ];
+
+}
+
 module.exports = {
 
     interactionHandler: onInteraction,
-    commands: [ getTransferPositionsCommand() ],
+    commands: [ getTransferPositionsCommand(), getCreatePositionCommand(), getRemovePositionCommand() ],
     eventListeners: [ "TransferUserPositions" ]
 
 }
