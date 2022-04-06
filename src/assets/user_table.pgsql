@@ -6,6 +6,7 @@ CREATE TABLE scrims_user (
     joined_at bigint NOT NULL,
     discord_id text NULL,
     discord_tag text NULL,
+    discord_avatar text NULL,
     
     mc_uuid text NULL,
     mc_name text NULL,
@@ -17,12 +18,13 @@ CREATE TABLE scrims_user (
 );
 
 
-CREATE OR REPLACE FUNCTION get_users(
+CREATE OR REPLACE FUNCTION get_users (
     id_user int default null,
     joined_at bigint default null,
 
     discord_id text default null,
     discord_tag text default null,
+    discord_avatar text default null,
 
     mc_uuid text default null,
     mc_name text default null,
@@ -50,8 +52,9 @@ EXECUTE '
     ($6 is null or mc_name = $6) AND
     ($7 is null or mc_verified = $7) AND
     ($8 is null or country = $8) AND
-    ($9 is null or timezone = $9)
-' USING id_user, joined_at, discord_id, discord_tag, mc_uuid, mc_name, mc_verified, country, timezone
+    ($9 is null or timezone = $9) AND
+    ($10 is null or discord_avatar = $10)
+' USING id_user, joined_at, discord_id, discord_tag, mc_uuid, mc_name, mc_verified, country, timezone, discord_avatar
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 

@@ -7,6 +7,15 @@ CREATE TABLE scrims_guild_entry_type (
 );
 
 INSERT INTO scrims_guild_entry_type (name) VALUES ('positions_log_channel');
+INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_log_channel');
+INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_log_channel');
+
+INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_channel');
+INSERT INTO scrims_guild_entry_type (name) VALUES ('epic_suggestions_channel');
+
+INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_vote_const');
+INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestion_up_vote_emoji');
+INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestion_down_vote_emoji');
 
 CREATE OR REPLACE FUNCTION get_guild_entry_type_id (
     id_type int default null,
@@ -30,7 +39,7 @@ LANGUAGE plpgsql;
 
 CREATE TABLE scrims_guild_entry (
 
-    guild_id TEXT NOT NULL,
+    guild_id TEXT NULL,
     id_type INT NOT NULL,
 
     value TEXT NULL,
@@ -74,3 +83,38 @@ INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
 LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION process_guild_entry_change()
+RETURNS trigger 
+AS $$
+DECLARE
+    guild_entrys json;
+BEGIN
+
+    IF (TG_OP = 'DELETE') THEN 
+        PERFORM pg_notify('guild_entry_remove', to_json(OLD)::text);
+        RETURN OLD;
+    END IF;
+
+    EXECUTE 'SELECT get_guild_entrys( guild_id => $1, id_type => $2 )' USING NEW.guild_id, NEW.id_type INTO guild_entrys;
+
+    IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
+        'guild_entry_update', json_build_object(
+            'selector', to_json(OLD), 
+            'data', (guild_entrys->>0)::json
+        )::text
+    );
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('guild_entry_create', guild_entrys->>0);
+    END IF;
+
+    return NEW;
+
+END $$
+LANGUAGE plpgsql;
+
+
+CREATE TRIGGER guild_entry_trigger
+    AFTER INSERT OR UPDATE OR DELETE
+    ON scrims_guild_entry
+    FOR EACH ROW
+    EXECUTE PROCEDURE process_guild_entry_change();

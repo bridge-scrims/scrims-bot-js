@@ -135,7 +135,12 @@ class ScrimsSyncHostFeature {
     async addScrimsUser(member) {
 
         const scrimsUser = { 
-            discord_id: member.id, discord_tag: member.user.tag, joined_at: Math.round(member.joinedTimestamp/1000)
+
+            discord_id: member.id, 
+            discord_tag: member.user.tag, 
+            discord_avatar: member.user.avatarURL(), 
+            joined_at: Math.round(member.joinedTimestamp/1000)
+
         }
 
         await this.bot.database.users.create( scrimsUser )
@@ -147,16 +152,16 @@ class ScrimsSyncHostFeature {
 
     async onUserUpdate(oldUser, newUser) {
 
-        if (oldUser.tag != newUser.tag) {
-            await this.updateScrimsUserTag(newUser.id, oldUser.tag, newUser.tag)
+        if (oldUser.tag != newUser.tag || oldUser.avatarURL() != newUser.avatarURL()) {
+            await this.updateScrimsUser(newUser.id, { discord_tag: newUser.tag, discord_avatar: newUser.avatarURL() })
         }
 
     }
 
-    async updateScrimsUserTag(discordId, oldTag, discordTag) {
+    async updateScrimsUser(discordId, changes) {
 
-        await this.bot.database.users.update({ discord_id: discordId }, { discord_tag: discordTag })
-            .catch(error => console.error(`Unable to apply change (${oldTag} -> ${discordTag}) to scrims user with discord id ${discordId}!`, error))
+        await this.bot.database.users.update({ discord_id: discordId }, changes)
+            .catch(error => console.error(`Unable to apply changes to scrims user with discord id ${discordId} because of ${error}!`, changes))
 
     }
 
@@ -242,8 +247,8 @@ class ScrimsSyncHostFeature {
         const user = await this.fetchScrimsUser(member.id)
         if (user === null) await this.addScrimsUser(member)
 
-        if (user && (user.discord_tag != member.user.tag))
-            await this.updateScrimsUserTag(member.id, user.discord_tag, member.user.tag)
+        if (user && (user.discord_tag != member.user.tag || user.discord_avatar != member.user.avatarURL()))
+            await this.updateScrimsUser(member.id, { discord_tag: member.user.tag, discord_avatar: member.user.avatarURL() })
 
         const positions = await this.fetchUserPositions(member.id)
         
