@@ -16,7 +16,7 @@ class SupportFeature {
 
         Object.entries(config).forEach(([key, value]) => this[key] = value)
 
-        commands.forEach(([cmdData, cmdPerms]) => this.bot.commands.add(cmdData, cmdPerms))
+        commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
 
         this.transcriptChannel = null
 
@@ -145,7 +145,7 @@ class SupportFeature {
         this.bot.addEventHandler("report", onComponent)
         this.bot.addEventHandler("TicketCloseRequest", onComponent)
 
-        commands.forEach(([cmdData, _]) => this.bot.addEventHandler(cmdData.name, commandHandler))
+        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
 
         this.bot.addEventHandler("support-modal", onSubmit)
 

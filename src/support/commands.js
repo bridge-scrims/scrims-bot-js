@@ -13,7 +13,6 @@ async function onCommand(interaction) {
     const handler = commandHandlers[interaction.commandName]
     if (handler) {
 
-        // hold on a minuite, isn't the commandes guild commands @whatcats
         if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
 
         return handler(interaction);
@@ -174,28 +173,33 @@ async function supportTicket(interaction) {
     const ticket = ticketTable.cache.get({ channel_id: interaction.channel.id })[0]
     if (!ticket) return interaction.reply(getMissingTicketPayload()); // This is no support channel (bruh moment) (good commenting whatcats)
     // I know you like the const keyword :)
-    const user = interaction.options.getMember("user", true);
-    const operation = interaction.options.getString("operation", true);
-
+    
+    const user = interaction.options.getMember("user");
+    const operation = interaction.options.getString("operation");
+    const operactionPreposition = ((operation === "add") ? "to" : "from")
+    
     const permissionOverwrites = interaction.channel.permissionOverwrites;
-    if (operation === "added") {
-        await permissionOverwrites.edit(user, {
-            'SEND_MESSAGES': true,
-            'READ_MESSAGES': true,
-        })
-    } else {
-        // remove the user from the ticket
-        await permissionOverwrites.edit(user, {
-            'SEND_MESSAGES': false,
-            'READ_MESSAGES': false,
-        })
+    const userPermission = Object.fromEntries(['SEND_MESSAGES', 'VIEW_CHANNEL'].map(perm => [perm, (operation === "add")]))
+    
+    const result = await permissionOverwrites.edit(user, userPermission).catch(error => error)
+    if (result instanceof Error) {
+
+        console.error(`Unable to ${operation} ${user?.tag} from ticket because of ${result}!`, userPermission, ticket)
+        return interaction.reply(ScrimsMessageBuilder.failedMessage(`${operation} ${user} ${operactionPreposition} this ticket`));
+
     }
-    const embed = new MessageEmbed(user, operation)
-        .setColor("#FF2445")
-        .setTitle("Action Completed!")
-        .setDescription(`The user ${user.tag} has been ${operation} to the ticket!`)
+
+    const color = (operation === "add") ? ScrimsMessageBuilder.successGreen : ScrimsMessageBuilder.errorRed
+    const pastTenseOperation = (operation.endsWith('e') ? `${operation}d` : `${operation}ed`) 
+
+    const embed = new MessageEmbed()
+        .setTitle("Action Completed")
+        .setDescription(`${user} has been ${pastTenseOperation} ${operactionPreposition} the ticket!`)
+        .setColor(color)
         .setTimestamp()
-    interaction.reply({ embeds: [embed] });
+
+    await interaction.reply({ embeds: [embed], components: [], content: null })
+
 }
 
 
@@ -211,11 +215,6 @@ function getMissingTicketPayload() {
     return { embeds: [embed], ephemeral: true };
 
 }
-
-
-
-
-
 
 function buildCloseCommand() {
 
@@ -261,8 +260,8 @@ function buildSupportTicketCommand() {
         .addStringOption(new SlashCommandStringOption()
             .setName("operation")
             .setDescription("Add/Remove a user from a ticket.")
-            .addChoice("Add", "added")
-            .addChoice("Remove", "removed")
+            .addChoice("Add", "add")
+            .addChoice("Remove", "remove")
             .setRequired(true)
         )
         .addUserOption(new SlashCommandUserOption()
@@ -278,6 +277,6 @@ function buildSupportTicketCommand() {
 module.exports = {
 
     commandHandler: onCommand,
-    commands: [buildCloseCommand(), buildForceCloseCommand(), buildSupportMessageCommand(), buildSupportTicketCommand()]
+    commands: [ buildCloseCommand(), buildForceCloseCommand(), buildSupportMessageCommand(), buildSupportTicketCommand() ]
 
 }

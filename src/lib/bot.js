@@ -1,4 +1,4 @@
-const { Client, Message, Interaction, CommandInteraction, MessageComponentInteraction, GuildMember } = require("discord.js");
+const { Client, Message, Interaction, CommandInteraction, MessageComponentInteraction, GuildMember, MessageReaction } = require("discord.js");
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const discordModals = require('discord-modals');
 
@@ -9,6 +9,7 @@ const ScrimsMessageBuilder = require("./responses");
 const MojangClient = require("./middleware/mojang");
 const ResponseTemplates = require("./responses");
 const DBTable = require("./postgresql/database");
+const auditEvents = require("./audited_events");
 
 
 class ScrimsBot extends Client {
@@ -20,6 +21,7 @@ class ScrimsBot extends Client {
         this.eventHandlers = {};
         this.config = config;
 
+        this.database = new DBTable(config.dbLogin)
         this.commands = new ScrimsCommandInstaller(this);
         this.hypixel = new HypixelClient(config.hypixelToken);
         this.mojang = new MojangClient();
@@ -28,7 +30,9 @@ class ScrimsBot extends Client {
 
         this.addReloadCommand()
         this.addConfigCommand()
+        
         discordModals(this);
+        auditEvents(this);
 
     }
 
@@ -37,6 +41,12 @@ class ScrimsBot extends Client {
         super.destroy()
         this.database.destroy()
         
+    }
+
+    getConfig(guild_id, key) {
+
+        return this.database.guildEntrys.cache.get({ guild_id, type: { name: key } })[0]?.value;
+
     }
 
     addReloadCommand() {
@@ -89,7 +99,6 @@ class ScrimsBot extends Client {
         await super.login(this.config.discordToken);
         console.log("Connected to discord!")
 
-        this.database = new DBTable(this.config.dbLogin)
         await this.database.connect();
         this.emit("databaseConnected")
         console.log("Connected to database!")
@@ -123,8 +132,12 @@ class ScrimsBot extends Client {
 
     async onConfigAutocomplete(interaction) {
 
-        const entryTypes = await this.database.guildEntryTypes.get({ })
-        await interaction.respond(entryTypes.map(type => ({ name: type.name, value: type.id_type })))
+        const focused = interaction.options.getFocused().toLowerCase()
+
+        const entryTypes = await this.database.guildEntryTypes.get({ }, false)
+        const relevant = entryTypes.filter(type => type.name.toLowerCase().includes(focused))
+        
+        await interaction.respond(relevant.map(type => ({ name: type.name, value: type.id_type })))
 
     }
 
@@ -247,19 +260,36 @@ class ScrimsBot extends Client {
 
     }
 
+    async createScrimsUser(member) {
+
+        return this.database.users.create({ 
+
+            discord_id: member.id, 
+            discord_tag: member.user.tag, 
+            discord_avatar: member.user.avatarURL(), 
+            joined_at: Math.round(member.joinedTimestamp/1000) 
+            
+        }).catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))
+
+    }
+
     async ensureScrimsUser(interactEvent) {
 
         interactEvent.scrimsUser = await this.database.users.get({ discord_id: interactEvent.user.id }).then(users => users[0] ?? null)
-            .catch(error => console.error(`Unable to get scrims user for ${interactEvent.userId}!`, error))
+            .catch(error => console.error(`Unable to get scrims user for ${interactEvent.userId} because of ${error}!`))
             
         if (!interactEvent.scrimsUser && interactEvent.member) {
-            interactEvent.scrimsUser = await this.database.users.create({ 
-                discord_id: interactEvent.userId, 
-                discord_tag: interactEvent.user.tag, 
-                joined_at: Math.round(interactEvent.member.joinedTimestamp/1000) 
-            }).catch(error => console.error(`Unable to make scrims user for ${interactEvent.userId}!`, error))
-        }
-            
+
+            interactEvent.scrimsUser = await this.createScrimsUser(interactEvent.member)
+
+        }    
+
+    }
+
+    expandMember(member) {
+
+        member.hasPermission = async (...args) => this.permissions.hasPermission(member, ...args);
+
     }
 
     async onInteractEvent(interactEvent, event) {
@@ -274,15 +304,18 @@ class ScrimsBot extends Client {
         const isModalSumbitInteraction = (interactEvent instanceof discordModals.ModalSubmitInteraction)
         if (isComponentInteraction || isModalSumbitInteraction) this.expandComponentInteraction(interactEvent)
 
-        interactEvent.userId = interactEvent.user.id
+        if (interactEvent.user) interactEvent.userId = interactEvent.user.id
         if (interactEvent.commandName == "CANCEL" && isComponentInteraction) 
             return interactEvent.update({ content: `Operation cancelled.`, embeds: [], components: [] });
 
-        await this.ensureScrimsUser(interactEvent)
+        if (interactEvent instanceof Message || interactEvent instanceof MessageReaction) {
 
-        if (interactEvent.member instanceof GuildMember)
-            interactEvent.member.hasPermission = async (permissionLevel, allowedPositions, requiredPositions) => this.permissions.hasPermission(interactEvent.member, permissionLevel, allowedPositions, requiredPositions)
-        
+            interactEvent.scrimsUser = this.database.users.cache.get({ discord_id: interactEvent.user.id })[0] ?? null;
+
+        }else if (interactEvent.user) await this.ensureScrimsUser(interactEvent)
+
+        if (interactEvent.member instanceof GuildMember) this.expandMember(interactEvent.member)
+            
         if (interactEvent instanceof CommandInteraction)
             if (!(await this.isPermitted(interactEvent))) 
                 return interactEvent.reply(ResponseTemplates.errorMessage("Insufficient Permissions", "You are missing the required permissions to use this command!")).catch(console.error);
@@ -304,7 +337,7 @@ class ScrimsBot extends Client {
         this.on('interactionCreate', interaction => this.onInteractEvent(interaction, "InteractionCreate"))
 		
         this.on('messageCreate', message => this.onInteractEvent(message, "MessageCreate"))
-        this.on('messageDelete', message => this.onInteractEvent(message, "MessageDelete"))
+        this.on('channelCreate', channel => this.onInteractEvent(channel, "ChannelCreate"))
 
         this.on('messageReactionAdd', (reaction, user) => this.onReaction(reaction, user, "ReactionAdd"))
         this.on('messageReactionRemove', (reaction, user) => this.onReaction(reaction, user, "ReactionRemove"))

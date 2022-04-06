@@ -3,6 +3,7 @@ const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, Messag
 class ScrimsMessageBuilder {
 
     static warningYellow = "#EBB611"
+    static successGreen = "#00DB0E"
     static errorRed = "#DC0023"
 
     static errorMessage(title, description) {
