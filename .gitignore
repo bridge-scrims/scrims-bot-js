@@ -2,3 +2,4 @@ node_modules
 tests
 .vscode
 package-lock.json
+src/config.json

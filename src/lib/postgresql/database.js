@@ -21,14 +21,23 @@ class DBClient {
 
         this.pool.on('error', error => console.error(`Unexpected pgsql pool error ${error}!`))
 
-        this.users = new UserTable(this)
+        this.tables = []
 
-        this.positions = new PositionTable(this)
-        this.userPositions = new UserPositionsTable(this)
-        this.positionRoles = new PositionRolesTable(this)
+        this.addTable("users", new UserTable(this))
 
-        this.guildEntryTypes = new DBTable(this, "scrims_guild_entry_type")
-        this.guildEntrys = new DBTable(this, "scrims_guild_entry", "get_guild_entrys", [ "type", "id_type", "get_guild_entry_type_id" ])
+        this.addTable("positions", new PositionTable(this))
+        this.addTable("userPositions", new UserPositionsTable(this))
+        this.addTable("positionRoles", new PositionRolesTable(this))
+
+        this.addTable("guildEntryTypes", new DBTable(this, "scrims_guild_entry_type"))
+        this.addTable("guildEntrys", new GuildEntrysTable(this))
+
+    }
+
+    addTable(key, table) {
+
+        this.tables.push(table)
+        this[key] = table
 
     }
 
@@ -61,14 +70,8 @@ class DBClient {
  
     async initializeCache() {
 
-        await this.users.connect()
-
-        await this.positions.connect()
-        await this.userPositions.connect()
-        await this.positionRoles.connect()
-
-        await this.guildEntryTypes.connect()
-        await this.guildEntrys.connect()
+        await Promise.all(this.tables.map(table => table.connect()))
+        this.tables = []
 
     }
     
@@ -78,6 +81,28 @@ class DBClient {
         
     }
   
+}
+
+class GuildEntrysTable extends DBTable {
+
+
+    constructor(client) {
+
+        super(client, "scrims_guild_entry", "get_guild_entrys", [ "type", "id_type", "get_guild_entry_type_id" ]);
+
+    }
+
+
+    // @Overrides
+    initializeListeners() {
+
+        this.ipc.on('guild_entry_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('guild_entry_update', message => this.cache.update(message.payload.data, message.payload.selector))
+        this.ipc.on('guild_entry_create', message => this.cache.push(message.payload))
+
+    }
+    
+
 }
 
 

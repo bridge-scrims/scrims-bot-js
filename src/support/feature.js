@@ -13,13 +13,13 @@ class SupportFeature {
 
         this.bot = bot
         this.config = config
-        
+
         Object.entries(config).forEach(([key, value]) => this[key] = value)
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
-        
+
         this.transcriptChannel = null
-        
+
         bot.on('ready', () => this.onReady())
 
     }
@@ -30,7 +30,7 @@ class SupportFeature {
         this.bot.database.ticketTypes = new TicketTypeTable(this.bot.database)
         this.bot.database.ticketStatus = new TicketStatusTable(this.bot.database)
         this.bot.database.transcript = new TicketMessagesTable(this.bot.database)
-        
+
         await this.bot.database.tickets.connect()
         await this.bot.database.ticketTypes.connect()
         await this.bot.database.ticketStatus.connect()
@@ -68,7 +68,7 @@ class SupportFeature {
             author: { discord_id: message.author.id },
             message_id: message.id,
             content: message.content,
-            created_at: Math.round(Date.now()/1000)
+            created_at: Math.round(Date.now() / 1000)
 
         }
 
@@ -89,7 +89,7 @@ class SupportFeature {
         const ticket = this.bot.database.tickets.cache.get({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
-        await this.bot.database.transcript.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now()/1000) })
+        await this.bot.database.transcript.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })
             .catch(error => console.error(`Unable to log support ticket message deletion because of ${error}`, ticket))
 
     }
@@ -103,24 +103,24 @@ class SupportFeature {
     async verifyTicketRequest(interaction, typeName) {
 
         if (!interaction.scrimsUser)
-            return interaction.reply( ScrimsMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
-    
+            return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage()).then(() => false);
+
         const bannedPosition = await interaction.client.database.userPositions.get({ id_user: interaction.scrimsUser.id_user, position: { name: "support_blacklisted" } })
         if (bannedPosition.length > 0) {
-    
+
             const length = bannedPosition[0].expires_at ? `until <t:${bannedPosition[0].expires_at}:f>` : `permanently`;
-            return interaction.reply( 
-                ScrimsMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to create tickets ${length} since you didn't follow the rules.`) 
+            return interaction.reply(
+                ScrimsMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to create tickets ${length} since you didn't follow the rules.`)
             ).then(() => false);
-    
+
         }
-            
+
         const existing = await interaction.client.database.tickets.get({ type: { name: typeName }, id_user: interaction.scrimsUser.id_user, status: { name: "open" } })
         if (existing.length > 0)
-            return interaction.reply( ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (<#${existing[0].channel_id}>)!`) ).then(() => false);
-    
+            return interaction.reply(ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (<#${existing[0].channel_id}>)!`)).then(() => false);
+
         return true;
-    
+
     }
 
     async onChannelDelete(channel) {
@@ -150,7 +150,7 @@ class SupportFeature {
         this.bot.addEventHandler("support-modal", onSubmit)
 
     }
-    
+
 }
 
 module.exports = SupportFeature;
