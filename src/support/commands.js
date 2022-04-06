@@ -1,19 +1,25 @@
-const { SlashCommandBuilder } = require("@discordjs/builders");
+const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandUserOption } = require("@discordjs/builders");
 const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
 
-const commandHandlers = { "close": requestTicketClosure, "forceclose": forceCloseTicket, "support-message": supportMessage }
+const commandHandlers = {
+    "close": requestTicketClosure,
+    "forceclose": forceCloseTicket,
+    "support-message": supportMessage,
+    "support-ticket": supportTicket
+}
 async function onCommand(interaction) {
 
     const handler = commandHandlers[interaction.commandName]
     if (handler) {
 
+        // hold on a minuite, isn't the commandes guild commands @whatcats
         if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
 
         return handler(interaction);
 
     }
-    
+
 }
 
 async function getSupportRole(interaction) {
@@ -26,7 +32,7 @@ async function getSupportRole(interaction) {
         ).then(() => false);
 
     }
-    
+
     const role = interaction.guild.roles.resolve(positionRoles[0].role_id)
     if (!role) {
 
@@ -69,7 +75,7 @@ async function supportMessage(interaction) {
         .addField(`Report Tickets`, `Report user(s) for breaking in-game rules, discord rules, or being troublemakers.`)
         .addField(`Support Tickets`, `Ask questions, post tournaments, post overlays, etc.`)
         .addField(
-            `Hints`, 
+            `Hints`,
             `If you are trying to send a tournament make sure that you have a gamemode, `
             + `a prize, and a discord server setup with proper roles/permissions/channels.`
             + `\n _ _ \n`
@@ -95,9 +101,9 @@ async function requestTicketClosure(interaction) {
     const ticket = interaction.client.database.tickets.cache.get({ channel_id: interaction.channel.id })[0]
 
     if (!ticket) return interaction.reply(getMissingTicketPayload()); // This is no support channel (bruh moment)
-    
+
     if (ticket.id_user == interaction.scrimsUser.id_user) {
-        
+
         // Creator wants to close the ticket so close it
         return closeTicket(interaction, ticket, `closed this request because of ${reason}`)
 
@@ -123,7 +129,7 @@ function getCloseRequestActions(ticketId) {
                 .setStyle("PRIMARY")
 
         ])
-        
+
 }
 
 function getCloseRequestPayload(user, reason, ticket) {
@@ -137,8 +143,8 @@ function getCloseRequestPayload(user, reason, ticket) {
             + `Please accept or deny using the buttons below.`
         ).setTimestamp()
 
-    return { content: `<@${ticket.user.discord_id}>`, embeds: [embed], components: [ getCloseRequestActions(ticket.id_ticket) ] };
-    
+    return { content: `<@${ticket.user.discord_id}>`, embeds: [embed], components: [getCloseRequestActions(ticket.id_ticket)] };
+
 }
 
 async function closeTicket(interaction, ticket, content) {
@@ -154,12 +160,42 @@ async function closeTicket(interaction, ticket, content) {
 
 async function forceCloseTicket(interaction) {
 
-    const ticketTable = interaction.client.database.tickets; 
+    const ticketTable = interaction.client.database.tickets;
     const ticket = ticketTable.cache.get({ channel_id: interaction.channel.id })[0]
     if (!ticket) return interaction.reply(getMissingTicketPayload()); // This is no support channel (bruh moment)
-    
+
     await closeTicket(interaction, ticket, "forcibly closed this request")
 
+}
+
+async function supportTicket(interaction) {
+
+    const ticketTable = interaction.client.database.tickets;
+    const ticket = ticketTable.cache.get({ channel_id: interaction.channel.id })[0]
+    if (!ticket) return interaction.reply(getMissingTicketPayload()); // This is no support channel (bruh moment) (good commenting whatcats)
+    // I know you like the const keyword :)
+    const user = interaction.options.getMember("user", true);
+    const operation = interaction.options.getString("operation", true);
+
+    const permissionOverwrites = interaction.channel.permissionOverwrites;
+    if (operation === "added") {
+        await permissionOverwrites.edit(user, {
+            'SEND_MESSAGES': true,
+            'READ_MESSAGES': true,
+        })
+    } else {
+        // remove the user from the ticket
+        await permissionOverwrites.edit(user, {
+            'SEND_MESSAGES': false,
+            'READ_MESSAGES': false,
+        })
+    }
+    const embed = new MessageEmbed(user, operation)
+        .setColor("#FF2445")
+        .setTitle("Action Completed!")
+        .setDescription(`The user ${user.tag} has been ${operation} to the ticket!`)
+        .setTimestamp()
+    interaction.reply({ embeds: [embed] });
 }
 
 
@@ -176,8 +212,13 @@ function getMissingTicketPayload() {
 
 }
 
+
+
+
+
+
 function buildCloseCommand() {
-        
+
     const closeCommand = new SlashCommandBuilder()
         .setName("close")
         .setDescription("Use this command in a support channel to request a ticket closure.")
@@ -188,17 +229,17 @@ function buildCloseCommand() {
                 .setRequired(false)
         ))
 
-    return [ closeCommand, { permissionLevel: "support" } ];
+    return [closeCommand, { permissionLevel: "support" }];
 
 }
 
 function buildForceCloseCommand() {
-        
+
     const forceCloseCommand = new SlashCommandBuilder()
         .setName("forceclose")
         .setDescription("Use this command in a support channel to force a ticket closure.")
 
-    return [ forceCloseCommand, { permissionLevel: "staff" } ];
+    return [forceCloseCommand, { permissionLevel: "staff" }];
 
 }
 
@@ -208,14 +249,35 @@ function buildSupportMessageCommand() {
         .setName("support-message")
         .setDescription("Sends the support message in the channel.")
 
-    return [ supportMessageCommand, { permissionLevel: "support" } ];
+    return [supportMessageCommand, { permissionLevel: "support" }];
 
+}
+
+function buildSupportTicketCommand() {
+
+    const supportTicketOptionCommand = new SlashCommandBuilder()
+        .setName("support-ticket")
+        .setDescription("Adds or removes a user from the ticket")
+        .addStringOption(new SlashCommandStringOption()
+            .setName("operation")
+            .setDescription("Add/Remove a user from a ticket.")
+            .addChoice("Add", "added")
+            .addChoice("Remove", "removed")
+            .setRequired(true)
+        )
+        .addUserOption(new SlashCommandUserOption()
+            .setName("user")
+            .setDescription("The user to add/remove")
+            .setRequired(true)
+        )
+
+    return [supportTicketOptionCommand, { permissionLevel: "support" }];
 }
 
 
 module.exports = {
 
     commandHandler: onCommand,
-    commands: [ buildCloseCommand(), buildForceCloseCommand(), buildSupportMessageCommand() ]
+    commands: [buildCloseCommand(), buildForceCloseCommand(), buildSupportMessageCommand(), buildSupportTicketCommand()]
 
 }
