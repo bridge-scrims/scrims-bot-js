@@ -265,8 +265,10 @@ class ScrimsBot extends Client {
         return this.database.users.create({ 
 
             discord_id: member.id, 
-            discord_tag: member.user.tag, 
-            discord_avatar: member.user.avatarURL(), 
+            discord_username: member.user.username, 
+            discord_discriminator: member.user.discriminator,
+            discord_accent_color: member.user.accentColor,
+            discord_avatar: member.user.avatar, 
             joined_at: Math.round(member.joinedTimestamp/1000) 
             
         }).catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))

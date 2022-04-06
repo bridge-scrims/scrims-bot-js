@@ -2,10 +2,12 @@
 CREATE TABLE scrims_user (
 
     id_user SERIAL PRIMARY KEY,
-
     joined_at bigint NOT NULL,
+
     discord_id text NULL,
-    discord_tag text NULL,
+    discord_username text NULL,
+    discord_discriminator int NULL,
+    discord_accent_color int NULL,
     discord_avatar text NULL,
     
     mc_uuid text NULL,
@@ -23,7 +25,9 @@ CREATE OR REPLACE FUNCTION get_users (
     joined_at bigint default null,
 
     discord_id text default null,
-    discord_tag text default null,
+    discord_username text default null,
+    discord_discriminator int default null,
+    discord_accent_color int default null,
     discord_avatar text default null,
 
     mc_uuid text default null,
@@ -47,24 +51,28 @@ EXECUTE '
     ($1 is null or id_user = $1) AND
     ($2 is null or joined_at = $2) AND
     ($3 is null or discord_id = $3) AND
-    ($4 is null or discord_tag = $4) AND
-    ($5 is null or mc_uuid = $5) AND
-    ($6 is null or mc_name = $6) AND
-    ($7 is null or mc_verified = $7) AND
-    ($8 is null or country = $8) AND
-    ($9 is null or timezone = $9) AND
-    ($10 is null or discord_avatar = $10)
-' USING id_user, joined_at, discord_id, discord_tag, mc_uuid, mc_name, mc_verified, country, timezone, discord_avatar
+    ($4 is null or discord_username = $4) AND
+    ($5 is null or discord_discriminator = $5) AND
+    ($6 is null or discord_accent_color = $6) AND
+    ($7 is null or discord_avatar = $7) AND
+    ($8 is null or mc_uuid = $8) AND
+    ($9 is null or mc_name = $9) AND
+    ($10 is null or mc_verified = $10) AND
+    ($11 is null or country = $11) AND
+    ($12 is null or timezone = $12)
+' USING id_user, joined_at, discord_id, discord_username, discord_discriminator, 
+    discord_accent_color, discord_avatar,  mc_uuid, mc_name, mc_verified, country, timezone
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
 LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION get_user_id(
+CREATE OR REPLACE FUNCTION get_user_id (
     id_user int default null,
     discord_id text default null,
-    discord_tag text default null,
+    discord_username text default null,
+    discord_discriminator int default null,
     mc_uuid text default null,
     mc_name text default null
 ) 
@@ -78,10 +86,11 @@ EXECUTE '
     WHERE 
     ($1 is null or scrims_user.id_user = $1) AND
     ($2 is null or scrims_user.discord_id = $2) AND
-    ($3 is null or scrims_user.discord_tag = $3) AND
-    ($4 is null or scrims_user.mc_uuid = $4) AND
-    ($5 is null or scrims_user.mc_name = $5)
-' USING id_user, discord_id, discord_tag, mc_uuid, mc_name
+    ($3 is null or scrims_user.discord_username = $3) AND
+    ($4 is null or scrims_user.discord_discriminator = $4) AND
+    ($5 is null or scrims_user.mc_uuid = $5) AND
+    ($6 is null or scrims_user.mc_name = $6)
+' USING id_user, discord_id, discord_username, discord_discriminator, mc_uuid, mc_name
 INTO retval;
 RETURN retval;
 END $$ 

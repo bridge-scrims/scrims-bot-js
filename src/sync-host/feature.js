@@ -137,8 +137,10 @@ class ScrimsSyncHostFeature {
         const scrimsUser = { 
 
             discord_id: member.id, 
-            discord_tag: member.user.tag, 
-            discord_avatar: member.user.avatarURL(), 
+            discord_username: member.user.username, 
+            discord_discriminator: member.user.discriminator,
+            discord_accent_color: member.user.accentColor,
+            discord_avatar: member.user.avatar,  
             joined_at: Math.round(member.joinedTimestamp/1000)
 
         }
@@ -152,8 +154,15 @@ class ScrimsSyncHostFeature {
 
     async onUserUpdate(oldUser, newUser) {
 
-        if (oldUser.tag != newUser.tag || oldUser.avatarURL() != newUser.avatarURL()) {
-            await this.updateScrimsUser(newUser.id, { discord_tag: newUser.tag, discord_avatar: newUser.avatarURL() })
+        if (oldUser.tag != newUser.tag || oldUser.avatar != newUser.avatar || oldUser.accentColor != newUser.accentColor) {
+            await this.updateScrimsUser(newUser.id, {
+
+                discord_username: newUser.username, 
+                discord_discriminator: newUser.discriminator,
+                discord_accent_color: newUser.accentColor,
+                discord_avatar: newUser.avatar
+
+            })
         }
 
     }
@@ -247,9 +256,21 @@ class ScrimsSyncHostFeature {
         const user = await this.fetchScrimsUser(member.id)
         if (user === null) await this.addScrimsUser(member)
 
-        if (user && (user.discord_tag != member.user.tag || user.discord_avatar != member.user.avatarURL()))
-            await this.updateScrimsUser(member.id, { discord_tag: member.user.tag, discord_avatar: member.user.avatarURL() })
+        if (user && (
+                user.discord_username != member.user.username 
+                || user.discord_discriminator != member.user.discriminator 
+                || user.discord_accent_color != member.user.accentColor 
+                || user.discord_avatar != member.user.avatar
+            )
+        ) await this.updateScrimsUser(member.id, {
 
+            discord_username: member.user.username, 
+            discord_discriminator: member.user.discriminator,
+            discord_accent_color: member.user.accentColor,
+            discord_avatar: member.user.avatar
+
+        })
+            
         const positions = await this.fetchUserPositions(member.id)
         
         if (positions && positions.filter(position => position.position_name == "bridge_scrims_member").length === 0)
