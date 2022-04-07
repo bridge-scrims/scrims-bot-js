@@ -40,7 +40,8 @@ class SupportFeature {
 
         if (this.transcriptChannelId) {
             this.transcriptChannel = await this.bot.channels.fetch(this.transcriptChannelId)
-            console.log("Transcript channel found and on standby!")
+                .catch(error => console.error(`Unable to get transcript channel because of ${error}!`))
+            if (this.transcriptChannel) console.log("Transcript channel found and on standby!")
         }
 
         this.addEventHandlers()

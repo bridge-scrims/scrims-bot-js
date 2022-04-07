@@ -30,15 +30,27 @@ class ScrimsSyncHostFeature {
     async startUp() {
 
         this.bot.on('userUpdate', (oldUser, newUser) => this.onUserUpdate(oldUser, newUser))
+        this.bot.on('guildCreate', guild => this.onGuildJoin(guild))
         
         const guild = await this.fetchHostGuild()
+        if (guild) await this.intitializeGuild(guild)
+
+    }
+
+    async onGuildJoin(guild) {
+
+        if (guild.id == this.mainDiscordServer) await this.intitializeGuild(guild)
+
+    }
+
+    async intitializeGuild(guild) {
 
         // First add the bot as a scrims user so that it can be an executor
         const botMember = await guild.members.fetch(this.bot.user.id)
         await this.initializeMember(botMember)
 
         const members = await this.fetchHostGuildMembers()
-        if (guild && members) await this.initializeMembers(guild, members)
+        if (members) await this.initializeMembers(guild, members)
 
     }
 
@@ -52,7 +64,7 @@ class ScrimsSyncHostFeature {
     async fetchHostGuild() {
 
         return this.bot.guilds.fetch(this.mainDiscordServer).then(guild => guild?.fetch())
-            .catch(error => console.error(`Unable to fetch main discord server!`, error))
+            .catch(error => console.error(`Unable to fetch main discord server because of ${error}!`))
 
     }
 
@@ -62,7 +74,7 @@ class ScrimsSyncHostFeature {
         if (guild) {
 
             return guild.members.fetch()
-                .catch(error => console.error(`Unable to fetch members of mein discord server!`, error))
+                .catch(error => console.error(`Unable to fetch members of main discord server!`, error))
 
         }
 

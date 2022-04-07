@@ -12,6 +12,15 @@ class SuggestionsTable extends DBTable {
         super(client, "scrims_suggestion", "get_suggestions", foreigners);
 
     }
+
+    // @Overrides
+    initializeListeners() {
+
+        this.ipc.on('suggestion_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('suggestion_update', message => this.cache.update(message.payload.data, message.payload.selector))
+        this.ipc.on('suggestion_create', message => this.cache.push(message.payload))
+
+    }
     
 
 }

@@ -14,7 +14,7 @@ async function onInteraction(interaction) {
     if (!interaction.guild)
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Guild Only", "This should only be used in discord servers!"));
 
-    if (interaction.channelId != interaction.client.suggestions.channelId)
+    if (interaction.channel !== interaction.client.suggestions.suggestionChannels[interaction.guild.id])
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Wrong Channel", "This should only be used in the suggestions channel!"));
 
     if (interaction instanceof MessageComponentInteraction) return onComponent(interaction);
@@ -22,6 +22,38 @@ async function onInteraction(interaction) {
     if (interaction instanceof ModalSubmitInteraction) return onModalSubmit(interaction);
     
     await interaction.reply({ content: "How did we get here?", ephemeral: true });
+
+}
+
+async function logDanger(interaction, message, error=null) {
+
+    const context = { 
+
+        guild_name: interaction.guild.name, 
+        guild_icon: interaction.guild.iconURL(), 
+        
+        suggestion: interaction.suggestion,
+
+        executor_id: interaction.user.id,
+        error
+
+    }
+
+    await interaction.client.suggestions.logError(message, context)
+
+}
+
+async function onError(interaction, action, error, abort) {
+
+    if (abort) {
+
+        if (interaction.replied) await interaction.editReply(SuggestionsResponseMessageBuilder.failedMessage(action))
+        else await interaction.reply(SuggestionsResponseMessageBuilder.failedMessage(action))
+
+    }
+
+    await logDanger(interaction, `Unable to ${action} while handling a **${interaction.commandName}** command!`, error)
+    return false;
 
 }
 
@@ -41,7 +73,7 @@ async function verifySuggestionRequest(interaction) {
     }
         
     const cooldown = cooldowns[interaction.userId] ?? null
-    if (cooldown) {
+    if (cooldown && (!(await interaction.member.hasPermission("support")))) {
 
         return interaction.reply({ 
             content: `You are currently on suggestion cooldown! You can create a suggestion again <t:${Math.round(cooldown/1000)}:R>.`, 
@@ -106,22 +138,36 @@ async function onRemoveSuggestion(interaction) {
 
     const suggestion = interaction.client.database.suggestions.cache.get({ message_id: interaction.targetId })[0]
     if (!suggestion) return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Unkown Suggestion", "This can only be used on suggestion messages!"));
+    
+    interaction.suggestion = suggestion
 
     const interactorIsAuthor = (suggestion.creator.discord_id == interaction.userId);
+    if (suggestion.epic && interactorIsAuthor) 
+        return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Not Removable", "Since your suggestion is so liked it can not be removed!"));
 
     if (!(await interaction.member.hasPermission("staff")) && !interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
 
-    const response = await interaction.targetMessage.delete().catch(error => error)
-    if (response instanceof Error) {
-        console.error(`Failed to remove suggestion message ${interaction.targetId} after requested by ${interaction.user.tag}!`, error)
-        return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Remove Failed", "This suggestion could not be removed. Please try again later."));
+    // Remove from cache so that when the message delete event arrives it will not trigger anything
+    const removed = interaction.client.database.suggestions.cache.remove({ id_suggestion: suggestion.id_suggestion })
+
+    const response = await interaction.targetMessage.delete().catch(error => onError(interaction, `remove suggestions message`, error, true))
+    if (response === false) {
+
+        // Deleting the message failed so add the suggestion back to cache
+        removed.forEach(removed => interaction.client.database.suggestions.cache.push(removed))
+
+        return false;
+
     }
 
-    await interaction.client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion }).catch(console.error)
+    await interaction.client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion })
+        .catch(error => onError(interaction, `remove suggestion from the database`, error, false))
 
+    await logDanger(interaction, `Removed a suggestion.`)
+    
     const message = (interactorIsAuthor) ? `Your suggestion was successfully removed.` : `The suggestion was foribly removed.`
-    await interaction.reply({ content: message, ephemeral: true });
+    await interaction.reply({ content: message, ephemeral: true })
 
 }
 
@@ -142,16 +188,16 @@ async function onModalSubmit(interaction) {
     const suggestion = interaction.getTextInputValue('suggestion')
 
     const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(60, suggestion, interaction.createdTimestamp, interaction.user)
-    const message = await interaction.channel.send({ embeds: [embed] }).catch(error => error)
-    if (message instanceof Error) {
-        console.error(`Unexpected error while adding a suggestion for ${interaction.user.tag}!`, response)
-        return interaction.editReply(SuggestionsResponseMessageBuilder.errorMessage("Suggestion Failed", "Sadly your suggestion was not able to be added. Please try again later."));
-    }
+    const message = await interaction.channel.send({ embeds: [embed] }).catch(error => onError(interaction, `send suggestions message`, error, true))
+    if (message === false) return false;
 
-    Promise.all(interaction.client.suggestions.getVoteEmojis(interaction.guild).map(emoji => message.react(emoji))).catch(console.error)
+    const result = Promise.all(interaction.client.suggestions.getVoteEmojis(interaction.guild).map(emoji => message.react(emoji)))
+        .catch(error => onError(interaction, `react to suggestions message`, error, true))
+
+    if (result === false) return message.delete().catch(error => onError(interaction, `delete suggestion message after aborting command`, error, false));
 
     // Delete the current suggestions info message since it is no longer the last message
-    await interaction.client.suggestions.sendSuggestionInfoMessage(interaction.channel, true).catch(console.error);
+    await interaction.client.suggestions.sendSuggestionInfoMessage(interaction.channel, true)
 
     const newSuggestion = { 
 
@@ -165,13 +211,10 @@ async function onModalSubmit(interaction) {
 
     if (!(await interaction.member.hasPermission("support"))) addCooldown(interaction.userId)
 
-    const createResult = await interaction.client.database.suggestions.create(newSuggestion).catch(error => error)
-    if (createResult instanceof Error) {
-
-        await message.delete().catch(console.error)
-        throw createResult;
-
-    }
+    const createResult = await interaction.client.database.suggestions.create(newSuggestion)
+        .catch(error => onError(interaction, `add suggestion to database`, error, true))
+   
+    if (createResult === false) return message.delete().catch(error => onError(interaction, `delete suggestion message after aborting command`, error, false));
 
     await interaction.editReply(SuggestionsResponseMessageBuilder.suggestionSentMessage());
 

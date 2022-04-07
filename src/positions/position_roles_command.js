@@ -44,6 +44,25 @@ function sortPositionRoles(interaction, positionRoles) {
 
 }
 
+async function hasPositionPermissions(interaction, position, action) {
+
+    if (typeof position.level === "number") {
+
+        // For example if staff wants to change the roll for owner position
+        if (!(await interaction.client.permissions.hasPermissionLevel(interaction.member, position.name))) {
+
+            return interaction.editReply(
+                PositionsResponseMessageBuilder.missingPermissionsMessage(`You are not allowed to ${action}!`)
+            ).then(() => false);
+
+        } 
+            
+    }
+
+    return true;
+
+}
+
 async function onStatusSubcommand(interaction) {
 
     const positionRoles = await interaction.client.database.positionRoles.get({ guild_id: interaction.guild.id }, false).catch(error => error)
@@ -74,6 +93,8 @@ async function onReloadSubcommand(interaction) {
 }
 
 async function addPositionRole(interaction, role, position) {
+
+    if (!(await hasPositionPermissions(interaction, position, `connect anything to bridge scrims **${position.name}** position`))) return false;
 
     const positionRole = { id_position: position.id_position, role_id: role.id, guild_id: interaction.guild.id }
     const result = await interaction.client.database.positionRoles.create(positionRole).catch(error => error)
@@ -163,6 +184,8 @@ async function onConfirmComponent(interaction) {
 
 async function removePositionRoles(interaction, selector) {
 
+    if (!(await hasPositionPermissions(interaction, position, `connect anything to bridge scrims **${position.name}** position`))) return false;
+    
     const result = await interaction.client.database.positionRoles.remove(selector).catch(error => error)
     if (result instanceof Error) {
 
