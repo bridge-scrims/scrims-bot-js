@@ -15,10 +15,12 @@ class SuggestionsFeature {
         this.suggestionInfoMessages = {}
         this.suggestionChannels = {}
 
+        commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
+        
         this.bot.database.addTable("suggestions", new SuggestionsTable(this.bot.database))
 
-        bot.on('ready', () => this.onReady())
-        bot.on('startupComplete', () => this.onStartup())
+        this.bot.on('ready', () => this.onReady())
+        this.bot.on('startupComplete', () => this.onStartup())
 
     }
 
@@ -175,7 +177,7 @@ class SuggestionsFeature {
 
     async logError(msg, context) {
 
-        if (context.error) console.error(msg, context)
+        if (context.error) console.error(`${msg} Reason: ${context.error}`)
         this.bot.database.ipc.notify(`suggestions_error`, { msg, ...context })
 
     }

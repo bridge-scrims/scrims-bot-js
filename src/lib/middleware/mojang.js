@@ -20,7 +20,7 @@ class MojangClient {
     static server = 'api.mojang.com';
     static unavailable = false;
 
-    static cache = new BridgeScrimsCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 10000 });
+    static cache = new BridgeScrimsCache(3600, 10000);
 
     static async getName(uuid) {
 
@@ -35,9 +35,8 @@ class MojangClient {
             const value = this.cache.get(key)
             if (value?.uuid == uuid) {
 
-                this.cache.del(key)
                 value.ign = name
-                this.cache.set(key, value)
+                this.cache.update(key, value)
 
             }
 

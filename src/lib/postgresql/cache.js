@@ -2,30 +2,26 @@ const BridgeScrimsCache = require("../cache");
 
 class DBCache extends BridgeScrimsCache {
 
-    constructor(options) {
+    constructor(defaultTTL, maxKeys) {
 
-        super(options);
+        super(defaultTTL, maxKeys);
         
         this.index = 0
 
     }
 
-    push(value, ttl) {
+    push(value, ttl, handels) {
 
         if (value === null) return null;
 
-        const entries = this.getEntrys(value)
-        if (entries.length > 0) entries.forEach(([ key, _ ]) => this.set( key, value, ttl ))
-        else {
+        const existing = this.getEntrys(value)[0] ?? []
+        const key = existing[0] ?? this.index
+        if (!existing[0]) this.index += 1
 
-            this.set( this.index, value, ttl )
-            this.index += 1
-
-        }
-
-        this.emit('push', value)
+        const inserted = this.set( key, value, ttl, handels )
+        this.emit('push', inserted)
         
-        return value;
+        return inserted;
 
     }
 
@@ -38,13 +34,16 @@ class DBCache extends BridgeScrimsCache {
 
     getEntrys(filter={}, invert=false) {
         
-        const entries = Object.entries(this.data).map(([ key, value ]) => ([ key, value.v ]))
+        const entries = Object.entries(this.data).map(([ key, value ]) => ([ key, value.value ]))
         
         if (invert) return entries.filter(([ _, value ]) => !this.valuesMatch(filter, value));
         else return entries.filter(([ _, value ]) => this.valuesMatch(filter, value));
 
     }
 
+    /**
+     * @override
+     */
     get(filter, invert) {
 
         const entrys = this.getEntrys(filter, invert)
@@ -56,23 +55,51 @@ class DBCache extends BridgeScrimsCache {
 
         const entrys = this.getEntrys(filter, false)
 
-        entrys.forEach(([ key, _ ]) => this.del(key))
+        entrys.forEach(([ _, value ]) => value.close())
+        entrys.forEach(([ key, _ ]) => this.delete(key))
         entrys.forEach(([ _, value ]) => this.emit('remove', value))
 
         return entrys.map(([ _, value ]) => value);
 
     }
 
+    /**
+     * @override
+     */
     update(newValue, filter) {
 
         const entries = this.getEntrys(filter, false)
             .map(([ key, oldValue ]) => [ key, { ...oldValue, ...newValue } ])
             .filter(([ key, value ]) => !this.valuesMatch(super.get(key), value))
 
-        entries.forEach(([ key, value ]) => this.set(key, value))
+        entries.forEach(([ key, value ]) => super.update(key, value))
         entries.forEach(([ key, value ]) => this.emit('update', value))
 
         return true;
+
+    }
+
+    /**
+     * @override
+     */
+    addHandle(filter) {
+
+        const entry = this.getEntrys(filter, false)[0]
+        if (!entry) return false;
+
+        return super.addHandle(entry[0])
+
+    }
+
+    /**
+     * @override
+     */
+    removeHandle(filter, handleIndex) {
+
+        const entry = this.getEntrys(filter, false)[0]
+        if (!entry) return false;
+
+        return super.removeHandle(entry[0], handleIndex)
 
     }
 

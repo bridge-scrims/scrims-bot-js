@@ -26,7 +26,7 @@ class HypixelClient {
     static server = 'api.hypixel.net';
     static unavailable = false;
 
-    static cache = new BridgeScrimsCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 10000 });
+    static cache = new BridgeScrimsCache(3600, 10000);
 
     static getCachedPlayer(uuid) {
 

@@ -5,19 +5,22 @@ const { interactionHandler, commands, eventListeners } = require("./commands");
 
 class ScrimsSyncHostFeature {
 
-    constructor(bot, config) {
+    constructor(bot) {
 
         this.bot = bot
-        this.config = config
         
-        Object.entries(config).forEach(([key, value]) => this[key] = value)
-
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
         
         this.positionUpdater = new ScrimsPositionUpdater(this)
 
         bot.on('ready', () => this.addEventHandlers())
         bot.on('databaseConnected', () => this.startUp())
+
+    }
+
+    get hostGuildId() {
+
+        return this.bot.hostGuildId;
 
     }
 
@@ -39,7 +42,7 @@ class ScrimsSyncHostFeature {
 
     async onGuildJoin(guild) {
 
-        if (guild.id == this.mainDiscordServer) await this.intitializeGuild(guild)
+        if (guild.id == this.hostGuildId) await this.intitializeGuild(guild)
 
     }
 
@@ -63,7 +66,7 @@ class ScrimsSyncHostFeature {
 
     async fetchHostGuild() {
 
-        return this.bot.guilds.fetch(this.mainDiscordServer).then(guild => guild?.fetch())
+        return this.bot.guilds.fetch(this.hostGuildId)
             .catch(error => console.error(`Unable to fetch main discord server because of ${error}!`))
 
     }

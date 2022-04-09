@@ -89,7 +89,14 @@ async function onTransferPositionsComponent(interaction) {
 
 async function onCreatePositionCommand(interaction) {
 
+    const name = interaction.getString("name")
+    const sticky = interaction.getBoolean("sticky")
+    const level = interaction.getInteger("level")
 
+    const position = await interaction.client.database.positions.create({ name, sticky, level })
+    if (!position) return interaction.reply(ScrimsMessageBuilder.failedMessage(`create this position`));
+
+    await interaction.reply({ content: `Created **${position.name}**.`, ephemeral: true })
 
 }
 

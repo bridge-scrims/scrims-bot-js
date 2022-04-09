@@ -24,7 +24,7 @@ class ScrimsPositionUpdater {
 
     get hostGuildId() {
 
-        return this.sync.mainDiscordServer;
+        return this.sync.hostGuildId;
 
     }
 

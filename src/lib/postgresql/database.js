@@ -5,6 +5,11 @@ const pgIPC = require('pg-ipc');
 const DBTable = require("./table.js");
 const DBCache = require('./cache.js');
 
+const ScrimsUser = require('../scrims/user.js');
+const ScrimsUserPosition = require('../scrims/userPosition.js');
+const ScrimsPosition = require('../scrims/position.js');
+const ScrimsPositionRole = require('../scrims/positionRole.js');
+
 class DBClient {
 
     constructor(config) {
@@ -29,7 +34,7 @@ class DBClient {
         this.addTable("userPositions", new UserPositionsTable(this))
         this.addTable("positionRoles", new PositionRolesTable(this))
 
-        this.addTable("guildEntryTypes", new DBTable(this, "scrims_guild_entry_type"))
+        this.addTable("guildEntryTypes", new DBTable(this, "scrims_guild_entry_type", null, [], { defaultTTL: -1, maxKeys: -1 }))
         this.addTable("guildEntrys", new GuildEntrysTable(this))
 
     }
@@ -111,7 +116,7 @@ class UserTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_user", "get_users");
+        super(client, "scrims_user", "get_users", [], {}, ScrimsUser);
 
     }
 
@@ -134,7 +139,7 @@ class PositionTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_position", "get_positions");
+        super(client, "scrims_position", "get_positions", [], { defaultTTL: -1, maxKeys: -1 }, ScrimsPosition);
 
     }
 
@@ -189,8 +194,8 @@ class UserPositionsTable extends DBTable {
             [ "position", "id_position", "get_position_id" ] 
         ]
 
-        super(client, "scrims_user_position", "get_user_positions", foreigners);
-        this.cache = new UserPositionCache()
+        super(client, "scrims_user_position", "get_user_positions", foreigners, {}, ScrimsUserPosition);
+        this.cache = new UserPositionCache(3600, 5000)
 
     }
 
@@ -217,7 +222,7 @@ class PositionRolesTable extends DBTable {
             [ "position", "id_position", "get_position_id" ]
         ]
 
-        super(client, "scrims_position_role", "get_position_roles", foreigners);
+        super(client, "scrims_position_role", "get_position_roles", foreigners, {}, ScrimsPositionRole);
 
     }
 
