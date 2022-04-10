@@ -16,7 +16,7 @@ class ScrimsUserPosition extends DBTable.Row {
         /**
          * @type ScrimsUser
          */
-         this.user = this.getUser(userData.user);
+        this.user = this.getUser(userData.user);
 
 
         /**
@@ -47,11 +47,58 @@ class ScrimsUserPosition extends DBTable.Row {
 
     }
 
+    /**
+     * @override 
+     */
+    updateWith(data) {
+
+        if (data.user && (data.id_user != this.id_user)) {
+
+            this.removeUserHandle()
+
+            this.id_user = data.user.id_user
+            this.user = this.getUser(data.user)
+
+        }
+
+        if (data.position && (data.id_position != this.id_position)) {
+
+            this.removePositionHandle()
+
+            this.id_position = data.position.id_position
+            this.position = this.getPosition(data.position)
+
+        }
+
+        if (data.id_executor) this.id_executor = data.id_executor;
+        
+        if (data.given_at) this.given_at = data.given_at;
+
+        if (data.expires_at) this.expires_at = data.expires_at;
+
+        return this;
+        
+    }
+
+    /**
+     * @override 
+     */
     close() {
+        
+        this.removeUserHandle()
+        this.removePositionHandle()
+        
+    }
+
+    removeUserHandle() {
 
         if (this.user && this.__userHandleId) 
             this.client.users.cache.removeHandle({ id_user: this.user.id_user }, this.__userHandleId)
             
+    }
+
+    removePositionHandle() {
+  
         if (this.position && this.__positionHandleId) 
             this.client.positions.cache.removeHandle({ id_position: this.position.id_position }, this.__positionHandleId)
 

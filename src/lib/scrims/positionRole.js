@@ -30,7 +30,38 @@ class ScrimsPositionRole extends DBTable.Row {
 
     }
 
+    /**
+     * @override 
+     */
+    updateWith(data) {
+
+        if (data.position && (data.id_position != this.id_position)) {
+
+            this.removePositionHandle()
+
+            this.id_position = data.position.id_position
+            this.position = this.getPosition(data.position)
+
+        }
+
+        if (data.role_id) this.role_id = data.role_id;
+        
+        if (data.guild_id) this.guild_id = data.guild_id;
+
+        return this;
+        
+    }
+
+    /**
+     * @override 
+     */
     close() {
+        
+        this.removePositionHandle()
+        
+    }
+
+    removePositionHandle() {
 
         if (this.position && this.__positionHandleId) 
             this.client.positions.cache.removeHandle({ id_position: this.position.id_position }, this.__positionHandleId)

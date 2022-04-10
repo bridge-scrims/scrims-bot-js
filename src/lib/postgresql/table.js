@@ -11,7 +11,7 @@ class TableRow {
 
         this.#client = client
 
-        this.replaceAll(data)
+        this.updateWith(data)
 
     }
 
@@ -27,15 +27,16 @@ class TableRow {
 
     }
 
-    replaceAll(data) {
+    updateWith(data) {
 
         Object.entries(data).forEach(([key, value]) => this[key] = value)
+        return this;
 
     }
 
     toJSON() {
 
-        return JSON.stringify(this, (key, value) => (key == "client" ? undefined : value));
+        return Object.fromEntries(Object.entries(this).filter(([key, _]) => !key.startsWith("__")));
 
     }
 
@@ -183,6 +184,15 @@ class DBTable {
 
     }
 
+    getRow(rowData) {
+
+        return new this.RowClass(this.client, rowData)
+
+    }
+
+    /** 
+     * @returns { Promise<TableRow[]> }
+     */
     async get(selectCondition, useCache=true) { 
 
         const cached = this.cache.get(selectCondition)
@@ -193,12 +203,15 @@ class DBTable {
         const result = await this.query( ...query )
         
         const items = (this.getFunction === null) ? result.rows : result.rows[0][this.getFunction]
-        const rows = items.map(item => new this.RowClass(this.client, item))
+        const rows = items.map(item => this.getRow(item))
         rows.forEach(row => this.cache.push(row))
         return rows;
 
     }
 
+    /** 
+     * @returns { Promise<TableRow> }
+     */
     async create(data) {
 
         const [ formated, formatValues ] = this.format({ ...data })
@@ -226,6 +239,9 @@ class DBTable {
 
     }
 
+    /** 
+     * @returns { Promise<TableRow[]> }
+     */
     async remove(selector) {
 
         const [ formated, values1 ] = this.format({ ...selector })

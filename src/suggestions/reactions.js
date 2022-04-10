@@ -37,9 +37,7 @@ async function onUnpopularSuggestion(client, message, suggestion) {
 
     const context = { 
 
-        guild_name: message.guild.name, 
-        guild_icon: message.guild.iconURL(), 
-        
+        guild_id: message.guild.id,
         executor_id: client.user.id,
         suggestion
 

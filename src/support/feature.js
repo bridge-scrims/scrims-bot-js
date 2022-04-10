@@ -9,40 +9,67 @@ const onSubmit = require("./modals");
 
 class SupportFeature {
 
-    constructor(bot, config) {
+    static tables = { 
 
+        /**
+         * @type { TicketTypeTable }
+         */
+        ticketTypes: null, 
+        
+        /**
+         * @type { TicketStatusTable }
+         */
+        ticketStatus: null,
+        
+        /**
+         * @type { TicketTable }
+         */
+        tickets: null, 
+        
+        /**
+         * @type { TicketMessagesTable }
+         */
+        transcript: null 
+
+    }
+
+    constructor(bot) {
+
+        /**
+         * @type { import("../bot") }
+         */
         this.bot = bot
-        this.config = config
-
-        Object.entries(config).forEach(([key, value]) => this[key] = value)
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
 
-        this.transcriptChannel = null
+        this.transcriptChannels = {}
 
+        this.database.addTable("ticketStatus", new TicketStatusTable(this.database))
+        this.database.addTable("ticketTypes", new TicketTypeTable(this.database))
+        this.database.addTable("tickets", new TicketTable(this.database))
+        
+        this.database.addTable("transcript", new TicketMessagesTable(this.database))
+        
         bot.on('ready', () => this.onReady())
+
+    }
+
+    get database() {
+
+        return this.bot.database;
 
     }
 
     async onReady() {
 
-        this.bot.database.tickets = new TicketTable(this.bot.database)
-        this.bot.database.ticketTypes = new TicketTypeTable(this.bot.database)
-        this.bot.database.ticketStatus = new TicketStatusTable(this.bot.database)
-        this.bot.database.transcript = new TicketMessagesTable(this.bot.database)
+        this.transcriber = new TicketTranscriber(this.database.transcript)
 
-        await this.bot.database.tickets.connect()
-        await this.bot.database.ticketTypes.connect()
-        await this.bot.database.ticketStatus.connect()
-        await this.bot.database.transcript.connect()
+        const channelConfigs = this.database.guildEntrys.cache.get({ type: { name: "tickets_transcript_channel" } })
+        await Promise.all(channelConfigs.map(entry => this.setTranscriptChannel(entry.guild_id, entry.value)))
 
-        this.transcriber = new TicketTranscriber(this.bot.database.transcript)
-
-        if (this.transcriptChannelId) {
-            this.transcriptChannel = await this.bot.channels.fetch(this.transcriptChannelId)
-                .catch(error => console.error(`Unable to get transcript channel because of ${error}!`))
-            if (this.transcriptChannel) console.log("Transcript channel found and on standby!")
-        }
+        this.database.guildEntrys.cache.on('push', config => this.onConfigCreate(config))
+        this.database.guildEntrys.cache.on('update', config => this.onConfigCreate(config))
+        this.database.guildEntrys.cache.on('remove', config => this.onConfigRemove(config))
 
         this.addEventHandlers()
 
@@ -55,9 +82,63 @@ class SupportFeature {
 
     }
 
+    async onConfigCreate(config) {
+
+        if (config.type.name == "tickets_transcript_channel") {
+
+            await this.setTranscriptChannel(config.guild_id, config.value)
+
+        }
+
+    }
+
+    async onConfigRemove(config) {
+
+        if (config.type.name == "tickets_transcript_channel") {
+
+            delete this.transcriptChannels[config.guild_id]
+            await this.logError(`Transcript channel unconfigured!`, { guild_id: config.guild_id })
+
+        }
+
+    }
+
+    getTranscriptChannel(guildId) {
+
+        return this.transcriptChannels[guildId] ?? null;
+
+    }
+
+    async setTranscriptChannel(guildId, channelId) {
+
+        const channel = await this.bot.channels.fetch(channelId)
+            .catch(error => this.logError(`Fetching tickets transcript channel failed!`, { guild_id: guildId, error }))
+
+        if (channel) {
+
+            await this.logSuccess(`Transcript channel set as **${channel.name}**.`, { guild_id: config.guild_id })
+            this.transcriptChannels[guildId] = channel
+
+        }
+
+    }
+
+    async logError(msg, context) {
+
+        if (context.error) console.error(`${msg} Reason: ${context.error}`)
+        this.database.ipc.notify(`support_error`, { msg, ...context })
+
+    }
+
+    async logSuccess(msg, context) {
+
+        this.database.ipc.notify(`support_success`, { msg, ...context })
+
+    }
+
     async onMessageCreate(message) {
 
-        const ticket = this.bot.database.tickets.cache.get({ channel_id: message.channel.id })[0]
+        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
         if (message.author.id == this.bot.user.id) return false;
@@ -73,7 +154,7 @@ class SupportFeature {
 
         }
 
-        await this.bot.database.transcript.create(ticketMessage)
+        await this.database.transcript.create(ticketMessage)
             .catch(error => console.error(`Unable to log support ticket message because of ${error}`, ticketMessage))
 
     }
@@ -87,10 +168,10 @@ class SupportFeature {
 
     async onMessageDelete(message) {
 
-        const ticket = this.bot.database.tickets.cache.get({ channel_id: message.channel.id })[0]
+        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
-        await this.bot.database.transcript.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })
+        await this.database.transcript.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })
             .catch(error => console.error(`Unable to log support ticket message deletion because of ${error}`, ticket))
 
     }
@@ -126,16 +207,25 @@ class SupportFeature {
 
     async onChannelDelete(channel) {
 
-        const tickets = await this.bot.database.tickets.get({ channel_id: channel.id, status: { name: "open" } }).catch(console.error)
-        await Promise.all(tickets.map(ticket => this.closeTicket(channel, ticket))).catch(console.error)
+        const transcriptChannel = this.getTranscriptChannel(channel.guild.id)
+        if (transcriptChannel?.id === channel.id) {
+
+            delete this.transcriptChannels[channel.guild.id]
+            await this.logError(`Transcript channel was deleted!`, { guild_id: channel.guild.id, executor_id: channel?.executor?.id })
+
+        }
+
+        const tickets = await this.database.tickets.get({ channel_id: channel.id, status: { name: "open" } }).catch(console.error)
+        await Promise.all(tickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor))).catch(console.error)
 
     }
 
-    async closeTicket(channel, ticket) {
+    async closeTicket(channel, ticket, executor) {
 
+        await this.logError(`Closed a ticket.`, { guild_id: channel.guild.id, ticket, executor_id: executor?.id })
         await this.transcriber.send(channel.guild, ticket)
 
-        await this.bot.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })
+        await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })
         await channel.delete().catch(() => { /* Channel could already be deleted. */ })
 
     }

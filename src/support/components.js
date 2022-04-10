@@ -98,7 +98,7 @@ async function onAccept(interaction) {
     const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "accepted the close request" }
     await transcriber.transcribe(interaction.ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
     
-    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket)
+    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.user)
 
 }
 

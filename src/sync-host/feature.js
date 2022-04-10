@@ -7,6 +7,9 @@ class ScrimsSyncHostFeature {
 
     constructor(bot) {
 
+        /**
+         * @type { import("../bot") }
+         */
         this.bot = bot
         
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))

@@ -7,8 +7,20 @@ const { Message } = require("discord.js");
 
 class SuggestionsFeature {
 
+    static tables = { 
+
+        /**
+         * @type { SuggestionsTable }
+         */
+        suggestions: null
+
+    }
+
     constructor(bot) {
 
+        /**
+         * @type { import("../bot") }
+         */
         this.bot = bot
         
         this.suggestionInfoMessageReloads = {}
@@ -16,11 +28,17 @@ class SuggestionsFeature {
         this.suggestionChannels = {}
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
-        
-        this.bot.database.addTable("suggestions", new SuggestionsTable(this.bot.database))
+
+        this.database.addTable("suggestions", new SuggestionsTable(this.database))
 
         this.bot.on('ready', () => this.onReady())
         this.bot.on('startupComplete', () => this.onStartup())
+
+    }
+
+    get database() {
+
+        return this.bot.database;
 
     }
 
@@ -36,14 +54,14 @@ class SuggestionsFeature {
 
     async onStartup() {
 
-        const channelConfigs = this.bot.database.guildEntrys.cache.get({ type: { name: "suggestions_channel" } })
+        const channelConfigs = this.database.guildEntrys.cache.get({ type: { name: "suggestions_channel" } })
         const configured = channelConfigs.filter(entry => this.getVoteConst(entry.guild_id))
 
         await Promise.all(configured.map(entry => this.startupGuild(entry.guild_id, entry.value)))
 
-        this.bot.database.guildEntrys.cache.on('push', config => this.onConfigCreate(config))
-        this.bot.database.guildEntrys.cache.on('update', config => this.onConfigCreate(config))
-        this.bot.database.guildEntrys.cache.on('remove', config => this.onConfigRemove(config))
+        this.database.guildEntrys.cache.on('push', config => this.onConfigCreate(config))
+        this.database.guildEntrys.cache.on('update', config => this.onConfigCreate(config))
+        this.database.guildEntrys.cache.on('remove', config => this.onConfigRemove(config))
         
     }
 
@@ -81,7 +99,7 @@ class SuggestionsFeature {
         const channelId = this.bot.getConfig(guild.id, "epic_suggestions_channel")
         if (!channelId) return false;
 
-        const context = { guild_name: guild.name, guild_icon: guild.iconURL(), channel_id: channelId }
+        const context = { guild_id: guild.id, channel_id: channelId }
 
         const channel = await this.bot.channels.fetch(channelId)
             .catch(error => this.logError(`Epic suggestions channel could not be fetched!`, { ...context, error }))
@@ -104,8 +122,7 @@ class SuggestionsFeature {
             .catch(error => this.logError(`Suggestions guild could not be fetched!`, { ...context, error }))
         if (!guild) return false;
 
-        context.guild_name = guild.name
-        context.guild_icon = guild.iconURL()
+        context.guild_id = guild.id
 
         const channel = await this.bot.channels.fetch(channelId)
             .catch(error => this.logError(`Suggestions channel could not be fetched!`, { ...context, error }))
@@ -132,7 +149,7 @@ class SuggestionsFeature {
         if (this.suggestionInfoMessages[guildId] instanceof Message) {
 
             const guild = this.suggestionInfoMessages[guildId].guild
-            await this.logError(`Suggestions unconfigured.`, { guild_name: guild.name, guild_icon: guild.iconURL() })
+            await this.logError(`Suggestions unconfigured.`, { guild_id: guild.id })
 
             await this.suggestionInfoMessages[guildId].delete().catch(() => null);
 
@@ -148,9 +165,8 @@ class SuggestionsFeature {
         
         const context = { 
 
-            guild_name: channel.guild.name, 
-            guild_icon: channel.guild.iconURL(), 
-            
+            guild_id: channel.guild.id,
+
             channel_name: channel.name, 
             executor_id: channel?.executor?.id
 
@@ -178,13 +194,13 @@ class SuggestionsFeature {
     async logError(msg, context) {
 
         if (context.error) console.error(`${msg} Reason: ${context.error}`)
-        this.bot.database.ipc.notify(`suggestions_error`, { msg, ...context })
+        this.database.ipc.notify('suggestions_error', { msg, ...context })
 
     }
 
     async logSuccess(msg, context) {
 
-        this.bot.database.ipc.notify(`suggestions_success`, { msg, ...context })
+        this.database.ipc.notify(`suggestions_success`, { msg, ...context })
 
     }
 
@@ -215,18 +231,17 @@ class SuggestionsFeature {
 
     async onMessageDelete(message) {
 
-        const suggestion = this.bot.database.suggestions.cache.get({ message_id: message.id })[0]
+        const suggestion = this.database.suggestions.cache.get({ message_id: message.id })[0]
 
         // If a suggestion message was delted it should also be deleted in the database
-        await this.bot.database.suggestions.remove({ message_id: message.id }).catch(console.error);
+        await this.database.suggestions.remove({ message_id: message.id }).catch(console.error);
 
         if (suggestion) {
 
             const context = { 
 
-                guild_name: message.guild.name, 
-                guild_icon: message.guild.iconURL(), 
-                
+                guild_id: message.guild.id,
+
                 message_id: message.id, 
                 suggestion,
     
@@ -257,7 +272,7 @@ class SuggestionsFeature {
 
     async sendSuggestionInfoMessage(channel, resend) {
 
-        const context = { guild_name: channel.guild.name, guild_icon: channel.guild.iconURL(), channel_name: channel.name }
+        const context = { guild_id: channel.guild.id, channel_name: channel.name }
 
         this.suggestionChannels[channel.guild.id] = channel;
         

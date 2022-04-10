@@ -10,6 +10,9 @@ class DBCache extends BridgeScrimsCache {
 
     }
 
+    /**
+     * @returns { TableRow | false }
+     */
     push(value, ttl, handels) {
 
         if (value === null) return null;
@@ -19,7 +22,7 @@ class DBCache extends BridgeScrimsCache {
         if (!existing[0]) this.index += 1
 
         const inserted = this.set( key, value, ttl, handels )
-        this.emit('push', inserted)
+        if (inserted) this.emit('push', inserted)
         
         return inserted;
 
@@ -28,6 +31,10 @@ class DBCache extends BridgeScrimsCache {
     valuesMatch(obj1, obj2) {
 
         if (!obj1 || !obj2) return false;
+
+        if (typeof obj1.toJSON === "function") obj1 = obj1.toJSON();
+        if (typeof obj2.toJSON === "function") obj2 = obj2.toJSON();
+
         return Object.entries(obj1).every(([key, value]) => (value instanceof Object) ? this.valuesMatch(value, obj2[key]) : (obj2[key] == value));
 
     }
@@ -43,6 +50,7 @@ class DBCache extends BridgeScrimsCache {
 
     /**
      * @override
+     * @returns { TableRow[] }
      */
     get(filter, invert) {
 
@@ -51,6 +59,10 @@ class DBCache extends BridgeScrimsCache {
 
     }
 
+    /**
+     * @override
+     * @returns { TableRow[] }
+     */
     remove(filter) {
 
         const entrys = this.getEntrys(filter, false)
@@ -69,7 +81,7 @@ class DBCache extends BridgeScrimsCache {
     update(newValue, filter) {
 
         const entries = this.getEntrys(filter, false)
-            .map(([ key, oldValue ]) => [ key, { ...oldValue, ...newValue } ])
+            .map(([ key, oldValue ]) => [ key, oldValue.updateWith(newValue) ])
             .filter(([ key, value ]) => !this.valuesMatch(super.get(key), value))
 
         entries.forEach(([ key, value ]) => super.update(key, value))

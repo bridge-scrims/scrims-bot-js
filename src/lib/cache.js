@@ -135,6 +135,7 @@ class BridgeScrimsCache extends EventEmitter {
         if (existing && existing.handels > 0) return false;
 
         this.data[key] = { value, deathTime: this.getDeathTime(ttl), handels }
+        return value;
 
     }
 

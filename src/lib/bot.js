@@ -7,10 +7,9 @@ const HypixelClient = require("./middleware/hypixel");
 const ScrimsCommandInstaller = require("./commands");
 const ScrimsMessageBuilder = require("./responses");
 const MojangClient = require("./middleware/mojang");
+const DBClient = require("./postgresql/database");
 const ResponseTemplates = require("./responses");
-const DBTable = require("./postgresql/database");
 const auditEvents = require("./audited_events");
-
 
 class ScrimsBot extends Client {
 
@@ -21,7 +20,7 @@ class ScrimsBot extends Client {
         this.eventHandlers = {};
         this.config = config;
 
-        this.database = new DBTable(config.dbLogin)
+        this.database = new DBClient(config.dbLogin)
         this.commands = new ScrimsCommandInstaller(this);
         this.hypixel = new HypixelClient(config.hypixelToken);
         this.mojang = new MojangClient();
@@ -104,6 +103,9 @@ class ScrimsBot extends Client {
         console.log("Connected to database!")
 
         this.permissions = new ScrimsPermissionsClient(this.database)
+
+        const guilds = await this.guilds.fetch()
+        await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
 
         await this.commands.initializeCommands()
 
@@ -333,6 +335,30 @@ class ScrimsBot extends Client {
 
     }
 
+    async updateScrimsGuild(oldGuild, newGuild) {
+
+        const existing = this.database.guilds.cache.get({ guild_id: newGuild.id })[0]
+        if (!existing) {
+
+            return this.database.guilds.create({
+
+                guild_id: newGuild.id,
+                name: newGuild.name,
+                icon: (newGuild?.icon ?? null)
+
+            }).catch(error => console.error(`Unable to create scrims guild because of ${error}!`));
+
+        }
+
+        if (oldGuild?.name != newGuild.name || oldGuild?.icon != newGuild.icon) {
+
+            await this.database.guilds.update({ guild_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
+                .catch(error => console.error(`Unable to update scrims guild because of ${error}!`))
+
+        }
+
+    }
+
     addEventListeners() {
 
         this.on('modalSubmit', interaction => this.onInteractEvent(interaction, "ModalSubmit"))
@@ -343,6 +369,9 @@ class ScrimsBot extends Client {
 
         this.on('messageReactionAdd', (reaction, user) => this.onReaction(reaction, user, "ReactionAdd"))
         this.on('messageReactionRemove', (reaction, user) => this.onReaction(reaction, user, "ReactionRemove"))
+
+        this.on('guildCreate', guild => this.updateScrimsGuild(null, guild))
+        this.on('guildUpdate', (oldGuild, newGuild) => this.updateScrimsGuild(oldGuild, newGuild))
 
         this.on('guildCreate', guild => this.commands.updateGuildCommandsPermissions(guild))
 

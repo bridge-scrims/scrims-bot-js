@@ -10,6 +10,8 @@ INSERT INTO scrims_guild_entry_type (name) VALUES ('positions_log_channel');
 INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_log_channel');
 INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_log_channel');
 
+INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_transcript_channel');
+
 INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_channel');
 INSERT INTO scrims_guild_entry_type (name) VALUES ('epic_suggestions_channel');
 
@@ -36,6 +38,14 @@ INTO retval;
 RETURN retval;
 END $$ 
 LANGUAGE plpgsql;
+
+CREATE TABLE scrims_guild (
+
+    guild_id TEXT NULL,
+    name TEXT NOT NULL,
+    icon TEXT NULL
+        
+);
 
 CREATE TABLE scrims_guild_entry (
 
@@ -65,6 +75,7 @@ EXECUTE '
     json_agg(
         json_build_object(
             ''guild_id'', scrims_guild_entry.guild_id,
+            ''guild'', to_json(scrims_guild),
             ''id_type'', scrims_guild_entry.id_type,
             ''type'', to_json(guild_entry_type),
             ''value'', scrims_guild_entry.value
@@ -72,6 +83,7 @@ EXECUTE '
     )
     FROM 
     scrims_guild_entry 
+    LEFT JOIN scrims_guild ON scrims_guild.guild_id = scrims_guild_entry.guild_id 
     LEFT JOIN scrims_guild_entry_type guild_entry_type ON guild_entry_type.id_type = scrims_guild_entry.id_type 
 
     WHERE 

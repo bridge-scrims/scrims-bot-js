@@ -71,6 +71,14 @@ class ScrimsUser extends DBTable.Row {
 
     }
 
+    avatarURL(discordClient) {
+
+        const defaultAvatar = discordClient.rest.cdn.DefaultAvatar(this.discord_discriminator % 5)
+        const avatar = discordClient.rest.cdn.Avatar(this.discord_id, this.discord_avatar, undefined, undefined, true)
+        return avatar ?? defaultAvatar;
+
+    }
+
 }
 
 module.exports = ScrimsUser;

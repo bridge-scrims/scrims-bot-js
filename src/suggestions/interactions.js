@@ -29,11 +29,8 @@ async function logDanger(interaction, message, error=null) {
 
     const context = { 
 
-        guild_name: interaction.guild.name, 
-        guild_icon: interaction.guild.iconURL(), 
-        
+        guild_id: interaction.guild.id, 
         suggestion: interaction.suggestion,
-
         executor_id: interaction.user.id,
         error
 

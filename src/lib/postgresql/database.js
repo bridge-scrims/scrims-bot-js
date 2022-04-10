@@ -1,14 +1,15 @@
-
 const Pool = require('pg-pool');
 const pgIPC = require('pg-ipc');
 
 const DBTable = require("./table.js");
 const DBCache = require('./cache.js');
 
-const ScrimsUser = require('../scrims/user.js');
 const ScrimsUserPosition = require('../scrims/userPosition.js');
-const ScrimsPosition = require('../scrims/position.js');
 const ScrimsPositionRole = require('../scrims/positionRole.js');
+const ScrimsGuildEntry = require('../scrims/guild_entry.js');
+const ScrimsPosition = require('../scrims/position.js');
+const ScrimsGuild = require('../scrims/guild.js');
+const ScrimsUser = require('../scrims/user.js');
 
 class DBClient {
 
@@ -28,9 +29,10 @@ class DBClient {
 
         this.tables = []
 
+        this.addTable("guilds", new DBTable(this, "scrims_guild", null, [], { defaultTTL: -1, maxKeys: -1 }, ScrimsGuild))
         this.addTable("users", new UserTable(this))
 
-        this.addTable("positions", new PositionTable(this))
+        this.addTable("positions", new DBTable(this, "scrims_position", "get_positions", [], { defaultTTL: -1, maxKeys: -1 }, ScrimsPosition))
         this.addTable("userPositions", new UserPositionsTable(this))
         this.addTable("positionRoles", new PositionRolesTable(this))
 
@@ -93,7 +95,7 @@ class GuildEntrysTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_guild_entry", "get_guild_entrys", [ "type", "id_type", "get_guild_entry_type_id" ]);
+        super(client, "scrims_guild_entry", "get_guild_entrys", [ "type", "id_type", "get_guild_entry_type_id" ], { defaultTTL: -1, maxKeys: -1 }, ScrimsGuildEntry);
 
     }
 
@@ -103,7 +105,7 @@ class GuildEntrysTable extends DBTable {
 
         this.ipc.on('guild_entry_remove', message => this.cache.remove(message.payload))
         this.ipc.on('guild_entry_update', message => this.cache.update(message.payload.data, message.payload.selector))
-        this.ipc.on('guild_entry_create', message => this.cache.push(message.payload))
+        this.ipc.on('guild_entry_create', message => this.cache.push(this.getRow(message.payload)))
 
     }
     
@@ -126,36 +128,7 @@ class UserTable extends DBTable {
 
         this.ipc.on('scrims_user_remove', message => this.cache.remove(message.payload))
         this.ipc.on('scrims_user_update', message => this.cache.update(message.payload.data, message.payload.selector))
-        this.ipc.on('scrims_user_create', message => this.cache.push(message.payload))
-
-    }
-
-
-}
-
-
-class PositionTable extends DBTable {
-
-
-    constructor(client) {
-
-        super(client, "scrims_position", "get_positions", [], { defaultTTL: -1, maxKeys: -1 }, ScrimsPosition);
-
-    }
-
-
-    // @Overrites
-    initializeListeners() {
-
-        this.ipc.on('user_position_update', message => this._onPositionInstance(message.payload.data.position))
-        this.ipc.on('user_position_create', message => this._onPositionInstance(message.payload.position))
-
-    }
-
-    _onPositionInstance(position) {
-
-        const updated = this.cache.update(position, { id_position: position.id_position })
-        if (!updated) this.cache.push(position)
+        this.ipc.on('scrims_user_create', message => this.cache.push(this.getRow(message.payload)))
 
     }
 
@@ -205,7 +178,7 @@ class UserPositionsTable extends DBTable {
 
         this.ipc.on('user_position_remove', message => this.cache.remove(message.payload))
         this.ipc.on('user_position_update', message => this.cache.update(message.payload.data, message.payload.selector))
-        this.ipc.on('user_position_create', message => this.cache.push(message.payload))
+        this.ipc.on('user_position_create', message => this.cache.push(this.getRow(message.payload)))
 
     }
     
@@ -232,7 +205,7 @@ class PositionRolesTable extends DBTable {
 
         this.ipc.on('position_role_remove', message => this.cache.remove(message.payload))
         this.ipc.on('position_role_update', message => this.cache.update(message.payload.data, message.payload.selector))
-        this.ipc.on('position_role_create', message => this.cache.push(message.payload))
+        this.ipc.on('position_role_create', message => this.cache.push(this.getRow(message.payload)))
 
     }
     
