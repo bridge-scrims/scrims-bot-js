@@ -39,6 +39,12 @@ class DBCache extends BridgeScrimsCache {
 
     }
 
+    /**
+     * 
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert 
+     * @returns { [ string, any ][] }
+     */
     getEntrys(filter={}, invert=false) {
         
         const entries = Object.entries(this.data).map(([ key, value ]) => ([ key, value.value ]))
@@ -50,8 +56,10 @@ class DBCache extends BridgeScrimsCache {
 
     /**
      * @override
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert
      * @returns { TableRow[] }
-     */
+     */ 
     get(filter, invert) {
 
         const entrys = this.getEntrys(filter, invert)
@@ -81,9 +89,9 @@ class DBCache extends BridgeScrimsCache {
     update(newValue, filter) {
 
         const entries = this.getEntrys(filter, false)
+            .filter(([ _, oldValue ]) => !this.valuesMatch(newValue, oldValue))
             .map(([ key, oldValue ]) => [ key, oldValue.updateWith(newValue) ])
-            .filter(([ key, value ]) => !this.valuesMatch(super.get(key), value))
-
+            
         entries.forEach(([ key, value ]) => super.update(key, value))
         entries.forEach(([ key, value ]) => this.emit('update', value))
 

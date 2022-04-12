@@ -105,6 +105,8 @@ async function addPositionRole(interaction, role, position) {
 
     }
 
+    interaction.client.database.ipc.notify('audited_position_role_create', { executor_id: interaction.user.id, positionRole: result })
+
     const positionRoles = interaction.client.database.positionRoles.cache.get({ guild_id: interaction.guild.id })
     const sortedPositionRoles = sortPositionRoles(interaction, positionRoles)
     const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles)
@@ -193,6 +195,8 @@ async function removePositionRoles(interaction, selector) {
         return interaction.editReply(PositionsResponseMessageBuilder.failedMessage(`remove position roles`)).then(() => false);
 
     }
+
+    interaction.client.database.ipc.notify('audited_position_role_remove', { executor_id: interaction.user.id, selector })
     return true;
 
 }
@@ -215,7 +219,7 @@ async function onRemoveSubcommand(interaction) {
     const positionFilter = position ? { id_position: position.id_position } : { };
     const selector = { guild_id: interaction.guild.id, role_id: role.id, ...positionFilter }
     
-    const existing = interaction.client.database.positionRoles.cache.get(selector)
+    const existing = await interaction.client.database.positionRoles.get(selector)
     if (existing.length === 0) {
 
         const message = `${role} is not connected to ${position ? `bridge scrims **${position.name}**!` : `any bridge scrims positions!`}`;

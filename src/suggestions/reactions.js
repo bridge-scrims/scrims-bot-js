@@ -56,7 +56,7 @@ async function onUnpopularSuggestion(client, message, suggestion) {
         return false;
 
     }
-
+    
     await client.suggestions.logError(`Removed a suggestion because of it getting ${suggestion.downVotes} down vote(s).`, context)
 
     await client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion })

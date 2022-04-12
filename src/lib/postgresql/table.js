@@ -48,13 +48,20 @@ class DBTable {
 
     constructor(client, name, getFunction=null, foreigners=[], cacheConfig={}, RowClass=TableRow) {
 
+        /**
+         * @type { import('./database') }
+         */
         this.client = client
+        
         this.name = name
         this.getFunction = getFunction
         this.foreigners = foreigners
 
         this.RowClass = RowClass
 
+        /**
+         * @type { DBCache }
+         */
         this.cache = new DBCache(cacheConfig?.defaultTTL ?? 3600, cacheConfig?.maxKeys ?? 5000)
 
     }

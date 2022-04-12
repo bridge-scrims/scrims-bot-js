@@ -43,6 +43,7 @@ class SupportFeature {
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
 
         this.transcriptChannels = {}
+        this.ticketCategorys = {}
 
         this.database.addTable("ticketStatus", new TicketStatusTable(this.database))
         this.database.addTable("ticketTypes", new TicketTypeTable(this.database))
@@ -78,7 +79,7 @@ class SupportFeature {
         this.bot.on('messageDeleteBulk', messages => this.onMessageDeleteBulk(messages))
         this.bot.on('messageUpdate', (oldMessage, newMessage) => this.onMessageUpdate(oldMessage, newMessage))
 
-        this.bot.on('channelDelete', channel => this.onChannelDelete(channel))
+        this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel))
 
     }
 
@@ -90,6 +91,18 @@ class SupportFeature {
 
         }
 
+        if (config.type.name == "tickets_report_category") {
+
+            await this.setTicketsCategory(config.guild_id, config.value, 'report')
+
+        }
+
+        if (config.type.name == "tickets_support_category") {
+
+            await this.setTicketsCategory(config.guild_id, config.value, 'support')
+
+        }
+
     }
 
     async onConfigRemove(config) {
@@ -97,9 +110,31 @@ class SupportFeature {
         if (config.type.name == "tickets_transcript_channel") {
 
             delete this.transcriptChannels[config.guild_id]
-            await this.logError(`Transcript channel unconfigured!`, { guild_id: config.guild_id })
+            this.logError(`Transcript channel unconfigured!`, { guild_id: config.guild_id })
 
         }
+
+        if (config.type.name == "tickets_report_category") {
+
+            delete this.ticketCategorys[config.guild_id]?.report
+            this.logError(`Ticket report category unconfigured!`, { guild_id: config.guild_id })
+
+        }
+
+        if (config.type.name == "tickets_support_category") {
+
+            delete this.ticketCategorys[config.guild_id]?.support
+            this.logError(`Ticket support category unconfigured!`, { guild_id: config.guild_id })
+
+        }
+
+    }
+
+    getTicketCategory(guildId, typeName) {
+
+        if (!(guildId in this.ticketCategorys)) return null;
+
+        return this.ticketCategorys[guildId][typeName] ?? null;
 
     }
 
@@ -116,21 +151,37 @@ class SupportFeature {
 
         if (channel) {
 
-            await this.logSuccess(`Transcript channel set as **${channel.name}**.`, { guild_id: config.guild_id })
+            this.logSuccess(`Transcript channel set as **${channel.name}**.`, { guild_id: guildId })
             this.transcriptChannels[guildId] = channel
 
         }
 
     }
 
-    async logError(msg, context) {
+    async setTicketsCategory(guildId, channelId, typeName) {
+
+        const channel = await this.bot.channels.fetch(channelId)
+            .catch(error => this.logError(`Fetching ${typeName} ticket category failed!`, { guild_id: guildId, error }))
+
+        if (channel) {
+
+            this.logSuccess(`The category for ${typeName} tickets set as **${channel.name}**.`, { guild_id: guildId })
+            
+            if (!(guildId in this.ticketCategorys)) this.ticketCategorys[guildId] = {}
+            this.ticketCategorys[guildId][typeName] = channel
+
+        }
+
+    }
+
+    logError(msg, context) {
 
         if (context.error) console.error(`${msg} Reason: ${context.error}`)
         this.database.ipc.notify(`support_error`, { msg, ...context })
 
     }
 
-    async logSuccess(msg, context) {
+    logSuccess(msg, context) {
 
         this.database.ipc.notify(`support_success`, { msg, ...context })
 
@@ -211,9 +262,21 @@ class SupportFeature {
         if (transcriptChannel?.id === channel.id) {
 
             delete this.transcriptChannels[channel.guild.id]
-            await this.logError(`Transcript channel was deleted!`, { guild_id: channel.guild.id, executor_id: channel?.executor?.id })
+            this.logError(`Deleted the transcript channel!`, { guild_id: channel.guild.id, executor_id: channel?.executor?.id })
 
         }
+
+        const categorys = this.ticketCategorys[channel.guild.id] ?? {}
+        const hits = Object.entries(categorys).filter(([_, category]) => category.id === channel.id).map(([typeName, _]) => typeName)
+        hits.forEach(typeName => delete categorys[typeName])
+
+        this.logError(
+            `Deleted the ${hits.join('and')} ticket category${(hits.length > 1) ? 's' : ''}!`, 
+            { guild_id: channel.guild.id, executor_id: channel?.executor?.id }
+        )
+
+        const types = [ 'tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category' ]
+        await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name }, value: channel.id }))).catch(console.error)
 
         const tickets = await this.database.tickets.get({ channel_id: channel.id, status: { name: "open" } }).catch(console.error)
         await Promise.all(tickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor))).catch(console.error)
@@ -222,7 +285,7 @@ class SupportFeature {
 
     async closeTicket(channel, ticket, executor) {
 
-        await this.logError(`Closed a ticket.`, { guild_id: channel.guild.id, ticket, executor_id: executor?.id })
+        this.logError(`Closed a ticket.`, { guild_id: channel.guild.id, ticket, executor_id: executor?.id })
         await this.transcriber.send(channel.guild, ticket)
 
         await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })

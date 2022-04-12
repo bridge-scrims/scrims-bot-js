@@ -20,9 +20,24 @@ class ScrimsBot extends Client {
         this.eventHandlers = {};
         this.config = config;
 
+        /**
+         * @type { DBClient }
+         */
         this.database = new DBClient(config.dbLogin)
+
+        /**
+         * @type { ScrimsCommandInstaller }
+         */
         this.commands = new ScrimsCommandInstaller(this);
+
+        /**
+         * @type { HypixelClient }
+         */
         this.hypixel = new HypixelClient(config.hypixelToken);
+
+        /**
+         * @type { MojangClient }
+         */
         this.mojang = new MojangClient();
         
         Object.entries(config).forEach(([key, value]) => this[key] = value)
@@ -158,8 +173,10 @@ class ScrimsBot extends Client {
         
         if (entry.length > 0) {
 
+            const oldValue = entry[0].value
+            
             await this.database.guildEntrys.update(selector, { value })
-            return interaction.reply({ content: `${entry[0].value} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
+            return interaction.reply({ content: `${oldValue} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
 
         }
 
