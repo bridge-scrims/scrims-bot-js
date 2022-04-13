@@ -25,7 +25,7 @@ class ScrimsUserPosition extends DBTable.Row {
         this.id_position = userData.id_position;
 
          /**
-         * @type ScrimsUser
+         * @type { ScrimsPosition }
          */
         this.position = this.getPosition(userData.position);
 

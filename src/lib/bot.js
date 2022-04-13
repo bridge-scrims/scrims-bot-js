@@ -154,7 +154,7 @@ class ScrimsBot extends Client {
         const entryTypes = await this.database.guildEntryTypes.get({ }, false)
         const relevant = entryTypes.filter(type => type.name.toLowerCase().includes(focused))
         
-        await interaction.respond(relevant.map(type => ({ name: type.name, value: type.id_type })))
+        await interaction.respond([ { name: "All", value: -1 }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])
 
     }
 
@@ -165,6 +165,16 @@ class ScrimsBot extends Client {
 
         const entryTypeId = interaction.options.getInteger("key")
         const value = interaction.options.getString("value") ?? null
+
+        if (entryTypeId === -1) {
+
+            const entrys = await this.database.guildEntrys.get({ guild_id: interaction.guild.id })
+
+            if (entrys.length === 0) return interaction.reply({ content: "Nothing configured for this guild." });
+            
+            return interaction.reply(ScrimsMessageBuilder.configEntrysMessage(entrys));
+
+        }
 
         const selector = { guild_id: interaction.guild.id, id_type: entryTypeId }
         const entry = await this.database.guildEntrys.get(selector)
@@ -228,6 +238,8 @@ class ScrimsBot extends Client {
 
         }catch(error) {
 
+            // Fail safe for unexpected command handler errors e.g. database errors
+
             console.error(`Unexpected error while handling a ${event}!`, error, interactEvent)
 
             if (interactEvent instanceof Interaction || interactEvent instanceof discordModals.ModalSubmitInteraction) {
@@ -268,7 +280,7 @@ class ScrimsBot extends Client {
         const { permissionLevel, allowedPositions, requiredPositions } = interactEvent.scrimsPermissions
         if (!permissionLevel && !allowedPositions && !requiredPositions) return true;
         
-        const hasPermission = interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions).catch(error => error);
+        const hasPermission = await interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions).catch(error => error);
         if (hasPermission instanceof Error) {
 
             console.error(`Unable to check if user has permission because of ${hasPermission}!`)

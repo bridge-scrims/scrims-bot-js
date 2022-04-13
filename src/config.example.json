@@ -1,32 +1,20 @@
 {
-
+    
     "discordToken": "",
     "hypixelToken": "",
 
-    "syncHost": {
-
-        "mainDiscordServer": ""
-
-    },
-
-    "suggestions": {
-
-        "channelId": "",
-        "epicSuggestionsChannelId": "",
-
-        "upVoteEmoji": "",
-        "downVoteEmoji": "",
-        "voteConst": 2
-
-    },
+    "hostGuildId": "911760601926217819",
 
     "dbLogin": {
 
-        "host": "",
-        "username": "",
+        "hostname": "",
+        "port": 8032,
+
+        "username": "bot",
         "password": "",
-        "database": ""
+
+        "database": "scrims"
 
     }
-    
+
 }

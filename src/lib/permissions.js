@@ -5,7 +5,7 @@
  *  - `role:` A discord role id in form of a string
  *  - `hierarchy:` A list of positions with a level ordered by their level e.g. [owner, ..., support, ...]
  *  - `positionRoles:` The discord role(s) that indicate that a permissible has a position
- *  - `permissionLevel:` A position except positions higher in the hierarchy also are used as indicaters hat a permissible has a position
+ *  - `permissionLevel:` A position except positions higher in the hierarchy also are used as indicaters that a permissible has a position
  */
 class ScrimsPermissionsClient {
     
@@ -43,7 +43,7 @@ class ScrimsPermissionsClient {
     /**
      * 
      * @param { String } guildId
-     * @param { String | int } positionResolvable Either the position name or the position id
+     * @param { String | Integer } positionResolvable Either the position name or the position id
      * @returns { String[] } The discord role ids that are required for the position
      */
     getPositionRequiredRoles(guildId, positionResolvable) {
@@ -72,7 +72,7 @@ class ScrimsPermissionsClient {
      * @param  { String } permissionLevel
      * @param  { String[] } allowedPositions Positions that alone will give permission (or)
      * @param  { String[] } requiredPositions Positions that are all required for permission (and)
-     * @returns { Boolean } If the permissible has the given permissionlevel **OR** higher **OR** all the given requiredPositions
+     * @returns { Promise<Boolean> } If the permissible has the given permissionlevel **OR** higher **OR** all the given requiredPositions
      */
     async hasPermission(permissible, permissionLevel, allowedPositions=[], requiredPositions=[]) {
 
@@ -89,17 +89,14 @@ class ScrimsPermissionsClient {
      * 
      * @param  { GuildMember | Role } permissible
      * @param  { String | Integer } positionResolvable
-     * @returns { Boolean } If the permissible has the requiredPosition according to the database
+     * @returns { Promise<Boolean> } If the permissible has the requiredPosition according to the database
      */
     async hasRequiredPosition(permissible, positionResolvable) {
 
         const positionSelector = (typeof positionResolvable === "number") ? { id_position: positionResolvable } : { position: { name: positionResolvable } };
-        
-        // If the user has the position according to the scrims database
         const userPositions = await this.database.userPositions.get({ user: { discord_id: permissible.id }, ...positionSelector })
-        if (userPositions.length > 0) return true;
-
-        return false;
+        
+        return (userPositions.length > 0 && this.hasRequiredPositionRoles(permissible, positionResolvable));
 
     }
 
@@ -107,15 +104,13 @@ class ScrimsPermissionsClient {
     /**
      * 
      * @param  { GuildMember | Role } permissible
-     * @param  { String } requiredPosition
-     * @returns { Boolean } If the permissible has the requiredPosition according to their discord roles
+     * @param  { String | Integer } positionResolvable
+     * @returns { Boolean } If the permissible has the positionResolvable according to their discord roles
      */
-    hasRequiredPositionRoles(permissible, requiredPosition) {
+    hasRequiredPositionRoles(permissible, positionResolvable) {
 
         // If the user has the required discord roles for the position
-        const requiredRoles = this.getPositionRequiredRoles(permissible.guild.id, requiredPosition) 
-        if (requiredRoles.length === 0) return false;
-
+        const requiredRoles = this.getPositionRequiredRoles(permissible.guild.id, positionResolvable) 
         return (requiredRoles.every(roleId => permissible?.roles?.cache?.has(roleId)));
 
     }

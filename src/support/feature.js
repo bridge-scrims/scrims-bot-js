@@ -248,9 +248,16 @@ class SupportFeature {
 
         }
 
-        const existing = await interaction.client.database.tickets.get({ type: { name: typeName }, id_user: interaction.scrimsUser.id_user, status: { name: "open" } })
-        if (existing.length > 0)
-            return interaction.reply(ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (<#${existing[0].channel_id}>)!`)).then(() => false);
+        const existing = await this.database.tickets.get({ type: { name: typeName }, id_user: interaction.scrimsUser.id_user, status: { name: "open" } })
+        if (existing.length > 0) {
+
+            const channel = await this.bot.channels.fetch(existing[0].channel_id).catch(() => null)
+            if (channel) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (${channel})!`)).then(() => false);
+
+            // Ticket is open, but the channel does not exist
+            await this.closeTicket({ guild: interaction.guild }, existing[0], null)
+        
+        }
 
         return true;
 
@@ -285,11 +292,12 @@ class SupportFeature {
 
     async closeTicket(channel, ticket, executor) {
 
-        this.logError(`Closed a ticket.`, { guild_id: channel.guild.id, ticket, executor_id: executor?.id })
+        this.logError(`Closed a ticket.`, { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })
         await this.transcriber.send(channel.guild, ticket)
 
         await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })
-        await channel.delete().catch(() => { /* Channel could already be deleted. */ })
+        
+        if (typeof channel.delete === "function") await channel.delete().catch(() => { /* Channel could already be deleted. */ })
 
     }
 

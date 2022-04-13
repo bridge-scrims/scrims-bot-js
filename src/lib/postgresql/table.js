@@ -3,7 +3,7 @@ const DBCache = require("./cache")
 class TableRow {
 
     /**
-     * @type { DBTable }
+     * @type { import('./database') }
      */
     #client;
 

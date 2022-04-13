@@ -3,10 +3,12 @@ const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
 
 const commandHandlers = {
+
     "close": requestTicketClosure,
     "forceclose": forceCloseTicket,
     "support-message": supportMessage,
     "support-ticket": supportTicket
+    
 }
 async function onCommand(interaction) {
 
@@ -169,11 +171,10 @@ async function forceCloseTicket(interaction) {
 
 async function supportTicket(interaction) {
 
-    const ticketTable = interaction.client.database.tickets;
-    const ticket = ticketTable.cache.get({ channel_id: interaction.channel.id })[0]
+    const ticket = interaction.client.database.tickets.cache.get({ channel_id: interaction.channel.id })[0]
     if (!ticket) return interaction.reply(getMissingTicketPayload()); // This is no support channel (bruh moment) (good commenting whatcats)
-    // I know you like the const keyword :)
     
+    // I know you like the const keyword :)
     const user = interaction.options.getUser("user");
     const operation = interaction.options.getString("operation");
     const operactionPreposition = ((operation === "add") ? "to" : "from")

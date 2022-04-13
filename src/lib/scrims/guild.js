@@ -1,3 +1,4 @@
+const { Constants } = require("discord.js");
 const DBTable = require("../postgresql/table");
 
 class ScrimsGuild extends DBTable.Row {
@@ -29,10 +30,16 @@ class ScrimsGuild extends DBTable.Row {
 
     }
 
-    iconURL(discordClient) {
+    /**
+     * 
+     * @returns { String } The guild's icon URL or null
+     */
+    iconURL() {
 
         if (!this.icon) return null;
-        return discordClient.rest.cdn.Icon(this.guild_id, this.icon, undefined, undefined, true);
+
+        const cdn = Constants.Endpoints.CDN("https://cdn.discordapp.com")
+        return cdn.Icon(this.guild_id, this.icon, undefined, undefined, true);
 
     }
 

@@ -97,24 +97,16 @@ class DBClient {
         this.ipcClient.on('error', error => console.error(`Unexpected pgsql ipc client error ${error}!`))
         
         this.ipc = pgIPC(this.ipcClient)
-        this.ipc.on('end', () => this.ipcClient?.end())
+        this.ipc.on('end', () => this.ipcClient.end())
 
         await this.initializeCache()
 
     }
 
-    async destroy() {
+    destroy() {
 
-        try {
-
-            await this.ipc.end()
-            await this.pool.end()       
-
-        }catch(error) {
-            
-            console.warn(`Unable to destroy database client!`, error)
-
-        }
+        this.ipc.end()
+        this.pool.end()
 
     }
  

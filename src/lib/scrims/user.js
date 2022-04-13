@@ -1,3 +1,4 @@
+const { Constants } = require("discord.js");
 const DBTable = require("../postgresql/table");
 
 class ScrimsUser extends DBTable.Row {
@@ -71,10 +72,16 @@ class ScrimsUser extends DBTable.Row {
 
     }
 
-    avatarURL(discordClient) {
+    /**
+     * 
+     * @returns { String } The user's avatar URL, default avatar URL or null
+     */
+    avatarURL() {
 
-        const defaultAvatar = discordClient.rest.cdn.DefaultAvatar(this.discord_discriminator % 5)
-        const avatar = discordClient.rest.cdn.Avatar(this.discord_id, this.discord_avatar, undefined, undefined, true)
+        const cdn = Constants.Endpoints.CDN("https://cdn.discordapp.com")
+        
+        const defaultAvatar = cdn.DefaultAvatar(this.discord_discriminator % 5)
+        const avatar = cdn.Avatar(this.discord_id, this.discord_avatar, undefined, undefined, true)
         return avatar ?? defaultAvatar;
 
     }

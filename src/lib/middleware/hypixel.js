@@ -154,7 +154,7 @@ class HypixelClient {
 
         return got(url, { 'timeout': 5000, responseType: 'json' }).then((response) => {
 
-            const throttle = ((response.headers['ratelimit-remaining'] < 3) && !this.throttling.active)
+            const throttle = ((response.headers['ratelimit-remaining'] < 2) && !this.throttling.active)
             if (throttle) this.enableThrottling(response.headers['ratelimit-reset'] || response.headers['retry-after'])
             const debug = { 
                 'RateLimit-Remaining': response.headers['ratelimit-remaining'] || 'None', 
