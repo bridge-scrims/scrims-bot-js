@@ -7,10 +7,9 @@ const HypixelClient = require("./middleware/hypixel");
 const ScrimsCommandInstaller = require("./commands");
 const ScrimsMessageBuilder = require("./responses");
 const MojangClient = require("./middleware/mojang");
+const DBClient = require("./postgresql/database");
 const ResponseTemplates = require("./responses");
-const DBTable = require("./postgresql/database");
 const auditEvents = require("./audited_events");
-
 
 class ScrimsBot extends Client {
 
@@ -21,9 +20,24 @@ class ScrimsBot extends Client {
         this.eventHandlers = {};
         this.config = config;
 
-        this.database = new DBTable(config.dbLogin)
+        /**
+         * @type { DBClient }
+         */
+        this.database = new DBClient(config.dbLogin)
+
+        /**
+         * @type { ScrimsCommandInstaller }
+         */
         this.commands = new ScrimsCommandInstaller(this);
+
+        /**
+         * @type { HypixelClient }
+         */
         this.hypixel = new HypixelClient(config.hypixelToken);
+
+        /**
+         * @type { MojangClient }
+         */
         this.mojang = new MojangClient();
         
         Object.entries(config).forEach(([key, value]) => this[key] = value)
@@ -105,6 +119,9 @@ class ScrimsBot extends Client {
 
         this.permissions = new ScrimsPermissionsClient(this.database)
 
+        const guilds = await this.guilds.fetch()
+        await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
+
         await this.commands.initializeCommands()
 
         this.addEventHandler("reload", interaction => this.onReloadCommand(interaction))
@@ -137,7 +154,7 @@ class ScrimsBot extends Client {
         const entryTypes = await this.database.guildEntryTypes.get({ }, false)
         const relevant = entryTypes.filter(type => type.name.toLowerCase().includes(focused))
         
-        await interaction.respond(relevant.map(type => ({ name: type.name, value: type.id_type })))
+        await interaction.respond([ { name: "All", value: -1 }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])
 
     }
 
@@ -149,6 +166,16 @@ class ScrimsBot extends Client {
         const entryTypeId = interaction.options.getInteger("key")
         const value = interaction.options.getString("value") ?? null
 
+        if (entryTypeId === -1) {
+
+            const entrys = await this.database.guildEntrys.get({ guild_id: interaction.guild.id })
+
+            if (entrys.length === 0) return interaction.reply({ content: "Nothing configured for this guild." });
+            
+            return interaction.reply(ScrimsMessageBuilder.configEntrysMessage(entrys));
+
+        }
+
         const selector = { guild_id: interaction.guild.id, id_type: entryTypeId }
         const entry = await this.database.guildEntrys.get(selector)
 
@@ -156,8 +183,10 @@ class ScrimsBot extends Client {
         
         if (entry.length > 0) {
 
+            const oldValue = entry[0].value
+            
             await this.database.guildEntrys.update(selector, { value })
-            return interaction.reply({ content: `${entry[0].value} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
+            return interaction.reply({ content: `${oldValue} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
 
         }
 
@@ -209,6 +238,8 @@ class ScrimsBot extends Client {
 
         }catch(error) {
 
+            // Fail safe for unexpected command handler errors e.g. database errors
+
             console.error(`Unexpected error while handling a ${event}!`, error, interactEvent)
 
             if (interactEvent instanceof Interaction || interactEvent instanceof discordModals.ModalSubmitInteraction) {
@@ -249,7 +280,7 @@ class ScrimsBot extends Client {
         const { permissionLevel, allowedPositions, requiredPositions } = interactEvent.scrimsPermissions
         if (!permissionLevel && !allowedPositions && !requiredPositions) return true;
         
-        const hasPermission = interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions).catch(error => error);
+        const hasPermission = await interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions).catch(error => error);
         if (hasPermission instanceof Error) {
 
             console.error(`Unable to check if user has permission because of ${hasPermission}!`)
@@ -265,8 +296,10 @@ class ScrimsBot extends Client {
         return this.database.users.create({ 
 
             discord_id: member.id, 
-            discord_tag: member.user.tag, 
-            discord_avatar: member.user.avatarURL(), 
+            discord_username: member.user.username, 
+            discord_discriminator: member.user.discriminator,
+            discord_accent_color: member.user.accentColor,
+            discord_avatar: member.user.avatar, 
             joined_at: Math.round(member.joinedTimestamp/1000) 
             
         }).catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))
@@ -331,6 +364,30 @@ class ScrimsBot extends Client {
 
     }
 
+    async updateScrimsGuild(oldGuild, newGuild) {
+
+        const existing = this.database.guilds.cache.get({ guild_id: newGuild.id })[0]
+        if (!existing) {
+
+            return this.database.guilds.create({
+
+                guild_id: newGuild.id,
+                name: newGuild.name,
+                icon: (newGuild?.icon ?? null)
+
+            }).catch(error => console.error(`Unable to create scrims guild because of ${error}!`));
+
+        }
+
+        if (oldGuild?.name != newGuild.name || oldGuild?.icon != newGuild.icon) {
+
+            await this.database.guilds.update({ guild_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
+                .catch(error => console.error(`Unable to update scrims guild because of ${error}!`))
+
+        }
+
+    }
+
     addEventListeners() {
 
         this.on('modalSubmit', interaction => this.onInteractEvent(interaction, "ModalSubmit"))
@@ -341,6 +398,9 @@ class ScrimsBot extends Client {
 
         this.on('messageReactionAdd', (reaction, user) => this.onReaction(reaction, user, "ReactionAdd"))
         this.on('messageReactionRemove', (reaction, user) => this.onReaction(reaction, user, "ReactionRemove"))
+
+        this.on('guildCreate', guild => this.updateScrimsGuild(null, guild))
+        this.on('guildUpdate', (oldGuild, newGuild) => this.updateScrimsGuild(oldGuild, newGuild))
 
         this.on('guildCreate', guild => this.commands.updateGuildCommandsPermissions(guild))
 

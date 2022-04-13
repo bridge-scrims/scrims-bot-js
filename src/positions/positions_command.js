@@ -99,6 +99,9 @@ async function onTakeSubcommand(interaction) {
 
     }
 
+    const eventPayload = { guild_id: interaction.guild.id, executor_id: interaction.user.id, userPosition: existing[0] }
+    interaction.client.database.ipc.notify('audited_user_position_remove', eventPayload)
+
     const userPositions = interaction.client.database.userPositions.cache.get({ user: { discord_id: user.id } })
     const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(user, sortUserPositions(userPositions))
 
@@ -147,6 +150,8 @@ async function onGiveSubcommand(interaction) {
     const expires_at = await getExpiration(interaction)
     if (expires_at === false) return false;
 
+    if (!(await hasPositionPermissions(interaction, position, `give ${user} the \`${position.name}\` position`))) return false;
+
     if (!(await interaction.member.hasPermission("staff"))) {
 
         if (expires_at === null) {
@@ -161,20 +166,21 @@ async function onGiveSubcommand(interaction) {
 
     }
 
-    if (!(await hasPositionPermissions(interaction, position, `give ${user} the \`${position.name}\` position`))) return false;
-
     const selector = { user: { discord_id: user.id }, id_position: position.id_position }
     const existing = await interaction.client.database.userPositions.get(selector)
     if (existing.length > 0) {
 
+        const eventPayload = { guild_id: interaction.guild.id, executor_id: interaction.user.id, userPosition: existing[0], expires_at }
         if (expires_at) {
 
             await interaction.client.database.userPositions.update(selector, { expires_at })
+            interaction.client.database.ipc.notify('audited_user_position_expire_update', eventPayload)
             return interaction.reply({ content: `Expiration updated! ${user} **${position.name}** position will now expire <t:${expires_at}:R>.`, allowedMentions: { parse: [] }, ephemeral: true });
 
         }
 
         await interaction.client.database.userPositions.update(selector, { expires_at: null })
+        interaction.client.database.ipc.notify('audited_user_position_expire_update', eventPayload)
         return interaction.reply({ content: `Expiration updated! ${user} **${position.name}** position is now permanent.`, allowedMentions: { parse: [] }, ephemeral: true });
         
     }
@@ -187,7 +193,7 @@ async function onGiveSubcommand(interaction) {
 
     const userPosition = { ...selector, expires_at, given_at: Math.round((Date.now()/1000)), id_executor: interaction.scrimsUser.id_user }
     await interaction.client.database.userPositions.create(userPosition)
-
+    
     const userPositions = interaction.client.database.userPositions.cache.get({ user: { discord_id: user.id } })
     const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(user, sortUserPositions(userPositions))
     const expirationMessage = expires_at ? `until <t:${expires_at}:F>` : "permanently"; 

@@ -44,6 +44,25 @@ function sortPositionRoles(interaction, positionRoles) {
 
 }
 
+async function hasPositionPermissions(interaction, position, action) {
+
+    if (typeof position.level === "number") {
+
+        // For example if staff wants to change the roll for owner position
+        if (!(await interaction.client.permissions.hasPermissionLevel(interaction.member, position.name))) {
+
+            return interaction.editReply(
+                PositionsResponseMessageBuilder.missingPermissionsMessage(`You are not allowed to ${action}!`)
+            ).then(() => false);
+
+        } 
+            
+    }
+
+    return true;
+
+}
+
 async function onStatusSubcommand(interaction) {
 
     const positionRoles = await interaction.client.database.positionRoles.get({ guild_id: interaction.guild.id }, false).catch(error => error)
@@ -75,6 +94,8 @@ async function onReloadSubcommand(interaction) {
 
 async function addPositionRole(interaction, role, position) {
 
+    if (!(await hasPositionPermissions(interaction, position, `connect anything to bridge scrims **${position.name}** position`))) return false;
+
     const positionRole = { id_position: position.id_position, role_id: role.id, guild_id: interaction.guild.id }
     const result = await interaction.client.database.positionRoles.create(positionRole).catch(error => error)
     if (result instanceof Error) {
@@ -83,6 +104,8 @@ async function addPositionRole(interaction, role, position) {
         await interaction.editReply(PositionsResponseMessageBuilder.failedMessage(`create a new position role`))
 
     }
+
+    interaction.client.database.ipc.notify('audited_position_role_create', { executor_id: interaction.user.id, positionRole: result })
 
     const positionRoles = interaction.client.database.positionRoles.cache.get({ guild_id: interaction.guild.id })
     const sortedPositionRoles = sortPositionRoles(interaction, positionRoles)
@@ -163,6 +186,8 @@ async function onConfirmComponent(interaction) {
 
 async function removePositionRoles(interaction, selector) {
 
+    if (!(await hasPositionPermissions(interaction, position, `connect anything to bridge scrims **${position.name}** position`))) return false;
+    
     const result = await interaction.client.database.positionRoles.remove(selector).catch(error => error)
     if (result instanceof Error) {
 
@@ -170,6 +195,8 @@ async function removePositionRoles(interaction, selector) {
         return interaction.editReply(PositionsResponseMessageBuilder.failedMessage(`remove position roles`)).then(() => false);
 
     }
+
+    interaction.client.database.ipc.notify('audited_position_role_remove', { executor_id: interaction.user.id, selector })
     return true;
 
 }
@@ -192,7 +219,7 @@ async function onRemoveSubcommand(interaction) {
     const positionFilter = position ? { id_position: position.id_position } : { };
     const selector = { guild_id: interaction.guild.id, role_id: role.id, ...positionFilter }
     
-    const existing = interaction.client.database.positionRoles.cache.get(selector)
+    const existing = await interaction.client.database.positionRoles.get(selector)
     if (existing.length === 0) {
 
         const message = `${role} is not connected to ${position ? `bridge scrims **${position.name}**!` : `any bridge scrims positions!`}`;

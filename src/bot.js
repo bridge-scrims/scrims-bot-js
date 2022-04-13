@@ -1,9 +1,13 @@
-
 const ScrimsSyncHostFeature = require("./sync-host/feature");
 const SuggestionFeature = require("./suggestions/feature");
 const PositionsFeature = require("./positions/feature");
+const DBClient = require("./lib/postgresql/database");
 const SupportFeature = require("./support/feature");
 const ScrimsBot = require("./lib/bot");
+
+/**
+ * @typedef { DBClient & SuggestionFeature.tables & SupportFeature.tables } ScrimsJSBotDBClient
+ */
 
 class ScrimsJSBot extends ScrimsBot {
 
@@ -14,6 +18,11 @@ class ScrimsJSBot extends ScrimsBot {
 
         super(intents, partials, config);
 
+        /**
+         * @type { ScrimsJSBotDBClient }
+         */
+        this.database
+
         this.support = new SupportFeature(this, config.support)
         this.positions = new PositionsFeature(this, config.positions)
         this.suggestions = new SuggestionFeature(this, config.suggestions)
@@ -22,6 +31,5 @@ class ScrimsJSBot extends ScrimsBot {
     }
 
 }
-
 
 module.exports = ScrimsJSBot;

@@ -8,6 +8,7 @@ CREATE TABLE scrims_suggestion (
 
     created_at bigint NOT NULL,
     id_creator int NOT NULL,
+    epic bigint NULL,
 
     FOREIGN KEY(id_creator) 
         REFERENCES scrims_user(id_user)
@@ -21,7 +22,8 @@ CREATE OR REPLACE FUNCTION get_suggestions (
     message_id text default null,
     suggestion text default null,
     created_at bigint default null,
-    id_creator bigint default null
+    id_creator bigint default null,
+    epic bigint default null
 
 ) 
 returns json
@@ -39,7 +41,8 @@ EXECUTE '
             ''suggestion'', scrims_suggestion.suggestion,
             ''created_at'', scrims_suggestion.created_at,
             ''id_creator'', scrims_suggestion.id_creator,
-            ''creator'', to_json(creator)
+            ''creator'', to_json(creator),
+            ''epic'', scrims_suggestion.epic
         )
     )
     FROM 
@@ -52,9 +55,45 @@ EXECUTE '
     ($3 is null or scrims_suggestion.message_id = $3) AND
     ($4 is null or scrims_suggestion.suggestion = $4) AND
     ($5 is null or scrims_suggestion.created_at = $5) AND
-    ($6 is null or scrims_suggestion.id_creator = $6) 
-' USING id_suggestion, channel_id, message_id, suggestion, created_at, id_creator
+    ($6 is null or scrims_suggestion.id_creator = $6) AND
+    ($7 is null or scrims_suggestion.epic = $7)
+' USING id_suggestion, channel_id, message_id, suggestion, created_at, id_creator, epic
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
 LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION process_suggestions_change()
+RETURNS trigger 
+AS $$
+DECLARE
+    suggestions json;
+BEGIN
+
+    IF (TG_OP = 'DELETE') THEN 
+        PERFORM pg_notify('suggestion_remove', to_json(OLD)::text);
+        RETURN OLD;
+    END IF;
+
+    EXECUTE 'SELECT get_suggestions( id_suggestion => $1 )' USING NEW.id_suggestion INTO suggestions;
+
+    IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
+        'suggestion_update', json_build_object(
+            'selector', to_json(OLD), 
+            'data', (suggestions->>0)::json
+        )::text
+    );
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('suggestion_create', suggestions->>0);
+    END IF;
+
+    return NEW;
+
+END $$
+LANGUAGE plpgsql;
+
+
+CREATE TRIGGER suggestion_trigger
+    AFTER INSERT OR UPDATE OR DELETE
+    ON scrims_suggestion
+    FOR EACH ROW
+    EXECUTE PROCEDURE process_suggestions_change();

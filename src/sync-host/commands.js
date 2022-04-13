@@ -71,7 +71,8 @@ async function onTransferPositionsComponent(interaction) {
 
     if (!(await membersInitialized(interaction))) return interaction.update( getNonInitializedErrorPayload() );
 
-    await interaction.update({ content: `Transfering...`, embeds: [], components: [] })
+    await interaction.deferUpdate()
+    await interaction.editReply({ content: `Transfering...`, embeds: [], components: [] })
 
     const result = await interaction.client.syncHost.transferPositions(interaction.guild).catch(error => error)
     if (result instanceof Error) {
@@ -82,12 +83,20 @@ async function onTransferPositionsComponent(interaction) {
     }
 
     await interaction.editReply({ content: `User positions successfully transfered!`, embeds: [], components: [], ephemeral: true })
+        .catch(() => {/* This could take so long, that the interaction expires. */})
 
 }
 
 async function onCreatePositionCommand(interaction) {
 
+    const name = interaction.getString("name")
+    const sticky = interaction.getBoolean("sticky")
+    const level = interaction.getInteger("level")
 
+    const position = await interaction.client.database.positions.create({ name, sticky, level })
+    if (!position) return interaction.reply(ScrimsMessageBuilder.failedMessage(`create this position`));
+
+    await interaction.reply({ content: `Created **${position.name}**.`, ephemeral: true })
 
 }
 

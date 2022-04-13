@@ -6,6 +6,8 @@ class ScrimsMessageBuilder {
     static successGreen = "#00DB0E"
     static errorRed = "#DC0023"
 
+    static intrestingAqua = "#15EFFF"
+
     static errorMessage(title, description) {
 
         return {
@@ -84,6 +86,25 @@ class ScrimsMessageBuilder {
 
         return this.errorMessage("Insufficient Permissions", message);
     
+    }
+
+    static configEntrysMessage(configEntrys) {
+
+        return { 
+
+            ephemeral: true,
+            components: [],
+            embeds: this.createMultipleEmbeds(configEntrys, (configEntrys, idx, containers) => (
+                new MessageEmbed()
+                    .setTitle("Guild Config")
+                    .setColor(this.intrestingAqua)
+                    .setDescription(configEntrys.map(config => `\`•\`**${config.type.name}:** \`${config.value}\``).join("\n"))
+                    .setFooter({ text: `Page ${idx+1}/${containers.length}` })
+                    .setTimestamp(Date.now())
+            ))
+
+        };
+
     }
 
     static createMultipleEmbeds(items, getEmbed) {

@@ -4,6 +4,9 @@ class ScrimsPositionUpdater {
 
     constructor(syncHostFeature) {
 
+        /**
+         * @type { import('./feature') }
+         */
         this.sync = syncHostFeature
 
         this.bot.on("databaseConnected", () => this.startUp())
@@ -24,7 +27,7 @@ class ScrimsPositionUpdater {
 
     get hostGuildId() {
 
-        return this.sync.mainDiscordServer;
+        return this.sync.hostGuildId;
 
     }
 
@@ -35,9 +38,9 @@ class ScrimsPositionUpdater {
         this.bot.on('guildMemberRemove', member => this.onMemberRemove(member))
         this.bot.on('guildMemberAdd', member => this.onMemberAdd(member))
 
-        this.bot.database.positionRoles.cache.on('push', positionRole => this.onPositionRoleChange(positionRole))
-        this.bot.database.positionRoles.cache.on('update', positionRole => this.onPositionRoleChange(positionRole))
-        this.bot.database.positionRoles.cache.on('remove', positionRole => this.onPositionRoleChange(positionRole))
+        this.database.positionRoles.cache.on('push', positionRole => this.onPositionRoleChange(positionRole))
+        this.database.positionRoles.cache.on('update', positionRole => this.onPositionRoleChange(positionRole))
+        this.database.positionRoles.cache.on('remove', positionRole => this.onPositionRoleChange(positionRole))
 
     }
 

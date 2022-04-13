@@ -19,7 +19,11 @@ async function onSubmit(interaction) {
 async function createTicket(interaction) {
 
     const mentionRoles = await getMentionRoles(interaction.guild)
-    const channel = await createTicketChannel(interaction.client, interaction.guild, interaction.channel.parentId, interaction.user, interaction.ticketType)
+
+    const category = interaction.client.support.getTicketCategory(interaction.guild.id, interaction.ticketType)
+    
+    const channelParentId = category?.id ?? interaction?.channel?.parentId;
+    const channel = await createTicketChannel(interaction.client, interaction.guild, channelParentId, interaction.user, interaction.ticketType)
 
     const result = await interaction.client.database.tickets.create({ 
 
@@ -41,6 +45,17 @@ async function createTicket(interaction) {
 
     await interaction.followUp(getCreatedPayload(channel))
     await channel.send(getIntroPayload(interaction.member, mentionRoles, interaction.firstResponse, interaction.ticketType))
+   
+    const logMessage = { 
+
+        id: interaction.id, 
+        createdTimestamp: 
+        interaction.createdTimestamp, 
+        author: interaction.user, 
+        content: `Created a ${interaction.ticketType} ticket. Reason: ${interaction.firstResponse}` 
+
+    }
+    await interaction.client.support.transcriber.transcribe(result.id_ticket, logMessage).catch(console.error)
 
 }
 

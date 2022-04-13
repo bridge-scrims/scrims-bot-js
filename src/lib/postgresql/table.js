@@ -1,15 +1,68 @@
 const DBCache = require("./cache")
 
+class TableRow {
+
+    /**
+     * @type { import('./database') }
+     */
+    #client;
+
+    constructor(client, data) {
+
+        this.#client = client
+
+        this.updateWith(data)
+
+    }
+
+    get client() {
+
+        return this.#client;
+
+    }
+
+    close() {
+
+
+
+    }
+
+    updateWith(data) {
+
+        Object.entries(data).forEach(([key, value]) => this[key] = value)
+        return this;
+
+    }
+
+    toJSON() {
+
+        return Object.fromEntries(Object.entries(this).filter(([key, _]) => !key.startsWith("__")));
+
+    }
+
+}
+
 class DBTable {
 
-    constructor(client, name, getFunction=null, foreigners=[], maxKeys=5000) {
+    static Row = TableRow;
 
+    constructor(client, name, getFunction=null, foreigners=[], cacheConfig={}, RowClass=TableRow) {
+
+        /**
+         * @type { import('./database') }
+         */
         this.client = client
+        
         this.name = name
         this.getFunction = getFunction
         this.foreigners = foreigners
 
-        this.cache = new DBCache({ stdTTL: 3600, checkperiod: 300, maxKeys })
+        this.RowClass = RowClass
+
+        /**
+         * @type { DBCache }
+         */
+        this.cache = new DBCache(cacheConfig?.defaultTTL ?? 3600, cacheConfig?.maxKeys ?? 5000)
 
     }
 
@@ -138,6 +191,15 @@ class DBTable {
 
     }
 
+    getRow(rowData) {
+
+        return new this.RowClass(this.client, rowData)
+
+    }
+
+    /** 
+     * @returns { Promise<TableRow[]> }
+     */
     async get(selectCondition, useCache=true) { 
 
         const cached = this.cache.get(selectCondition)
@@ -148,11 +210,15 @@ class DBTable {
         const result = await this.query( ...query )
         
         const items = (this.getFunction === null) ? result.rows : result.rows[0][this.getFunction]
-        items.forEach(item => this.cache.push(item))
-        return items;
+        const rows = items.map(item => this.getRow(item))
+        rows.forEach(row => this.cache.push(row))
+        return rows;
 
     }
 
+    /** 
+     * @returns { Promise<TableRow> }
+     */
     async create(data) {
 
         const [ formated, formatValues ] = this.format({ ...data })
@@ -160,7 +226,7 @@ class DBTable {
         await this.query( ...this.createInsertQuery(formated, formatValues) )
         
         // Fetch what was just inserted to add it to cache
-        const result = await this.get({ ...data })
+        const result = await this.get({ ...data }).then(rows => rows[0])
         return result;
 
     }
@@ -180,6 +246,9 @@ class DBTable {
 
     }
 
+    /** 
+     * @returns { Promise<TableRow[]> }
+     */
     async remove(selector) {
 
         const [ formated, values1 ] = this.format({ ...selector })

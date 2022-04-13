@@ -161,3 +161,38 @@ INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
 LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION process_ticket_change()
+RETURNS trigger 
+AS $$
+DECLARE
+    tickets json;
+BEGIN
+
+    IF (TG_OP = 'DELETE') THEN 
+        PERFORM pg_notify('ticket_remove', to_json(OLD)::text);
+        RETURN OLD;
+    END IF;
+
+    EXECUTE 'SELECT get_tickets( id_ticket => $1 )' USING NEW.id_ticket INTO tickets;
+
+    IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
+        'ticket_update', json_build_object(
+            'selector', to_json(OLD), 
+            'data', (tickets->>0)::json
+        )::text
+    );
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('ticket_create', tickets->>0);
+    END IF;
+
+    return NEW;
+
+END $$
+LANGUAGE plpgsql;
+
+
+CREATE TRIGGER ticket_trigger
+    AFTER INSERT OR UPDATE OR DELETE
+    ON scrims_ticket
+    FOR EACH ROW
+    EXECUTE PROCEDURE process_ticket_change();

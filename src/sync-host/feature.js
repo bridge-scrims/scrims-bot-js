@@ -5,19 +5,25 @@ const { interactionHandler, commands, eventListeners } = require("./commands");
 
 class ScrimsSyncHostFeature {
 
-    constructor(bot, config) {
+    constructor(bot) {
 
+        /**
+         * @type { import("../bot") }
+         */
         this.bot = bot
-        this.config = config
         
-        Object.entries(config).forEach(([key, value]) => this[key] = value)
-
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
         
         this.positionUpdater = new ScrimsPositionUpdater(this)
 
         bot.on('ready', () => this.addEventHandlers())
         bot.on('databaseConnected', () => this.startUp())
+
+    }
+
+    get hostGuildId() {
+
+        return this.bot.hostGuildId;
 
     }
 
@@ -30,15 +36,27 @@ class ScrimsSyncHostFeature {
     async startUp() {
 
         this.bot.on('userUpdate', (oldUser, newUser) => this.onUserUpdate(oldUser, newUser))
+        this.bot.on('guildCreate', guild => this.onGuildJoin(guild))
         
         const guild = await this.fetchHostGuild()
+        if (guild) await this.intitializeGuild(guild)
+
+    }
+
+    async onGuildJoin(guild) {
+
+        if (guild.id == this.hostGuildId) await this.intitializeGuild(guild)
+
+    }
+
+    async intitializeGuild(guild) {
 
         // First add the bot as a scrims user so that it can be an executor
         const botMember = await guild.members.fetch(this.bot.user.id)
         await this.initializeMember(botMember)
 
         const members = await this.fetchHostGuildMembers()
-        if (guild && members) await this.initializeMembers(guild, members)
+        if (members) await this.initializeMembers(guild, members)
 
     }
 
@@ -51,8 +69,8 @@ class ScrimsSyncHostFeature {
 
     async fetchHostGuild() {
 
-        return this.bot.guilds.fetch(this.mainDiscordServer).then(guild => guild?.fetch())
-            .catch(error => console.error(`Unable to fetch main discord server!`, error))
+        return this.bot.guilds.fetch(this.hostGuildId)
+            .catch(error => console.error(`Unable to fetch main discord server because of ${error}!`))
 
     }
 
@@ -62,7 +80,7 @@ class ScrimsSyncHostFeature {
         if (guild) {
 
             return guild.members.fetch()
-                .catch(error => console.error(`Unable to fetch members of mein discord server!`, error))
+                .catch(error => console.error(`Unable to fetch members of main discord server!`, error))
 
         }
 
@@ -135,7 +153,14 @@ class ScrimsSyncHostFeature {
     async addScrimsUser(member) {
 
         const scrimsUser = { 
-            discord_id: member.id, discord_tag: member.user.tag, joined_at: Math.round(member.joinedTimestamp/1000)
+
+            discord_id: member.id, 
+            discord_username: member.user.username, 
+            discord_discriminator: member.user.discriminator,
+            discord_accent_color: member.user.accentColor,
+            discord_avatar: member.user.avatar,  
+            joined_at: Math.round(member.joinedTimestamp/1000)
+
         }
 
         await this.bot.database.users.create( scrimsUser )
@@ -147,16 +172,23 @@ class ScrimsSyncHostFeature {
 
     async onUserUpdate(oldUser, newUser) {
 
-        if (oldUser.tag != newUser.tag) {
-            await this.updateScrimsUserTag(newUser.id, oldUser.tag, newUser.tag)
+        if (oldUser.tag != newUser.tag || oldUser.avatar != newUser.avatar || oldUser.accentColor != newUser.accentColor) {
+            await this.updateScrimsUser(newUser.id, {
+
+                discord_username: newUser.username, 
+                discord_discriminator: newUser.discriminator,
+                discord_accent_color: newUser.accentColor,
+                discord_avatar: newUser.avatar
+
+            })
         }
 
     }
 
-    async updateScrimsUserTag(discordId, oldTag, discordTag) {
+    async updateScrimsUser(discordId, changes) {
 
-        await this.bot.database.users.update({ discord_id: discordId }, { discord_tag: discordTag })
-            .catch(error => console.error(`Unable to apply change (${oldTag} -> ${discordTag}) to scrims user with discord id ${discordId}!`, error))
+        await this.bot.database.users.update({ discord_id: discordId }, changes)
+            .catch(error => console.error(`Unable to apply changes to scrims user with discord id ${discordId} because of ${error}!`, changes))
 
     }
 
@@ -242,9 +274,21 @@ class ScrimsSyncHostFeature {
         const user = await this.fetchScrimsUser(member.id)
         if (user === null) await this.addScrimsUser(member)
 
-        if (user && (user.discord_tag != member.user.tag))
-            await this.updateScrimsUserTag(member.id, user.discord_tag, member.user.tag)
+        if (user && (
+                user.discord_username != member.user.username 
+                || user.discord_discriminator != member.user.discriminator 
+                || user.discord_accent_color != member.user.accentColor 
+                || user.discord_avatar != member.user.avatar
+            )
+        ) await this.updateScrimsUser(member.id, {
 
+            discord_username: member.user.username, 
+            discord_discriminator: member.user.discriminator,
+            discord_accent_color: member.user.accentColor,
+            discord_avatar: member.user.avatar
+
+        })
+            
         const positions = await this.fetchUserPositions(member.id)
         
         if (positions && positions.filter(position => position.position_name == "bridge_scrims_member").length === 0)

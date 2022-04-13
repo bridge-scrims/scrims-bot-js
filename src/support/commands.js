@@ -3,10 +3,12 @@ const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
 
 const commandHandlers = {
+
     "close": requestTicketClosure,
     "forceclose": forceCloseTicket,
     "support-message": supportMessage,
     "support-ticket": supportTicket
+    
 }
 async function onCommand(interaction) {
 
@@ -104,7 +106,7 @@ async function requestTicketClosure(interaction) {
     if (ticket.id_user == interaction.scrimsUser.id_user) {
 
         // Creator wants to close the ticket so close it
-        return closeTicket(interaction, ticket, `closed this request because of ${reason}`)
+        return closeTicket(interaction, ticket, `closed this request because of ${reason}`, )
 
     }
 
@@ -153,7 +155,7 @@ async function closeTicket(interaction, ticket, content) {
     const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content }
     await interaction.client.support.transcriber.transcribe(ticket.id_ticket, message)
 
-    await interaction.client.support.closeTicket(interaction.channel, ticket)
+    await interaction.client.support.closeTicket(interaction.channel, ticket, interaction.user)
 
 }
 
@@ -169,12 +171,11 @@ async function forceCloseTicket(interaction) {
 
 async function supportTicket(interaction) {
 
-    const ticketTable = interaction.client.database.tickets;
-    const ticket = ticketTable.cache.get({ channel_id: interaction.channel.id })[0]
+    const ticket = interaction.client.database.tickets.cache.get({ channel_id: interaction.channel.id })[0]
     if (!ticket) return interaction.reply(getMissingTicketPayload()); // This is no support channel (bruh moment) (good commenting whatcats)
-    // I know you like the const keyword :)
     
-    const user = interaction.options.getMember("user");
+    // I know you like the const keyword :)
+    const user = interaction.options.getUser("user");
     const operation = interaction.options.getString("operation");
     const operactionPreposition = ((operation === "add") ? "to" : "from")
     
@@ -192,9 +193,13 @@ async function supportTicket(interaction) {
     const color = (operation === "add") ? ScrimsMessageBuilder.successGreen : ScrimsMessageBuilder.errorRed
     const pastTenseOperation = (operation.endsWith('e') ? `${operation}d` : `${operation}ed`) 
 
+    const action = `has been ${pastTenseOperation} ${operactionPreposition} the ticket!`
+    const logMessage = { id: interaction.id, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: `${user.tag} ${action}` }
+    await interaction.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
+
     const embed = new MessageEmbed()
         .setTitle("Action Completed")
-        .setDescription(`${user} has been ${pastTenseOperation} ${operactionPreposition} the ticket!`)
+        .setDescription(`${user} ${action}`)
         .setColor(color)
         .setTimestamp()
 

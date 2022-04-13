@@ -1,10 +1,14 @@
 const { MessageEmbed, MessageAttachment } = require("discord.js");
+const { TicketMessagesTable } = require("./tables");
 
 class TicketTranscriber {
 
     constructor(transcriptTableClient) {
 
-        this.client = transcriptTableClient // Instance of DBClient created in bot.js
+        /**
+         * @type { TicketMessagesTable }
+         */
+        this.client = transcriptTableClient 
 
     }
     
@@ -24,7 +28,9 @@ class TicketTranscriber {
 
     getHTMLContent(ticketMessages) {
 
+        // Prevent html injections
         const escape = (value) => value.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "\\`");
+        
         const getMessageExtra = (message) => message.edits ? `<div class="extra edited">(edited)</div>` : (message.deleted ? `<div class="extra deleted">(deleted)</div>` : ``)
 
         // Will make everything look pretty
@@ -53,7 +59,7 @@ class TicketTranscriber {
                         + `<tr>`
                             + `<td>\${getDate(${message.created_at*1000})}</td>`
                             + `<td>\${getTime(${message.created_at*1000})}</td>`
-                            + `<td>${escape(message.author.discord_tag)}</td>`
+                            + `<td>${escape(message.author.discord_username + "#" + message.author.discord_discriminator)}</td>`
                             + `<td class="last">${escape(message.content)}${getMessageExtra(message)}</td>`
                         + `</tr>`
                     + `\`);`
@@ -129,7 +135,7 @@ class TicketTranscriber {
                 .setFooter({ text: guild.name, iconURL: guild.iconURL({ dynamic: true }) })
                 .setTimestamp(ticket.created_at*1000)
     
-            const channel = guild.client.support.transcriptChannel
+            const channel = guild.client.support.getTranscriptChannel(guild.id)
             if (channel) await channel.send({ embeds: [embed], files: [file] });
             
             const user = await guild.client.users.fetch(ticket.user.discord_id)
@@ -149,7 +155,7 @@ class TicketTranscriber {
     async onUserDMMissed(channel, userId, reason) {
 
         if (!channel) return false;
-        return channel.send(`Couldn't DM <@${userId}> because of \`${reason}\`!`);
+        return channel.send(`Couldn't DM <@${userId}> because of \`${reason}\`!`).catch(console.error);
         
     }
 

@@ -26,7 +26,7 @@ class HypixelClient {
     static server = 'api.hypixel.net';
     static unavailable = false;
 
-    static cache = new BridgeScrimsCache({ stdTTL: 3600, checkperiod: 300, maxKeys: 10000 });
+    static cache = new BridgeScrimsCache(3600, 10000);
 
     static getCachedPlayer(uuid) {
 
@@ -154,7 +154,7 @@ class HypixelClient {
 
         return got(url, { 'timeout': 5000, responseType: 'json' }).then((response) => {
 
-            const throttle = ((response.headers['ratelimit-remaining'] < 3) && !this.throttling.active)
+            const throttle = ((response.headers['ratelimit-remaining'] < 2) && !this.throttling.active)
             if (throttle) this.enableThrottling(response.headers['ratelimit-reset'] || response.headers['retry-after'])
             const debug = { 
                 'RateLimit-Remaining': response.headers['ratelimit-remaining'] || 'None', 
