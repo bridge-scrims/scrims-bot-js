@@ -36,7 +36,7 @@ class ScrimsPositionUpdater {
         this.bot.on('guildMemberUpdate', (oldMember, newMember) => this.onMemberUpdate(oldMember, newMember))
         
         this.bot.on('guildMemberRemove', member => this.onMemberRemove(member))
-        this.bot.on('guildMemberAdd', member => this.onMemberAdd(member))
+        this.bot.on('scrimsGuildMemberAdd', member => this.onMemberAdd(member))
 
         this.database.positionRoles.cache.on('push', positionRole => this.onPositionRoleChange(positionRole))
         this.database.positionRoles.cache.on('update', positionRole => this.onPositionRoleChange(positionRole))
@@ -97,13 +97,8 @@ class ScrimsPositionUpdater {
 
         if (member.guild.id != this.hostGuildId) return false;
 
-        const user = await this.sync.fetchScrimsUser(member.id)
-
         // Make sure the user lost their non sticky positions when they left
-        if (user) await this.sync.removeUnstickyPositions(member.id)
-
-        // Add User to scrims user database
-        if (user === null) await this.sync.addScrimsUser(member)
+        if (member.scrimsUser) await this.sync.removeUnstickyPositions(member.id)
 
         // Give user member position
         await this.sync.addUserMemberPosition(member.id)

@@ -35,7 +35,6 @@ class ScrimsSyncHostFeature {
 
     async startUp() {
 
-        this.bot.on('userUpdate', (oldUser, newUser) => this.onUserUpdate(oldUser, newUser))
         this.bot.on('guildCreate', guild => this.onGuildJoin(guild))
         
         const guild = await this.fetchHostGuild()
@@ -121,13 +120,6 @@ class ScrimsSyncHostFeature {
 
     }
 
-    async fetchScrimsUser(memberId) {
-
-        return this.bot.database.users.get({ discord_id: memberId }).then(users => users[0] ?? null)
-            .catch(error => console.error(`Unable to get scrims user with discord id ${memberId} because of ${error}!`))
-
-    }
-
     async addUserMemberPosition(memberId) {
 
         return this.createScrimsPosition({ position: { name: "bridge_scrims_member" }, user: { discord_id: memberId } }, null)
@@ -152,43 +144,8 @@ class ScrimsSyncHostFeature {
 
     async addScrimsUser(member) {
 
-        const scrimsUser = { 
-
-            discord_id: member.id, 
-            discord_username: member.user.username, 
-            discord_discriminator: member.user.discriminator,
-            discord_accent_color: member.user.accentColor,
-            discord_avatar: member.user.avatar,  
-            joined_at: Math.round(member.joinedTimestamp/1000)
-
-        }
-
-        await this.bot.database.users.create( scrimsUser )
-            .catch(error => console.error(`Unable to create scrims user for member ${member.user.tag} because of ${error}!`, scrimsUser))
-
+        await this.bot.scrimsUsers.createScrimsUser(member)
         await this.addUserMemberPosition(member.id)
-
-    }
-
-    async onUserUpdate(oldUser, newUser) {
-
-        if (oldUser.tag != newUser.tag || oldUser.avatar != newUser.avatar || oldUser.accentColor != newUser.accentColor) {
-            await this.updateScrimsUser(newUser.id, {
-
-                discord_username: newUser.username, 
-                discord_discriminator: newUser.discriminator,
-                discord_accent_color: newUser.accentColor,
-                discord_avatar: newUser.avatar
-
-            })
-        }
-
-    }
-
-    async updateScrimsUser(discordId, changes) {
-
-        await this.bot.database.users.update({ discord_id: discordId }, changes)
-            .catch(error => console.error(`Unable to apply changes to scrims user with discord id ${discordId} because of ${error}!`, changes))
 
     }
 
@@ -271,24 +228,6 @@ class ScrimsSyncHostFeature {
 
     async initializeMember(member) {
 
-        const user = await this.fetchScrimsUser(member.id)
-        if (user === null) await this.addScrimsUser(member)
-
-        if (user && (
-                user.discord_username != member.user.username 
-                || user.discord_discriminator != member.user.discriminator 
-                || user.discord_accent_color != member.user.accentColor 
-                || user.discord_avatar != member.user.avatar
-            )
-        ) await this.updateScrimsUser(member.id, {
-
-            discord_username: member.user.username, 
-            discord_discriminator: member.user.discriminator,
-            discord_accent_color: member.user.accentColor,
-            discord_avatar: member.user.avatar
-
-        })
-            
         const positions = await this.fetchUserPositions(member.id)
         
         if (positions && positions.filter(position => position.position_name == "bridge_scrims_member").length === 0)

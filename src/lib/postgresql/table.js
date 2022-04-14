@@ -2,29 +2,23 @@ const DBCache = require("./cache")
 
 class TableRow {
 
-    /**
-     * @type { import('./database') }
-     */
-    #client;
-
     constructor(client, data) {
 
-        this.#client = client
+        Object.defineProperty(this, 'client', { value: client });
+
+        /**
+         * @type { import('./database') }
+         * @readonly
+         */
+        this.client
 
         this.updateWith(data)
 
     }
 
-    get client() {
-
-        return this.#client;
-
-    }
-
     close() {
 
-
-
+        
     }
 
     updateWith(data) {

@@ -100,7 +100,7 @@ class ScrimsUserTable extends DBTable {
     /**
      * @override
      */
-    initializeListener() {
+    initializeListeners() {
 
         this.ipc.on('scrims_user_remove', message => this.cache.remove(message.payload))
         this.ipc.on('scrims_user_update', message => this.cache.update(message.payload.data, message.payload.selector))
