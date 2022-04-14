@@ -10,14 +10,19 @@ class ScrimsGuild extends DBTable.Row {
         /**
          * @type { Integer }
          */
-        this.guild_id = guildData.guild_id
+        this.id_guild = guildData.id_guild
+
+        /**
+         * @type { String }
+         */
+        this.discord_id = guildData.discord_id
 
         /**
          * @type { String }
          */
         this.name = guildData.name
 
-         /**
+        /**
          * @type { String }
          */
         this.icon = guildData.icon
@@ -26,7 +31,14 @@ class ScrimsGuild extends DBTable.Row {
 
     get id() {
 
-        return this.guild_id;
+        return this.discord_id;
+
+    }
+
+    get guild() {
+
+        if (!this.discord_id) return null;
+        return this.bot.guilds.resolve(this.discord_id);
 
     }
 
@@ -39,7 +51,7 @@ class ScrimsGuild extends DBTable.Row {
         if (!this.icon) return null;
 
         const cdn = Constants.Endpoints.CDN("https://cdn.discordapp.com")
-        return cdn.Icon(this.guild_id, this.icon, undefined, undefined, true);
+        return cdn.Icon(this.discord_id, this.icon, undefined, undefined, true);
 
     }
 

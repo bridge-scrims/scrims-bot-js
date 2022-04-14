@@ -6,7 +6,7 @@ const SupportFeature = require("./support/feature");
 const ScrimsBot = require("./lib/bot");
 
 /**
- * @typedef { DBClient & SuggestionFeature.tables & SupportFeature.tables } ScrimsJSBotDBClient
+ * @typedef { DBClient & SuggestionFeature.tables } ScrimsJSBotDBClient
  */
 
 class ScrimsJSBot extends ScrimsBot {
@@ -23,10 +23,10 @@ class ScrimsJSBot extends ScrimsBot {
          */
         this.database
 
-        this.support = new SupportFeature(this, config.support)
-        this.positions = new PositionsFeature(this, config.positions)
-        this.suggestions = new SuggestionFeature(this, config.suggestions)
-        this.syncHost = new ScrimsSyncHostFeature(this, config.syncHost)
+        this.support = new SupportFeature(this, config)
+        this.positions = new PositionsFeature(this, config)
+        this.suggestions = new SuggestionFeature(this, config)
+        this.syncHost = new ScrimsSyncHostFeature(this, config)
 
     }
 

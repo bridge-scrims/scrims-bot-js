@@ -5,6 +5,7 @@ class TableRow {
     constructor(client, data) {
 
         Object.defineProperty(this, 'client', { value: client });
+        Object.defineProperty(this, 'bot', { value: client.bot });
 
         /**
          * @type { import('./database') }
@@ -12,8 +13,65 @@ class TableRow {
          */
         this.client
 
+        /**
+         * @type { import('../bot') }
+         * @readonly
+         */
+        this.bot
+
+        this.handles = {}
         this.updateWith(data)
 
+    }
+
+    /**
+     * @param { String } key 
+     * @param { DBTable } table 
+     * @param { { [s: string]: any } } selector 
+     * @param { { [s: string]: any } } data 
+     * @returns { TableRow }
+     */
+    createHandle(key, table, selector, data) {
+
+        this.removeHandle(key, table, selector)
+
+        const cached = table.cache.get(selector)[0]
+        if (cached) {
+
+            const handle = table.cache.addHandle(selector)
+            if (!handle) return null;
+
+            this.handles[key] = handle
+            return cached;
+
+        }
+
+        if (!data) return null;
+
+        const newRow = table.getRow(data)
+        
+        const handle = 1
+        table.cache.push(newRow, 0, [ handle ])    
+        
+        this.handles[key] = handle
+        return newRow;
+
+    }
+
+    /**
+     * @param { String } key 
+     * @param { DBTable } table 
+     * @param { { [s: string]: any } } selector 
+     */
+    removeHandle(key, table, selector) {
+
+        if (this[key] && (key in this.handles)) {
+
+            table.cache.removeHandle(selector, this.handles[key])
+            delete this.handles[key]
+
+        } 
+            
     }
 
     close() {
@@ -30,7 +88,7 @@ class TableRow {
 
     toJSON() {
 
-        return Object.fromEntries(Object.entries(this).filter(([key, _]) => !key.startsWith("__")));
+        return Object.fromEntries(Object.entries(this).filter(([key, _]) => key !== "handles"));
 
     }
 
@@ -42,10 +100,12 @@ class DBTable {
 
     constructor(client, name, getFunction=null, foreigners=[], cacheConfig={}, RowClass=TableRow) {
 
+        Object.defineProperty(this, 'client', { value: client });
+
         /**
          * @type { import('./database') }
          */
-        this.client = client
+        this.client
         
         this.name = name
         this.getFunction = getFunction
@@ -120,7 +180,7 @@ class DBTable {
 
         if (Object.keys(selectCondition).length === 0) return [ "", [] ];
 
-        const getSymbol = (value) => (value == "NULL") ? "IS" : "="
+        const getSymbol = (value) => (value === null) ? " IS " : "="
         
         return [
             `WHERE ${Object.entries(selectCondition).map(([key, value], idx) => `${key}${getSymbol(value)}${this.getValue(value, idx, prevValues)}`).join(" AND ")}`,
@@ -152,12 +212,13 @@ class DBTable {
 
     getValues(data, prevValues) {
 
-        return [ ...prevValues, ...Object.values(data).filter(value => !(value instanceof Array)) ];
+        return [ ...prevValues, ...Object.values(data).filter(value => !(value instanceof Array) && value !== null) ];
 
     }
 
     getValue(value, idx, prevValues) {
 
+        if (value === null) return 'NULL';
         if (value instanceof Array) return value[0];
         return `$${idx+1+prevValues.length}`;
 

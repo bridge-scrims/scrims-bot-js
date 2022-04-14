@@ -10,10 +10,8 @@ CREATE TABLE scrims_ticket_message (
     created_at bigint NOT NULL,
 
     UNIQUE(id_ticket, message_id, created_at),
-    FOREIGN KEY(id_ticket) 
-        REFERENCES scrims_ticket(id_ticket),
-    FOREIGN KEY(id_author) 
-        REFERENCES scrims_user(id_user)
+    FOREIGN KEY(id_ticket) REFERENCES scrims_ticket(id_ticket),
+    FOREIGN KEY(id_author) REFERENCES scrims_user(id_user)
 
 );
 

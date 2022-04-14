@@ -1,12 +1,13 @@
 const { MessageEmbed, MessageAttachment } = require("discord.js");
-const { TicketMessagesTable } = require("./tables");
+
+const { ScrimsTicketMessagesTable } = require("../lib/scrims/tables");
 
 class TicketTranscriber {
 
     constructor(transcriptTableClient) {
 
         /**
-         * @type { TicketMessagesTable }
+         * @type { ScrimsTicketMessagesTable }
          */
         this.client = transcriptTableClient 
 

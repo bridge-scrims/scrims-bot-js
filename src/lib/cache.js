@@ -12,6 +12,8 @@ class BridgeScrimsCache extends EventEmitter {
 
         super();
 
+        this.setMaxListeners(0)
+
         /**
          * @type { Object.<string, CacheEntry> }
          */

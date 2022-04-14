@@ -29,7 +29,7 @@ async function createTicket(interaction) {
 
         id_user: interaction.scrimsUser.id_user, 
         type: { name: interaction.ticketType },
-        guild_id: interaction.guild.id, 
+        scrimsGuild: { discord_id: interaction.guild.id },
         status: { name: "open" },
         channel_id: channel.id, 
         created_at: Math.round(Date.now()/1000) 
@@ -49,8 +49,7 @@ async function createTicket(interaction) {
     const logMessage = { 
 
         id: interaction.id, 
-        createdTimestamp: 
-        interaction.createdTimestamp, 
+        createdTimestamp: Date.now(),
         author: interaction.user, 
         content: `Created a ${interaction.ticketType} ticket. Reason: ${interaction.firstResponse}` 
 
@@ -73,7 +72,7 @@ function getCreatedPayload(channel) {
 
 async function getMentionRoles(guild) {
 
-    const positionRoles = await guild.client.database.positionRoles.get({ guild_id: guild.id, position: { name: "ticket_open_mention" } })
+    const positionRoles = await guild.client.database.positionRoles.get({ scrimsGuild: { discord_id: guild.id }, position: { name: "ticket_open_mention" } })
     return positionRoles.map(posRole => guild.roles.resolve(posRole.role_id)).filter(role => role);
 
 }

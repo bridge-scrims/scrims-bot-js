@@ -8,44 +8,77 @@ class ScrimsSuggestion extends DBTable.Row {
         super(client, {})
 
         /**
-         * @type Integer
+         * @type { Integer } 
          */
         this.id_suggestion = suggestionData.id_suggestion;
         
         /**
-         * @type String
+         * @type { Integer }
+         */
+        this.id_guild = suggestionData.id_guild;
+
+        /**
+         * @type { ScrimsGuild }
+         */
+        this.scrimsGuild
+        this.setScrimsGuild(suggestionData.guild)
+        this.client.guilds.cache.on("push", guild => (guild.id_guild == this.id_guild) ? this.setScrimsGuild(guild) : null)
+
+        /**
+         * @type { String } 
          */
         this.channel_id = suggestionData.channel_id;
 
         /**
-         * @type String
+         * @type { String } 
          */
         this.message_id = suggestionData.message_id;
 
-         /**
-         * @type String
+        /**
+         * @type { String } 
          */
         this.suggestion = suggestionData.suggestion;
 
         /**
-         * @type Integer
+         * @type { Integer } 
          */
         this.created_at = suggestionData.created_at;
 
         /**
-         * @type Integer
+         * @type { Integer } 
          */
         this.id_creator = suggestionData.id_creator;
 
         /**
          * @type { ScrimsUser }
          */
-        this.creator = this.getUser(suggestionData.creator)
+        this.creator
+        this.setCreator(suggestionData.creator)
+        this.client.users.cache.on("push", user => (user.id_creator == this.id_creator) ? this.setCreator(user) : null)
 
         /**
-         * @type Integer
+         * @type { Integer } 
          */
         this.epic = suggestionData.epic;
+
+    }
+
+    get guild() {
+
+        if (!this.scrimsGuild) return null;
+        return this.scrimsGuild.guild;
+
+    }
+
+    setScrimsGuild(obj) {
+
+        this.scrimsGuild = this.createHandle("guild", this.client.guilds, { id_guild: this.id_guild }, obj);
+
+    }
+
+    setCreator(obj) {
+
+        this.creator = this.createHandle("creator", this.client.users, { id_user: this.id_creator }, obj);
 
     }
 
@@ -54,12 +87,17 @@ class ScrimsSuggestion extends DBTable.Row {
      */
     updateWith(data) {
 
-        if (data.creator && (data.id_creator != this.id_creator)) {
+        if (data.id_creator && (data.id_creator != this.id_creator)) {
 
-            this.removeUserHandle()
+            this.id_creator = data.id_creator
+            this.setCreator(data.creator)
 
-            this.id_creator = data.creator.id_creator
-            this.creator = this.getUser(data.creator)
+        }
+
+        if (data.id_guild && (data.id_guild != this.id_guild)) {
+
+            this.id_guild = data.id_guild
+            this.setScrimsGuild(data.guild)
 
         }
 
@@ -70,8 +108,6 @@ class ScrimsSuggestion extends DBTable.Row {
         if (data.suggestion) this.suggestion = data.suggestion;
 
         if (data.created_at) this.created_at = data.created_at;
-
-        if (data.id_creator) this.id_creator = data.id_creator;
 
         if (data.epic) this.epic = data.epic;
         
@@ -84,37 +120,8 @@ class ScrimsSuggestion extends DBTable.Row {
      */
     close() {
         
-        this.removeUserHandle()
-        
-    }
-
-    removeUserHandle() {
-
-        if (this.user && this.__userHandleId) 
-            this.client.users.cache.removeHandle({ id_user: this.user.id_user }, this.__userHandleId)
-            
-    }
-
-    getUser(userData) {
-
-        if (!userData) return null;
-
-        const cachedUser = this.client.users.cache.get({ id_user: userData.id_user })[0]
-        if (cachedUser) {
-
-            this.__userHandleId = this.client.users.cache.addHandle({ id_user: userData.id_user })
-            if (!this.__userHandleId) return null;
-
-            return cachedUser;
-
-        }
-
-        const newUser = new ScrimsUser(this.client, userData)
-        
-        this.__userHandleId = 1
-        this.client.users.cache.push(newUser, 0, [this.__userHandleId])    
-        
-        return newUser;
+        this.removeHandle("guild", this.client.guilds, { id_guild: this.id_guild })
+        this.removeHandle("creator", this.client.users, { id_user: this.id_creator })
 
     }
 

@@ -5,12 +5,17 @@ const { interactionHandler, commands, eventListeners } = require("./commands");
 
 class ScrimsSyncHostFeature {
 
-    constructor(bot) {
+    constructor(bot, config) {
 
         /**
          * @type { import("../bot") }
          */
         this.bot = bot
+
+        /**
+         * @type { String }
+         */
+        this.hostGuildId = config.hostGuildId
         
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
         
@@ -18,12 +23,6 @@ class ScrimsSyncHostFeature {
 
         bot.on('ready', () => this.addEventHandlers())
         bot.on('databaseConnected', () => this.startUp())
-
-    }
-
-    get hostGuildId() {
-
-        return this.bot.hostGuildId;
 
     }
 
@@ -55,7 +54,14 @@ class ScrimsSyncHostFeature {
         await this.initializeMember(botMember)
 
         const members = await this.fetchHostGuildMembers()
-        if (members) await this.initializeMembers(guild, members)
+
+        if (members) {
+
+            console.log("Initializing host guild members...")
+            await this.initializeMembers(guild, members)
+            console.log("Host guild members initialized!")
+
+        }
 
     }
 
@@ -183,8 +189,6 @@ class ScrimsSyncHostFeature {
 
         const ghostUsers = this.bot.database.users.cache.get({ }).filter(scrimsUser => !guild.members.cache.has(scrimsUser.discord_id))
         await Promise.all(ghostUsers.map(ghost => this.scrimsMemberRemove(ghost.discord_id)))
-
-        console.log("Members initialized!")
 
     }
 

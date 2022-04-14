@@ -3,10 +3,11 @@ CREATE TABLE scrims_position_role (
 
     id_position INT NOT NULL,
     role_id text NOT NULL,
-    guild_id text NOT NULL,
+    id_guild int NOT NULL,
 
-    FOREIGN KEY(id_position) 
-        REFERENCES scrims_position(id_position)
+    UNIQUE(id_position, role_id, id_guild),
+    FOREIGN KEY(id_position) REFERENCES scrims_position(id_position),
+    FOREIGN KEY(id_guild) REFERENCES scrims_guild(id_guild)
 
 );
 
@@ -31,7 +32,7 @@ INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '954
 CREATE OR REPLACE FUNCTION get_position_roles (
     id_position int default null,
     role_id text default null,
-    guild_id text default null
+    id_guild int default null
 ) 
 returns json
 AS $$
@@ -45,17 +46,20 @@ EXECUTE '
             ''id_position'', scrims_position_role.id_position,
             ''position'', to_json(position), 
             ''role_id'', scrims_position_role.role_id,
-            ''guild_id'', scrims_position_role.guild_id
+            ''id_guild'', scrims_position_role.id_guild,
+            ''guild'', to_json(scrims_guild)
         )
     )
     FROM 
     scrims_position_role 
-    LEFT JOIN scrims_position position ON position.id_position = scrims_position_role.id_position
-    WHERE 
-    ($1 is null or scrims_position_role.id_position = $1) AND
-    ($2 is null or scrims_position_role.role_id = $2) AND
-    ($3 is null or scrims_position_role.guild_id = $3)
-' USING id_position, role_id, guild_id
+    LEFT JOIN LATERAL (SELECT * FROM scrims_position WHERE scrims_position.id_position = scrims_position_role.id_position LIMIT 1) position ON true
+    LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.id_guild = scrims_position_role.id_guild LIMIT 1) scrims_guild ON true
+    WHERE (
+        ($1 is null or scrims_position_role.id_position = $1) AND
+        ($2 is null or scrims_position_role.role_id = $2) AND
+        ($3 is null or scrims_position_role.id_guild = $3)
+    )
+' USING id_position, role_id, id_guild
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
@@ -75,8 +79,8 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    EXECUTE 'SELECT get_position_roles( id_position => $1, role_id => $2, guild_id => $3 )'
-    USING NEW.id_position, NEW.role_id, NEW.guild_id
+    EXECUTE 'SELECT get_position_roles( id_position => $1, role_id => $2, id_guild => $3 )'
+    USING NEW.id_position, NEW.role_id, NEW.id_guild
     INTO position_roles;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(

@@ -1,5 +1,6 @@
 const DBTable = require("../postgresql/table");
 const ScrimsPosition = require("./position");
+const ScrimsGuild = require("./guild");
 
 class ScrimsPositionRole extends DBTable.Row {
 
@@ -8,25 +9,66 @@ class ScrimsPositionRole extends DBTable.Row {
         super(client, {})
 
         /**
-         * @type Integer
+         * @type { Integer }
          */
         this.id_position = positionRoleData.id_position;
 
-         /**
-         * @type ScrimsUser
+        /**
+         * @type { ScrimsPosition }
          */
-        this.position = this.getPosition(positionRoleData.position);
-
+        this.position
+        this.setPosition(positionRoleData.position)
+        this.client.positions.cache.on("push", position => (position.id_position == this.id_position) ? this.setPosition(position) : null)
 
         /**
-         * @type String
+         * @type { String }
          */
         this.role_id = positionRoleData.role_id;
 
         /**
-         * @type String
+         * @type { Integer }
          */
-        this.guild_id = positionRoleData.guild_id;
+        this.id_guild = positionRoleData.id_guild;
+
+        /**
+         * @type { ScrimsGuild }
+         */
+        this.scrimsGuild
+        this.setScrimsGuild(positionRoleData.guild)
+        this.client.guilds.cache.on("push", guild => (guild.id_guild == this.id_guild) ? this.setScrimsGuild(guild) : null)
+
+    }
+
+    get guild() {
+
+        if (!this.scrimsGuild) return null;
+        return this.scrimsGuild.guild;
+
+    }
+
+    get guild_id() {
+
+        if (!this.scrimsGuild) return null;
+        return this.scrimsGuild.discord_id;
+
+    }
+
+    get role() {
+
+        if (!this.role_id || !this.guild) return null;
+        return this.guild.roles.resolve(this.role_id);
+
+    }
+
+    setPosition(obj) {
+
+        this.position = this.createHandle("position", this.client.positions, { id_position: this.id_position }, obj);
+
+    }
+
+    setScrimsGuild(obj) {
+
+        this.scrimsGuild = this.createHandle("guild", this.client.guilds, { id_guild: this.id_guild }, obj);
 
     }
 
@@ -35,18 +77,21 @@ class ScrimsPositionRole extends DBTable.Row {
      */
     updateWith(data) {
 
-        if (data.position && (data.id_position != this.id_position)) {
+        if (data.id_position && (data.id_position != this.id_position)) {
 
-            this.removePositionHandle()
-
-            this.id_position = data.position.id_position
-            this.position = this.getPosition(data.position)
+            this.id_position = data.id_position
+            this.setPosition(data.position)
 
         }
 
         if (data.role_id) this.role_id = data.role_id;
         
-        if (data.guild_id) this.guild_id = data.guild_id;
+        if (data.id_guild && (data.id_guild != this.id_guild)) {
+
+            this.id_guild = data.id_guild
+            this.setScrimsGuild(data.guild)
+
+        }
 
         return this;
         
@@ -57,38 +102,9 @@ class ScrimsPositionRole extends DBTable.Row {
      */
     close() {
         
-        this.removePositionHandle()
+        this.removeHandle("position", this.client.positions, { id_position: this.id_position })
+        this.removeHandle("guild", this.client.guilds, { id_guild: this.id_guild })
         
-    }
-
-    removePositionHandle() {
-
-        if (this.position && this.__positionHandleId) 
-            this.client.positions.cache.removeHandle({ id_position: this.position.id_position }, this.__positionHandleId)
-
-    }
-
-    getPosition(positionData) {
-
-        if (!positionData) return null;
-
-        const cachedPosition = this.client.positions.cache.get({ id_position: positionData.id_position })[0]
-        if (cachedPosition) {
-
-            this.__positionHandleId = this.client.positions.cache.addHandle({ id_position: positionData.id_position })
-            if (!this.__positionHandleId) return null;
-
-            return cachedPosition;
-
-        }
-
-        const newPosition = new ScrimsPosition(this.client, positionData)
-        
-        this.__positionHandleId = 1
-        this.client.positions.cache.push(newPosition, 0, [this.__positionHandleId])    
-        
-        return newPosition;
-
     }
 
 }

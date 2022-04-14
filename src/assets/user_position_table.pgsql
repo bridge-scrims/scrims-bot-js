@@ -9,12 +9,9 @@ CREATE TABLE scrims_user_position (
     expires_at BIGINT NULL,
 
     UNIQUE(id_user, id_position),
-    FOREIGN KEY(id_user) 
-        REFERENCES scrims_user(id_user),
-    FOREIGN KEY(id_executor) 
-        REFERENCES scrims_user(id_user),
-    FOREIGN KEY(id_position) 
-        REFERENCES scrims_position(id_position)
+    FOREIGN KEY(id_user) REFERENCES scrims_user(id_user),
+    FOREIGN KEY(id_executor) REFERENCES scrims_user(id_user),
+    FOREIGN KEY(id_position) REFERENCES scrims_position(id_position)
         
 );
 

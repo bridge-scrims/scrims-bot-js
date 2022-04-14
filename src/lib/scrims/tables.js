@@ -2,6 +2,7 @@ const ScrimsPositionRole = require("./positionRole");
 const ScrimsUserPosition = require("./userPosition");
 const ScrimsGuildEntry = require("./guild_entry");
 const ScrimsPosition = require("./position");
+const ScrimsTicket = require("./ticket");
 const ScrimsGuild = require("./guild");
 const ScrimsUser = require("./user");
 
@@ -33,6 +34,17 @@ class ScrimsGuildTable extends DBTable {
          * @type { ScrimsGuildCache }
          */
         this.cache
+
+    }
+
+    /**
+     * @override
+     */
+    initializeListeners() {
+
+        this.ipc.on('guild_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('guild_update', message => this.cache.update(message.payload.data, message.payload.selector))
+        this.ipc.on('guiöd_create', message => this.cache.push(this.getRow(message.payload)))
 
     }
 
@@ -307,7 +319,8 @@ class ScrimsPositionRolesTable extends DBTable {
     constructor(client) {
 
         const foreigners = [
-            [ "position", "id_position", "get_position_id" ]
+            [ "position", "id_position", "get_position_id" ],
+            [ "scrimsGuild", "id_guild", "get_guild_id" ]
         ]
 
         super(client, "scrims_position_role", "get_position_roles", foreigners, {}, ScrimsPositionRole);
@@ -363,12 +376,67 @@ class ScrimsPositionRolesTable extends DBTable {
 
 }
 
+/**
+ * @typedef { { id_type: Integer, name: String } } ScrimsGuildEntryType
+ */
+
+class ScrimsGuildEntryTypeCache extends DBCache {
+
+    /** 
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert
+     * @returns { ScrimsGuildEntryType[] }
+     */
+    get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+}
+
 class ScrimsGuildEntryTypeTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_guild_entry_type", null, [], { defaultTTL: -1, maxKeys: -1 });
+        super(client, "scrims_guild_entry_type", null, [ [ "scrimsGuild", "id_guild", "get_guild_id" ] ], { defaultTTL: -1, maxKeys: -1 });
         
+        /**
+         * @type { ScrimsGuildEntryTypeCache }
+         */
+        this.cache
+
+    }
+
+    /** 
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert
+     * @returns { Promise<ScrimsGuildEntryType[]> }
+     */
+     async get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+    /** 
+     * @param { { [s: string]: any } } data
+     * @returns { Promise<ScrimsGuildEntryType> }
+     */
+    async create(data) {
+
+        return super.create(data);
+
+    }
+
+    /** 
+     * @param { { [s: string]: any } } selector
+     * @returns { Promise<ScrimsGuildEntryType[]> }
+     */
+    async remove(selector) {
+
+        return super.remove(selector);
+
     }
 
 }
@@ -393,7 +461,8 @@ class ScrimsGuildEntrysTable extends DBTable {
     constructor(client) {
 
         const foreigners = [
-            [ "type", "id_type", "get_guild_entry_type_id" ]
+            [ "type", "id_type", "get_guild_entry_type_id" ],
+            [ "scrimsGuild", "id_guild", "get_guild_id" ]
         ]
 
         super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, { defaultTTL: -1, maxKeys: -1 }, ScrimsGuildEntry);
@@ -421,7 +490,7 @@ class ScrimsGuildEntrysTable extends DBTable {
      * @param { Boolean } invert 
      * @returns { Promise<ScrimsGuildEntry[]> }
      */
-     async get(filter, invert) {
+    async get(filter, invert) {
 
         return super.get(filter, invert);
 
@@ -449,6 +518,285 @@ class ScrimsGuildEntrysTable extends DBTable {
 
 }
 
+/**
+ * @typedef { { id_type: Integer, name: String } } ScrimsTicketType 
+ */
+
+class ScrimsTicketTypeCache extends DBCache {
+
+    /** 
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert
+     * @returns { ScrimsTicketType[] }
+     */
+    get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+}
+
+class ScrimsTicketTypeTable extends DBTable {
+
+    constructor(client) {
+
+        super(client, "scrims_ticket_type", null, [], { defaultTTL: -1, maxKeys: -1 });
+
+        /**
+         * @type { ScrimsTicketTypeCache }
+         */
+        this.cache
+
+    }
+
+    /**
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert 
+     * @returns { Promise<ScrimsTicketType[]> }
+     */
+    async get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+    /** 
+     * @param { { [s: string]: any } } data
+     * @returns { Promise<ScrimsTicketType> }
+     */
+    async create(data) {
+
+        return super.create(data);
+
+    }
+
+    /**
+     * @param { { [s: string]: any } } selector
+     * @returns { Promise<ScrimsTicketType[]> }
+     */
+    async remove(selector) {
+
+        return super.remove(selector);
+
+    }
+
+}
+
+/**
+ * @typedef { { id_status: Integer, name: String } } ScrimsTicketStatus 
+ */
+
+class ScrimsTicketStatusCache extends DBCache {
+
+    /** 
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert
+     * @returns { ScrimsTicketStatus[] }
+     */
+    get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+}
+
+class ScrimsTicketStatusTable extends DBTable {
+
+    constructor(client) {
+
+        super(client, "scrims_ticket_status", null, [], { defaultTTL: -1, maxKeys: -1 });
+
+        /**
+         * @type { ScrimsTicketStatusCache }
+         */
+        this.cache
+
+    }
+
+    /**
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert 
+     * @returns { Promise<ScrimsTicketStatus[]> }
+     */
+    async get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+    /** 
+     * @param { { [s: string]: any } } data
+     * @returns { Promise<ScrimsTicketStatus> }
+     */
+    async create(data) {
+
+        return super.create(data);
+
+    }
+
+    /**
+     * @param { { [s: string]: any } } selector
+     * @returns { Promise<ScrimsTicketStatus[]> }
+     */
+    async remove(selector) {
+
+        return super.remove(selector);
+
+    }
+
+}
+
+class ScrimsTicketCache extends DBCache {
+
+    /** 
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert
+     * @returns { ScrimsTicket[] }
+     */
+    get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+}
+
+class ScrimsTicketTable extends DBTable {
+
+    constructor(client) {
+
+        const foreigners = [
+            [ "user", "id_user", "get_user_id" ],
+            [ "type", "id_type", "get_ticket_type_id" ],
+            [ "status", "id_status", "get_ticket_status_id" ],
+            [ "scrimsGuild", "id_guild", "get_guild_id" ]
+        ]
+
+        super(client, "scrims_ticket", "get_tickets", foreigners, { defaultTTL: -1 });
+
+        /**
+         * @type { ScrimsTicketCache }
+         */
+        this.cache
+
+    }
+    
+    /**
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert 
+     * @returns { Promise<ScrimsTicket[]> }
+     */
+    async get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+    /** 
+     * @param { { [s: string]: any } } data
+     * @returns { Promise<ScrimsTicket> }
+     */
+    async create(data) {
+
+        return super.create(data);
+
+    }
+
+    /**
+     * @param { { [s: string]: any } } selector
+     * @returns { Promise<ScrimsTicket[]> }
+     */
+    async remove(selector) {
+
+        return super.remove(selector);
+
+    }
+
+}
+
+/**
+ * 
+ * @typedef { 
+ *   { 
+ *      id_ticket: Integer, 
+ *      id_author: Integer, 
+ *      message_id: String, 
+ *      content: String, 
+ *      deleted: Integer, 
+ *      created_at: Integer 
+ *   } 
+ * } ScrimsTicketMessage
+ * 
+ */
+
+class ScrimsTicketMessagesCache extends DBCache {
+
+    /** 
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert
+     * @returns { ScrimsTicketMessage[] }
+     */
+    get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+}
+
+class ScrimsTicketMessagesTable extends DBTable {
+
+    constructor(client) {
+
+        const foreigners = [
+            [ "ticket", "id_ticket", "get_ticket_id" ],
+            [ "author", "id_author", "get_user_id" ]
+        ]
+
+        super(client, "scrims_ticket_message", "get_ticket_messages", foreigners, { defaultTTL: 0, maxKeys: 0 });
+
+        /**
+         * @type { ScrimsTicketMessagesCache }
+         */
+        this.cache
+
+    }
+    
+    /**
+     * @param { { [s: string]: any } } filter
+     * @param { Boolean } invert 
+     * @returns { Promise<ScrimsTicketMessage[]> }
+     */
+    async get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+    /** 
+     * @param { { [s: string]: any } } data
+     * @returns { Promise<ScrimsTicketMessage> }
+     */
+    async create(data) {
+
+        return super.create(data);
+
+    }
+
+    /**
+     * @param { { [s: string]: any } } selector
+     * @returns { Promise<ScrimsTicketMessage[]> }
+     */
+    async remove(selector) {
+
+        return super.remove(selector);
+
+    }
+
+}
+
 module.exports = {
 
     ScrimsGuildTable,
@@ -457,6 +805,10 @@ module.exports = {
     ScrimsUserPositionsTable,
     ScrimsPositionRolesTable,
     ScrimsGuildEntryTypeTable,
-    ScrimsGuildEntrysTable
+    ScrimsGuildEntrysTable,
+    ScrimsTicketTypeTable,
+    ScrimsTicketStatusTable,
+    ScrimsTicketTable,
+    ScrimsTicketMessagesTable
     
 };

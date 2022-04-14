@@ -25,7 +25,7 @@ class ScrimsBot extends Client {
         /**
          * @type { DBClient }
          */
-        this.database = new DBClient(config.dbLogin)
+        this.database = new DBClient(this, config.dbLogin)
 
         /**
          * @type { ScrimsPermissionsClient }
@@ -52,8 +52,6 @@ class ScrimsBot extends Client {
          */
         this.mojang = new MojangClient();
 
-        Object.entries(config).forEach(([key, value]) => this[key] = value)
-
         discordModals(this)
         auditEvents(this)
 
@@ -68,9 +66,9 @@ class ScrimsBot extends Client {
         
     }
 
-    getConfig(guild_id, key) {
+    getConfig(guildId, key) {
 
-        return this.database.guildEntrys.cache.get({ guild_id, type: { name: key } })[0]?.value;
+        return this.database.guildEntrys.cache.get({ scrimsGuild: { discord_id: guildId }, type: { name: key } })[0]?.value;
 
     }
 
@@ -91,15 +89,20 @@ class ScrimsBot extends Client {
         await super.login(this.token);
         console.log("Connected to discord!")
 
+        const guilds = await this.guilds.fetch()
+        
         await this.database.connect();
         this.emit("databaseConnected")
         console.log("Connected to database!")
 
-        const guilds = await this.guilds.fetch()
+        console.log("Initializing guilds...")
         await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
         await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
+        console.log("Guilds initialized!")
 
+        console.log("Initializing commands...")
         await this.commands.initializeCommands()
+        console.log("Commands initialized!")
 
         this.addEventListeners();
 
@@ -263,12 +266,12 @@ class ScrimsBot extends Client {
 
     async updateScrimsGuild(oldGuild, newGuild) {
 
-        const existing = this.database.guilds.cache.get({ guild_id: newGuild.id })[0]
+        const existing = this.database.guilds.cache.get({ discord_id: newGuild.id })[0]
         if (!existing) {
 
             return this.database.guilds.create({
 
-                guild_id: newGuild.id,
+                discord_id: newGuild.id,
                 name: newGuild.name,
                 icon: (newGuild?.icon ?? null)
 
@@ -278,7 +281,7 @@ class ScrimsBot extends Client {
 
         if (oldGuild?.name != newGuild.name || oldGuild?.icon != newGuild.icon) {
 
-            await this.database.guilds.update({ guild_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
+            await this.database.guilds.update({ discord_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
                 .catch(error => console.error(`Unable to update scrims guild because of ${error}!`))
 
         }

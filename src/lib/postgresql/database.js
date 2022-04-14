@@ -9,13 +9,25 @@ const {
     ScrimsUserPositionsTable,
     ScrimsPositionRolesTable,
     ScrimsGuildEntryTypeTable,
-    ScrimsGuildEntrysTable
+    ScrimsGuildEntrysTable,
+    ScrimsTicketTypeTable,
+    ScrimsTicketStatusTable,
+    ScrimsTicketTable,
+    ScrimsTicketMessagesTable
     
 } = require('../scrims/tables');
 
 class DBClient {
 
-    constructor(config) {
+    constructor(bot, config) {
+
+        Object.defineProperty(this, 'bot', { value: bot });
+
+        /**
+         * @type { import('../bot') }
+         * @readonly
+         */
+        this.bot
 
         this.pool = new Pool({
 
@@ -67,6 +79,26 @@ class DBClient {
          */
         this.guildEntrys
 
+        /**
+         * @type { ScrimsTicketTypeTable }
+         */
+        this.ticketTypes
+
+        /**
+         * @type { ScrimsTicketStatusTable }
+         */
+        this.ticketStatuses
+
+        /**
+         * @type { ScrimsTicketTable }
+         */
+        this.tickets
+
+        /**
+         * @type { ScrimsTicketMessagesTable }
+         */
+        this.ticketMessages
+
     }
 
     __addScrimsTables() {
@@ -81,6 +113,11 @@ class DBClient {
 
         this.addTable("guildEntryTypes", new ScrimsGuildEntryTypeTable(this))
         this.addTable("guildEntrys", new ScrimsGuildEntrysTable(this))
+
+        this.addTable("ticketTypes", new ScrimsTicketTypeTable(this))
+        this.addTable("ticketStatuses", new ScrimsTicketStatusTable(this))
+        this.addTable("tickets", new ScrimsTicketTable(this))
+        this.addTable("ticketMessages", new ScrimsTicketMessagesTable(this))
 
     }
 

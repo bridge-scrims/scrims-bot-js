@@ -57,7 +57,7 @@ async function onError(interaction, action, error, abort) {
 async function verifySuggestionRequest(interaction) {
 
     if (!interaction.scrimsUser)
-        return interaction.reply( ScrimsMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
+        return interaction.reply( SuggestionsResponseMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
 
     const bannedPosition = await interaction.client.database.userPositions.get({ id_user: interaction.scrimsUser.id_user, position: { name: "suggestion_blacklisted" } })
     if (bannedPosition.length > 0) {

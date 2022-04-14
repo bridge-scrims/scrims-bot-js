@@ -4,46 +4,77 @@ const ScrimsUser = require("./user");
 
 class ScrimsUserPosition extends DBTable.Row {
 
-    constructor(client, userData) {
+    constructor(client, userPositionData) {
 
         super(client, {})
 
         /**
-         * @type Integer
+         * @type { Integer }
          */
-        this.id_user = userData.id_user;
+        this.id_user = userPositionData.id_user;
         
         /**
-         * @type ScrimsUser
+         * @type { ScrimsUser }
          */
-        this.user = this.getUser(userData.user);
+        this.user
+        this.setScrimsUser(userPositionData.user)
+        this.client.users.cache.on("push", user => (user.id_user == this.id_user) ? this.setScrimsUser(user) : null)
 
 
         /**
-         * @type Integer
+         * @type { Integer }
          */
-        this.id_position = userData.id_position;
+        this.id_position = userPositionData.id_position;
 
-         /**
+        /**
          * @type { ScrimsPosition }
          */
-        this.position = this.getPosition(userData.position);
+        this.position
+        this.setPosition(userPositionData.position)
+        this.client.positions.cache.on("push", position => (position.id_position == this.id_position) ? this.setPosition(position) : null)
 
 
         /**
-         * @type Integer
+         * @type { Integer }
          */
-        this.id_executor = userData.id_executor;
+        this.id_executor = userPositionData.id_executor;
 
         /**
-         * @type Integer
+         * @type { ScrimsUser }
          */
-        this.given_at = userData.given_at;
+        this.executor
+        this.setExecutorUser(userPositionData.executor)
+        this.client.users.cache.on("push", user => (user.id_user == this.id_executor) ? this.setExecutorUser(user) : null)
+
 
         /**
-         * @type Integer
+         * @type { Integer }
          */
-        this.expires_at = userData.expires_at;
+        this.given_at = userPositionData.given_at;
+
+
+        /**
+         * @type { Integer }
+         */
+        this.expires_at = userPositionData.expires_at;
+
+    }
+
+    setScrimsUser(obj) {
+
+        this.user = this.createHandle("user", this.client.users, { id_user: this.id_user }, obj);
+
+    }
+
+    setPosition(obj) {
+
+        this.position = this.createHandle("position", this.client.positions, { id_position: this.id_position }, obj);
+
+    }
+
+    setExecutorUser(obj) {
+
+        this.executor = this.createHandle("executor", this.client.users, { id_user: this.id_executor }, obj);
 
     }
 
@@ -52,26 +83,27 @@ class ScrimsUserPosition extends DBTable.Row {
      */
     updateWith(data) {
 
-        if (data.user && (data.id_user != this.id_user)) {
+        if (data.id_user && (data.id_user != this.id_user)) {
 
-            this.removeUserHandle()
-
-            this.id_user = data.user.id_user
-            this.user = this.getUser(data.user)
+            this.id_user = data.id_user
+            this.setScrimsUser(data.user)
 
         }
 
-        if (data.position && (data.id_position != this.id_position)) {
+        if (data.id_position && (data.id_position != this.id_position)) {
 
-            this.removePositionHandle()
-
-            this.id_position = data.position.id_position
-            this.position = this.getPosition(data.position)
+            this.id_position = data.id_position
+            this.setPosition(data.position)
 
         }
 
-        if (data.id_executor) this.id_executor = data.id_executor;
-        
+        if (data.id_executor && ( data.id_executor != this.id_executor)) {
+
+            this.id_executor = data.id_executor
+            this.setExecutorUser(data.executor)
+
+        }
+
         if (data.given_at) this.given_at = data.given_at;
 
         if (data.expires_at) this.expires_at = data.expires_at;
@@ -85,69 +117,10 @@ class ScrimsUserPosition extends DBTable.Row {
      */
     close() {
         
-        this.removeUserHandle()
-        this.removePositionHandle()
+        this.removeHandle("user", this.client.users, { id_user: this.id_user })
+        this.removeHandle("position", this.client.positions, { id_position: this.id_position })
+        this.removeHandle("executor", this.client.users, { id_user: this.id_executor })
         
-    }
-
-    removeUserHandle() {
-
-        if (this.user && this.__userHandleId) 
-            this.client.users.cache.removeHandle({ id_user: this.user.id_user }, this.__userHandleId)
-            
-    }
-
-    removePositionHandle() {
-  
-        if (this.position && this.__positionHandleId) 
-            this.client.positions.cache.removeHandle({ id_position: this.position.id_position }, this.__positionHandleId)
-
-    }
-
-    getUser(userData) {
-
-        if (!userData) return null;
-
-        const cachedUser = this.client.users.cache.get({ id_user: userData.id_user })[0]
-        if (cachedUser) {
-
-            this.__userHandleId = this.client.users.cache.addHandle({ id_user: userData.id_user })
-            if (!this.__userHandleId) return null;
-
-            return cachedUser;
-
-        }
-
-        const newUser = new ScrimsUser(this.client, userData)
-        
-        this.__userHandleId = 1
-        this.client.users.cache.push(newUser, 0, [this.__userHandleId])    
-        
-        return newUser;
-
-    }
-
-    getPosition(positionData) {
-
-        if (!positionData) return null;
-
-        const cachedPosition = this.client.positions.cache.get({ id_position: positionData.id_position })[0]
-        if (cachedPosition) {
-
-            this.__positionHandleId = this.client.positions.cache.addHandle({ id_position: positionData.id_position })
-            if (!this.__positionHandleId) return null;
-
-            return cachedPosition;
-
-        }
-
-        const newPosition = new ScrimsPosition(this.client, positionData)
-        
-        this.__positionHandleId = 1
-        this.client.positions.cache.push(newPosition, 0, [this.__positionHandleId])    
-        
-        return newPosition;
-
     }
 
 }

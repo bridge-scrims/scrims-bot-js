@@ -83,7 +83,7 @@ async function onTransferPositionsComponent(interaction) {
     }
 
     await interaction.editReply({ content: `User positions successfully transfered!`, embeds: [], components: [], ephemeral: true })
-        .catch(() => {/* This could take so long, that the interaction expires. */})
+        .catch(() => {/* This could take more then 15 minutes, making the interaction token expire. */})
 
 }
 

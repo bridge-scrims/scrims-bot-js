@@ -8,67 +8,81 @@ class ScrimsUser extends DBTable.Row {
         super(client, {})
 
         /**
-         * @type Integer
+         * @type { Integer }
          */
         this.id_user = userData.id_user;
         
         /**
-         * @type Integer
+         * @type { Integer }
          */
         this.joined_at = userData.joined_at;
 
 
         /**
-         * @type String
+         * @type { String }
          */
         this.discord_id = userData.discord_id;
 
         /**
-         * @type String
+         * @type { String }
          */
         this.discord_username = userData.discord_username;
 
         /**
-         * @type Integer
+         * @type { Integer }
          */
         this.discord_discriminator = userData.discord_discriminator;
 
         /**
-         * @type Integer
+         * @type { Integer }
          */
         this.discord_accent_color = userData.discord_accent_color;
 
         /**
-         * @type String
+         * @type { String }
          */
         this.discord_avatar = userData.discord_avatar;
 
 
         /**
-         * @type String
+         * @type { String }
          */
         this.mc_uuid = userData.mc_uuid;
 
         /**
-         * @type String
+         * @type { String }
          */
         this.mc_name = userData.mc_name;
 
         /**
-         * @type Boolean
+         * @type { Boolean }
          */
         this.mc_verified = userData.mc_verified;
 
 
         /**
-         * @type String
+         * @type { String }
          */
         this.country = userData.country;
 
         /**
-         * @type String
+         * @type { String }
          */
         this.timezone = userData.timezone;
+
+    }
+
+    get discordUser() {
+
+        if (!this.discord_id) return null;
+        return this.bot.users.resolve(this.discord_id);
+
+    }
+
+    getCurrentTime() {
+
+        if (!this.timezone) return null;
+        return moment.tz(moment(), this.timezone);        
 
     }
 

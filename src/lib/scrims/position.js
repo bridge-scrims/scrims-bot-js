@@ -14,7 +14,7 @@ class ScrimsPosition extends DBTable.Row {
         /**
          * @type { String }
          */
-         this.name = positionData.name
+        this.name = positionData.name
 
          /**
          * @type { Boolean }
@@ -24,7 +24,7 @@ class ScrimsPosition extends DBTable.Row {
         /**
          * @type { Integer }
          */
-         this.level = positionData.level
+        this.level = positionData.level
 
     }
 

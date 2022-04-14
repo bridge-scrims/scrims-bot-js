@@ -1,4 +1,3 @@
-const { TicketTable, TicketMessagesTable, TicketStatusTable, TicketTypeTable } = require("./tables");
 const TicketTranscriber = require("./ticket-transcriber");
 const ScrimsMessageBuilder = require("../lib/responses");
 
@@ -8,30 +7,6 @@ const onComponent = require("./components");
 const onSubmit = require("./modals");
 
 class SupportFeature {
-
-    static tables = { 
-
-        /**
-         * @type { TicketTypeTable }
-         */
-        ticketTypes: null, 
-        
-        /**
-         * @type { TicketStatusTable }
-         */
-        ticketStatus: null,
-        
-        /**
-         * @type { TicketTable }
-         */
-        tickets: null, 
-        
-        /**
-         * @type { TicketMessagesTable }
-         */
-        transcript: null 
-
-    }
 
     constructor(bot) {
 
@@ -45,12 +20,6 @@ class SupportFeature {
         this.transcriptChannels = {}
         this.ticketCategorys = {}
 
-        this.database.addTable("ticketStatus", new TicketStatusTable(this.database))
-        this.database.addTable("ticketTypes", new TicketTypeTable(this.database))
-        this.database.addTable("tickets", new TicketTable(this.database))
-        
-        this.database.addTable("transcript", new TicketMessagesTable(this.database))
-        
         bot.on('ready', () => this.onReady())
 
     }
@@ -63,7 +32,7 @@ class SupportFeature {
 
     async onReady() {
 
-        this.transcriber = new TicketTranscriber(this.database.transcript)
+        this.transcriber = new TicketTranscriber(this.database.ticketMessages)
 
         const channelConfigs = this.database.guildEntrys.cache.get({ type: { name: "tickets_transcript_channel" } })
         await Promise.all(channelConfigs.map(entry => this.setTranscriptChannel(entry.guild_id, entry.value)))
@@ -205,7 +174,7 @@ class SupportFeature {
 
         }
 
-        await this.database.transcript.create(ticketMessage)
+        await this.database.ticketMessages.create(ticketMessage)
             .catch(error => console.error(`Unable to log support ticket message because of ${error}`, ticketMessage))
 
     }
@@ -222,7 +191,7 @@ class SupportFeature {
         const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
-        await this.database.transcript.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })
+        await this.database.ticketMessages.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })
             .catch(error => console.error(`Unable to log support ticket message deletion because of ${error}`, ticket))
 
     }
@@ -283,7 +252,7 @@ class SupportFeature {
         )
 
         const types = [ 'tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category' ]
-        await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name }, value: channel.id }))).catch(console.error)
+        await Promise.all(types.map(name => this.database.guildEntrys.remove({ scrimsGuild: { discord_id: channel.guild.id }, type: { name }, value: channel.id }))).catch(console.error)
 
         const tickets = await this.database.tickets.get({ channel_id: channel.id, status: { name: "open" } }).catch(console.error)
         await Promise.all(tickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor))).catch(console.error)

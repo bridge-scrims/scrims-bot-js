@@ -34,7 +34,7 @@ class ScrimsPermissionsClient {
      */
     getGuildPositionRoles(guildId) {
 
-        return this.database.positionRoles.cache.get({ guild_id: guildId });
+        return this.database.positionRoles.cache.get({ scrimsGuild: { discord_id: guildId } });
         
     }
 

@@ -27,7 +27,7 @@ async function onReloadCommand(interaction) {
 
     await interaction.client.commands.update().catch(console.error)
 
-    await interaction.editReply({ content: "Commands reloaded!", ephemeral: true })
+    await interaction.editReply({ content: "Commands, positions, user-positions and position-roles reloaded!", ephemeral: true })
 
 }
 
@@ -35,7 +35,7 @@ async function onConfigAutocomplete(interaction) {
 
     const focused = interaction.options.getFocused().toLowerCase()
 
-    const entryTypes = await this.database.guildEntryTypes.get({ }, false)
+    const entryTypes = await interaction.client.database.guildEntryTypes.get({ }, false)
     const relevant = entryTypes.filter(type => type.name.toLowerCase().includes(focused))
     
     await interaction.respond([ { name: "All", value: -1 }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])
@@ -52,7 +52,7 @@ async function onConfigCommand(interaction) {
 
     if (entryTypeId === -1) {
 
-        const entrys = await interaction.client.database.guildEntrys.get({ guild_id: interaction.guild.id })
+        const entrys = await interaction.client.database.guildEntrys.get({ scrimsGuild: { discord_id: interaction.guild.id } })
 
         if (entrys.length === 0) return interaction.reply({ content: "Nothing configured for this guild." });
         
@@ -60,7 +60,7 @@ async function onConfigCommand(interaction) {
 
     }
 
-    const selector = { guild_id: interaction.guild.id, id_type: entryTypeId }
+    const selector = { scrimsGuild: { discord_id: interaction.guild.id }, id_type: entryTypeId }
     const entry = await interaction.client.database.guildEntrys.get(selector)
 
     if (!value) return interaction.reply({ content: `${entry[0]?.value || null}`, allowedMentions: { parse: [] }, ephemeral: true });

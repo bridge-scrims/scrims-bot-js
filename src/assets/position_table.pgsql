@@ -30,10 +30,12 @@ INSERT INTO scrims_position (name, level, sticky) VALUES('bridge_scrims_member',
 
 
 CREATE OR REPLACE FUNCTION get_positions(
+
     id_position int default null,
     name text default null,
     sticky boolean default null,
     level int default null
+
 ) 
 returns json
 AS $$
@@ -59,10 +61,12 @@ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION get_position_id(
+
     id_position int default null,
     name text default null,
     sticky boolean default null,
     level int default null
+    
 ) 
 RETURNS int 
 AS $$
