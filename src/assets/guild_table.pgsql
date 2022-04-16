@@ -168,7 +168,7 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    EXECUTE 'SELECT get_guild_entrys( guild_id => $1, id_type => $2 )' USING NEW.guild_id, NEW.id_type INTO guild_entrys;
+    EXECUTE 'SELECT get_guild_entrys( id_guild => $1, id_type => $2 )' USING NEW.id_guild, NEW.id_type INTO guild_entrys;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
         'guild_entry_update', json_build_object(

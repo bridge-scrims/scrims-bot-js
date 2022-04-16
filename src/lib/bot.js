@@ -103,11 +103,21 @@ class ScrimsBot extends Client {
 
         console.log("Initializing guilds...")
         await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
-        await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
         console.log("Guilds initialized!")
+        
+        console.log("Initializing guild members...")
+        Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
+            .then(() => this.onGuildMembersInitialized()).catch(console.error)
 
         this.emit("startupComplete")
         console.log("Startup complete!")
+
+    }
+
+    onGuildMembersInitialized() {
+
+        this.emit("guildMembersInitialized")
+        console.log("Guild members initialized!")
 
     }
 

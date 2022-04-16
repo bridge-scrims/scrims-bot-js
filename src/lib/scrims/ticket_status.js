@@ -1,12 +1,12 @@
 const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
 
-class ScrimsPositionCache extends DBCache {
+class ScrimsTicketStatusCache extends DBCache {
 
     /** 
      * @param { Object.<string, any> } filter
      * @param { Boolean } invert
-     * @returns { ScrimsPosition[] }
+     * @returns { ScrimsTicketStatus[] }
      */
     get(filter, invert) {
 
@@ -16,23 +16,23 @@ class ScrimsPositionCache extends DBCache {
 
 }
 
-class ScrimsPositionTable extends DBTable {
+class ScrimsTicketStatusTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_position", "get_positions", [], ScrimsPosition, ScrimsPositionCache);
+        super(client, "scrims_ticket_status", null, [], ScrimsTicketStatus, ScrimsTicketStatusCache);
 
         /**
-         * @type { ScrimsPositionCache }
+         * @type { ScrimsTicketStatusCache }
          */
         this.cache
-        
+
     }
 
     /** 
      * @param { Object.<string, any> } filter
      * @param { Boolean } useCache
-     * @returns { Promise<ScrimsPosition[]> }
+     * @returns { Promise<ScrimsTicketStatus[]> }
      */
     async get(filter, useCache) {
 
@@ -42,7 +42,7 @@ class ScrimsPositionTable extends DBTable {
 
     /** 
      * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsPosition> }
+     * @returns { Promise<ScrimsTicketStatus> }
      */
     async create(data) {
 
@@ -50,9 +50,9 @@ class ScrimsPositionTable extends DBTable {
 
     }
 
-    /** 
+    /**
      * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsPosition[]> }
+     * @returns { Promise<ScrimsTicketStatus[]> }
      */
     async remove(selector) {
 
@@ -62,39 +62,29 @@ class ScrimsPositionTable extends DBTable {
 
 }
 
-class ScrimsPosition extends DBTable.Row {
+class ScrimsTicketStatus extends DBTable.Row {
 
     /**
-     * @type { ScrimsPositionTable }
+     * @type { ScrimsTicketStatusTable }
      */
-    static Table = ScrimsPositionTable
-
-    constructor(client, positionData) {
+    static Table = ScrimsTicketStatusTable
+    
+    constructor(client, statusData) {
 
         super(client, {});
 
         /**
          * @type { Integer }
          */
-        this.id_position = positionData.id_position
+        this.id_status = statusData.id_status
 
         /**
          * @type { String }
          */
-        this.name = positionData.name
-
-         /**
-         * @type { Boolean }
-         */
-        this.sticky = positionData.sticky
-
-        /**
-         * @type { Integer }
-         */
-        this.level = positionData.level
+        this.name = statusData.name
 
     }
 
 }
 
-module.exports = ScrimsPosition;
+module.exports = ScrimsTicketStatus;

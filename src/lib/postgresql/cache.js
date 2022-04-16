@@ -1,33 +1,64 @@
-const BridgeScrimsCache = require("../cache");
+const EventEmitter = require("events");
 
-class DBCache extends BridgeScrimsCache {
+/**
+ * @typedef { import("./table").Row } TableRow
+ */
 
-    constructor(defaultTTL, maxKeys) {
+class DBCache extends EventEmitter {
 
-        super(defaultTTL, maxKeys);
-        
-        this.index = 0
+    constructor() {
+
+        super()
+        this.setMaxListeners(0)
+
+        /**
+         * @type { TableRow[] }
+         */
+        this.data = []
 
     }
 
     /**
-     * @returns { TableRow | false }
+     * @param { TableRow } value
+     * @returns { TableRow }
      */
-    push(value, ttl, handels) {
+    push(value) {
 
         if (value === null) return null;
 
-        const existing = this.getEntrys(value)[0] ?? []
-        const key = existing[0] ?? this.index
+        const existing = this.get(value)[0]
+    
+        if (existing) {
+            
+            const index = this.data.indexOf(existing)
+            this.data[index] = existing.updateWith(value)
 
-        const inserted = this.set( key, value, ttl, handels )
-        if ((key === this.index) && inserted) this.index += 1
-        if (inserted) this.emit('push', inserted)
+        }else {
+
+            this.data.push(value)
+
+        }
+
+        this.emit('push', value)
         
-        return inserted;
+        return value;
 
     }
 
+    /**
+     * @param { TableRow[] } values 
+     */
+    set(values) {
+
+        this.data = values
+
+    }
+
+    /**
+     * @param { [ string, any ][] } obj1 
+     * @param { TableRow } obj2 
+     * @returns { Boolean }
+     */
     valuesMatch(obj1, obj2) {
 
         if (!obj1 || !obj2) return false;
@@ -35,104 +66,62 @@ class DBCache extends BridgeScrimsCache {
         if (typeof obj1.toJSON === "function") obj1 = obj1.toJSON();
         if (typeof obj2.toJSON === "function") obj2 = obj2.toJSON();
 
-        return Object.entries(obj1).every(([key, value]) => (value instanceof Object) ? this.valuesMatch(value, obj2[key]) : (obj2[key] == value));
+        return obj1.every(([key, value]) => (obj2[key] == value));
 
     }
 
     /**
-     * 
-     * @param { { [s: string]: any } } filter
-     * @param { Boolean } invert 
-     * @returns { [ string, any ][] }
+     * @param { string } mapKey 
+     * @returns { Object.<string, TableRow> }
      */
-    getEntrys(filter={}, invert=false) {
-        
-        const entries = Object.entries(this.data).map(([ key, value ]) => ([ key, value.value ]))
-        
-        if (invert) return entries.filter(([ _, value ]) => !this.valuesMatch(filter, value));
-        else return entries.filter(([ _, value ]) => this.valuesMatch(filter, value));
+    getMap(mapKey) {
+
+        return Object.fromEntries(this.data.map(value => [value[mapKey], value]));
 
     }
 
     /**
-     * @override
-     * @param { { [s: string]: any } } filter
+     * @param { Object.<string, any> } filter
      * @param { Boolean } invert
      * @returns { TableRow[] }
      */ 
     get(filter, invert) {
 
-        const entrys = this.getEntrys(filter, invert)
-        return entrys.map(([ _, value ]) => value);
+        const entries = Object.entries(filter)
+
+        if (invert) return this.data.filter(value => !this.valuesMatch(entries, value));
+        else return this.data.filter(value => this.valuesMatch(entries, value));
 
     }
 
     /**
-     * @override
      * @returns { TableRow[] }
      */
     remove(filter) {
 
-        const entrys = this.getEntrys(filter, false)
+        const remove = this.get(filter)
+        
+        this.data = this.data.filter(value => !remove.includes(value))
+        remove.forEach(value => this.emit('remove', value))
 
-        entrys.forEach(([ key, _ ]) => this.delete(key))
-        entrys.forEach(([ _, value ]) => this.emit('remove', value))
-
-        return entrys.map(([ _, value ]) => value);
+        return remove;
 
     }
 
     /**
-     * @override
+     * @param { TableRow } newValue 
+     * @param { Object.<string, any> } filter 
      */
     update(newValue, filter) {
 
-        const entries = this.getEntrys(filter, false)
-            .filter(([ _, oldValue ]) => !this.valuesMatch(newValue, oldValue))
-            .map(([ key, oldValue ]) => [ key, oldValue.updateWith(newValue) ])
-            
-        entries.forEach(([ key, value ]) => super.update(key, value))
-        entries.forEach(([ key, value ]) => this.emit('update', value))
+        const matches = this.get(filter)
+        matches.forEach(value => {
 
-        return true;
+            const index = this.data.indexOf(value)
+            this.data[index] = value.updateWith(newValue)
+            this.emit('update', this.data[index])
 
-    }
-
-    /**
-     * @override
-     */
-    addHandle(filter) {
-
-        const entry = this.getEntrys(filter, false)[0]
-        if (!entry) return false;
-
-        return super.addHandle(entry[0])
-
-    }
-
-    /**
-     * @override
-     */
-    removeHandle(filter, handleIndex) {
-
-        const entry = this.getEntrys(filter, false)[0]
-        if (!entry) return false;
-
-        return super.removeHandle(entry[0], handleIndex)
-
-    }
-
-    /**
-     * @override
-     */
-    delete(key) {
-
-        if (key in this.data) {
-
-            this.data[key].value.close()
-            delete this.data[key];
-
-        }
+        })
 
     }
 

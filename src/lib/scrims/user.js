@@ -1,7 +1,85 @@
 const { Constants } = require("discord.js");
+const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
 
+class ScrimsUserCache extends DBCache {
+
+    /** 
+     * @param { Object.<string, any> } filter
+     * @param { Boolean } invert
+     * @returns { ScrimsUser[] }
+     */
+    get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
+}
+
+class ScrimsUserTable extends DBTable {
+
+    constructor(client) {
+
+        super(client, "scrims_user", "get_users", [], ScrimsUser, ScrimsUserCache);
+
+        /**
+         * @type { ScrimsUserCache }
+         */
+        this.cache
+
+    }
+
+    /**
+     * @override
+     */
+    initializeListeners() {
+
+        this.ipc.on('scrims_user_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('scrims_user_update', message => this.cache.update(message.payload.data, message.payload.selector))
+        this.ipc.on('scrims_user_create', message => this.cache.push(this.getRow(message.payload)))
+
+    }
+
+    /** 
+     * @param { Object.<string, any> } filter
+     * @param { Boolean } useCache
+     * @returns { Promise<ScrimsUser[]> }
+     */
+    async get(filter, useCache) {
+
+        return super.get(filter, useCache);
+
+    }
+
+    /** 
+     * @param { Object.<string, any> } data
+     * @returns { Promise<ScrimsUser> }
+     */
+    async create(data) {
+
+        return super.create(data);
+
+    }
+
+    /** 
+     * @param { Object.<string, any> } selector
+     * @returns { Promise<ScrimsUser[]> }
+     */
+    async remove(selector) {
+
+        return super.remove(selector);
+
+    }
+
+}
+
 class ScrimsUser extends DBTable.Row {
+
+    /**
+     * @type { ScrimsUserTable }
+     */
+    static Table = ScrimsUserTable
 
     constructor(client, userData) {
 
@@ -29,9 +107,9 @@ class ScrimsUser extends DBTable.Row {
         this.discord_username = userData.discord_username;
 
         /**
-         * @type { Integer }
+         * @type { String }
          */
-        this.discord_discriminator = userData.discord_discriminator;
+        this.discord_discriminator = `${userData.discord_discriminator}`.padStart(4, '0');
 
         /**
          * @type { Integer }

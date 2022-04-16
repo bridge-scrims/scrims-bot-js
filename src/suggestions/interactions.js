@@ -100,9 +100,9 @@ async function createModal(interaction) {
             new TextInputComponent()
                 .setCustomId('suggestion')
                 .setLabel('Your brilliant idea')
-                .setStyle('LONG') // Text Input Component Style can be 'SHORT' or 'LONG'
+                .setStyle('LONG')
                 .setMinLength(15)
-                .setMaxLength(2000)
+                .setMaxLength(1200)
                 .setPlaceholder('Write here')
                 .setRequired(true)
         )

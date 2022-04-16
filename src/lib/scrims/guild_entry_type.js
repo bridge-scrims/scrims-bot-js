@@ -1,12 +1,12 @@
 const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
 
-class ScrimsPositionCache extends DBCache {
+class ScrimsGuildEntryTypeCache extends DBCache {
 
     /** 
      * @param { Object.<string, any> } filter
      * @param { Boolean } invert
-     * @returns { ScrimsPosition[] }
+     * @returns { ScrimsGuildEntryType[] }
      */
     get(filter, invert) {
 
@@ -16,23 +16,24 @@ class ScrimsPositionCache extends DBCache {
 
 }
 
-class ScrimsPositionTable extends DBTable {
+class ScrimsGuildEntryTypeTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_position", "get_positions", [], ScrimsPosition, ScrimsPositionCache);
-
+        const foreigners = [ [ "scrimsGuild", "id_guild", "get_guild_id" ] ]
+        super(client, "scrims_guild_entry_type", null, foreigners, ScrimsGuildEntryType, ScrimsGuildEntryTypeCache);
+        
         /**
-         * @type { ScrimsPositionCache }
+         * @type { ScrimsGuildEntryTypeCache }
          */
         this.cache
-        
+
     }
 
     /** 
      * @param { Object.<string, any> } filter
      * @param { Boolean } useCache
-     * @returns { Promise<ScrimsPosition[]> }
+     * @returns { Promise<ScrimsGuildEntryType[]> }
      */
     async get(filter, useCache) {
 
@@ -42,7 +43,7 @@ class ScrimsPositionTable extends DBTable {
 
     /** 
      * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsPosition> }
+     * @returns { Promise<ScrimsGuildEntryType> }
      */
     async create(data) {
 
@@ -52,7 +53,7 @@ class ScrimsPositionTable extends DBTable {
 
     /** 
      * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsPosition[]> }
+     * @returns { Promise<ScrimsGuildEntryType[]> }
      */
     async remove(selector) {
 
@@ -62,39 +63,29 @@ class ScrimsPositionTable extends DBTable {
 
 }
 
-class ScrimsPosition extends DBTable.Row {
+class ScrimsGuildEntryType extends DBTable.Row {
 
     /**
-     * @type { ScrimsPositionTable }
+     * @type { ScrimsGuildEntryTypeTable }
      */
-    static Table = ScrimsPositionTable
-
-    constructor(client, positionData) {
+    static Table = ScrimsGuildEntryTypeTable
+    
+    constructor(client, typeData) {
 
         super(client, {});
 
         /**
          * @type { Integer }
          */
-        this.id_position = positionData.id_position
+        this.id_type = typeData.id_type
 
         /**
          * @type { String }
          */
-        this.name = positionData.name
-
-         /**
-         * @type { Boolean }
-         */
-        this.sticky = positionData.sticky
-
-        /**
-         * @type { Integer }
-         */
-        this.level = positionData.level
+        this.name = typeData.name
 
     }
 
 }
 
-module.exports = ScrimsPosition;
+module.exports = ScrimsGuildEntryType;

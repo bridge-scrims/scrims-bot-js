@@ -14,7 +14,7 @@ async function onMessageDelete(message) {
         const fetchedLogs = await message.guild.fetchAuditLogs({ limit: 1, type: 'MESSAGE_DELETE' })
             .catch(error => console.error(`Unable to fetch audit logs after messasge delete because of ${error}!`))
 
-        if (fetchedLogs.entries.size > 0) {
+        if (fetchedLogs && fetchedLogs.entries.size > 0) {
 
             const deletionLog = fetchedLogs.entries.first()
             if (message.partial || deletionLog.target.id == message.author.id) {
@@ -42,7 +42,7 @@ async function onChannelDelete(channel) {
         const fetchedLogs = await channel.guild.fetchAuditLogs({ limit: 1, type: 'CHANNEL_DELETE' })
             .catch(error => console.error(`Unable to fetch audit logs after channel delete because of ${error}!`))
 
-        if (fetchedLogs.entries.size > 0) {
+        if (fetchedLogs && fetchedLogs.entries.size > 0) {
 
             const deletionLog = fetchedLogs.entries.first()
             if (deletionLog.target.id == channel.id) {
@@ -66,7 +66,7 @@ async function onChannelCreate(channel) {
         const fetchedLogs = await channel.guild.fetchAuditLogs({ limit: 1, type: 'CHANNEL_CREATE' })
             .catch(error => console.error(`Unable to fetch audit logs after channel create because of ${error}!`))
 
-        if (fetchedLogs.entries.size > 0) {
+        if (fetchedLogs && fetchedLogs.entries.size > 0) {
 
             const creationLog = fetchedLogs.entries.first()
             if (creationLog.target.id == channel.id) {

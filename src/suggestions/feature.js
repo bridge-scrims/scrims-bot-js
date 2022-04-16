@@ -1,5 +1,5 @@
 const SuggestionsResponseMessageBuilder = require("./responses");
-const { SuggestionsTable } = require("./tables");
+const ScrimsSuggestion = require("./suggestion");
 const onReactionUpdate = require("./reactions");
 
 const { interactionHandler, commands } = require("./interactions");
@@ -10,7 +10,7 @@ class SuggestionsFeature {
     static tables = { 
 
         /**
-         * @type { SuggestionsTable }
+         * @type { ScrimsSuggestion.Table }
          */
         suggestions: null
 
@@ -29,7 +29,7 @@ class SuggestionsFeature {
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
 
-        this.database.addTable("suggestions", new SuggestionsTable(this.database))
+        this.database.addTable("suggestions", new ScrimsSuggestion.Table(this.database))
 
         this.bot.on('ready', () => this.onReady())
         this.bot.on('databaseConnected', () => this.onStartup())

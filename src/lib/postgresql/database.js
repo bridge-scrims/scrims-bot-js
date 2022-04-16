@@ -1,21 +1,17 @@
 const Pool = require('pg-pool');
 const pgIPC = require('pg-ipc');
 
-const {
-
-    ScrimsGuildTable,
-    ScrimsUserTable,
-    ScrimsPositionTable,
-    ScrimsUserPositionsTable,
-    ScrimsPositionRolesTable,
-    ScrimsGuildEntryTypeTable,
-    ScrimsGuildEntrysTable,
-    ScrimsTicketTypeTable,
-    ScrimsTicketStatusTable,
-    ScrimsTicketTable,
-    ScrimsTicketMessagesTable
-    
-} = require('../scrims/tables');
+const ScrimsGuildEntryType = require("../scrims/guild_entry_type");
+const ScrimsTicketMessage = require("../scrims/ticket_message");
+const ScrimsUserPosition = require("../scrims/user_position");
+const ScrimsPositionRole = require("../scrims/position_role");
+const ScrimsTicketStatus = require("../scrims/ticket_status");
+const ScrimsGuildEntry = require("../scrims/guild_entry");
+const ScrimsTicketType = require("../scrims/ticket_type");
+const ScrimsPosition = require('../scrims/position');
+const ScrimsTicket = require("../scrims/ticket");
+const ScrimsGuild = require('../scrims/guild');
+const ScrimsUser = require("../scrims/user");
 
 class DBClient {
 
@@ -45,57 +41,57 @@ class DBClient {
         this.__addScrimsTables()
         
         /**
-         * @type { ScrimsGuildTable }
+         * @type { ScrimsGuild.Table }
          */
         this.guilds
 
         /**
-         * @type { ScrimsUserTable }
+         * @type { ScrimsUser.Table }
          */
         this.users
 
         /**
-         * @type { ScrimsPositionTable }
+         * @type { ScrimsPosition.Table }
          */
         this.positions
 
         /**
-         * @type { ScrimsUserPositionsTable }
+         * @type { ScrimsUserPosition.Table }
          */
         this.userPositions
 
         /**
-         * @type { ScrimsPositionRolesTable }
+         * @type { ScrimsPositionRole.Table }
          */
         this.positionRoles
  
         /**
-         * @type { ScrimsGuildEntryTypeTable }
+         * @type { ScrimsGuildEntryType.Table }
          */
         this.guildEntryTypes
 
         /**
-         * @type { ScrimsGuildEntrysTable }
+         * @type { ScrimsGuildEntry.Table }
          */
         this.guildEntrys
 
         /**
-         * @type { ScrimsTicketTypeTable }
+         * @type { ScrimsTicketType.Table }
          */
         this.ticketTypes
 
         /**
-         * @type { ScrimsTicketStatusTable }
+         * @type { ScrimsTicketStatus.Table }
          */
         this.ticketStatuses
 
         /**
-         * @type { ScrimsTicketTable }
+         * @type { ScrimsTicket.Table }
          */
         this.tickets
 
         /**
-         * @type { ScrimsTicketMessagesTable }
+         * @type { ScrimsTicketMessage.Table }
          */
         this.ticketMessages
 
@@ -103,21 +99,21 @@ class DBClient {
 
     __addScrimsTables() {
 
-        this.addTable("guilds", new ScrimsGuildTable(this))
-        this.addTable("users", new ScrimsUserTable(this))
+        this.addTable("guilds", new ScrimsGuild.Table(this))
+        this.addTable("users", new ScrimsUser.Table(this))
 
-        this.addTable("positions", new ScrimsPositionTable(this))
-        this.addTable("userPositions", new ScrimsUserPositionsTable(this))
+        this.addTable("positions", new ScrimsPosition.Table(this))
+        this.addTable("userPositions", new ScrimsUserPosition.Table(this))
         
-        this.addTable("positionRoles", new ScrimsPositionRolesTable(this))
+        this.addTable("positionRoles", new ScrimsPositionRole.Table(this))
 
-        this.addTable("guildEntryTypes", new ScrimsGuildEntryTypeTable(this))
-        this.addTable("guildEntrys", new ScrimsGuildEntrysTable(this))
+        this.addTable("guildEntryTypes", new ScrimsGuildEntryType.Table(this))
+        this.addTable("guildEntrys", new ScrimsGuildEntry.Table(this))
 
-        this.addTable("ticketTypes", new ScrimsTicketTypeTable(this))
-        this.addTable("ticketStatuses", new ScrimsTicketStatusTable(this))
-        this.addTable("tickets", new ScrimsTicketTable(this))
-        this.addTable("ticketMessages", new ScrimsTicketMessagesTable(this))
+        this.addTable("ticketTypes", new ScrimsTicketType.Table(this))
+        this.addTable("ticketStatuses", new ScrimsTicketStatus.Table(this))
+        this.addTable("tickets", new ScrimsTicket.Table(this))
+        this.addTable("ticketMessages", new ScrimsTicketMessage.Table(this))
 
     }
 
@@ -142,14 +138,14 @@ class DBClient {
 
     destroy() {
 
-        this.ipc.end()
-        this.pool.end()
+        this.ipc?.end()
+        this.pool?.end()
 
     }
  
     async initializeCache() {
 
-        await Promise.all(this.tables.map(table => table.connect()))
+        for (let table of this.tables) await table.connect()
         this.tables = []
 
     }

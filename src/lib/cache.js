@@ -128,6 +128,15 @@ class BridgeScrimsCache extends EventEmitter {
 
     }
 
+    setAll(values, ttl=0) {
+
+        if (this.maxKeys > 0) values = values.slice(0, this.maxKeys)
+
+        const deathTime = this.getDeathTime(ttl)
+        this.data = values.map(value => ({ value, deathTime, handels: [] }))
+
+    }
+
     set(key, value, ttl=0, handels=[]) {
 
         const room = this.checkSize()

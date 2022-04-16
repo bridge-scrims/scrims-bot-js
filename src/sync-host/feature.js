@@ -22,7 +22,7 @@ class ScrimsSyncHostFeature {
         this.positionUpdater = new ScrimsPositionUpdater(this)
 
         bot.on('ready', () => this.addEventHandlers())
-        bot.on('startupComplete', () => this.startUp())
+        bot.on('membersInitialized', () => this.startUp())
 
     }
 
@@ -50,8 +50,6 @@ class ScrimsSyncHostFeature {
     async intitializeGuild(guild) {
 
         // First add the bot as a scrims user so that it can be an executor
-        const botMember = await guild.members.fetch(this.bot.user.id)
-        await this.initializeMember(botMember)
 
         const members = await this.fetchHostGuildMembers()
 
@@ -119,13 +117,6 @@ class ScrimsSyncHostFeature {
 
     }
 
-    async fetchUserPositions(memberId) {
-
-        return this.bot.database.userPositions.get({ user: { discord_id: memberId } })
-            .catch(error => console.error(`Unable to get scrims user positions with discord id ${memberId} because of ${error}!`, error))
-
-    }
-
     async addUserMemberPosition(memberId) {
 
         return this.createScrimsPosition({ position: { name: "bridge_scrims_member" }, user: { discord_id: memberId } }, null)
@@ -185,7 +176,8 @@ class ScrimsSyncHostFeature {
 
     async initializeMembers(guild, members) {
 
-        await Promise.all(members.map(member => this.initializeMember(member)))
+        const userPositions = this.bot.database.userPositions.cache.data
+        await Promise.all(members.map(member => this.initializeMember(member, userPositions.filter(userPos => userPos.user.discord_id == member.id))))
 
         const ghostUsers = this.bot.database.users.cache.get({ }).filter(scrimsUser => !guild.members.cache.has(scrimsUser.discord_id))
         await Promise.all(ghostUsers.map(ghost => this.scrimsMemberRemove(ghost.discord_id)))
@@ -230,10 +222,8 @@ class ScrimsSyncHostFeature {
 
     }
 
-    async initializeMember(member) {
+    async initializeMember(member, positions) {
 
-        const positions = await this.fetchUserPositions(member.id)
-        
         if (positions && positions.filter(position => position.position_name == "bridge_scrims_member").length === 0)
             await this.addUserMemberPosition(member.id)
 

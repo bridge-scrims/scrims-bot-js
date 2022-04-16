@@ -1,7 +1,7 @@
 const { MessageEmbed, TextChannel } = require("discord.js");
-const ScrimsPositionRole = require("../lib/scrims/positionRole");
+const ScrimsPositionRole = require("../lib/scrims/position_role");
+const ScrimsUserPosition = require("../lib/scrims/user_position");
 const ScrimsUser = require("../lib/scrims/user");
-const ScrimsUserPosition = require("../lib/scrims/userPosition");
 
 class LoggingFeature {
 

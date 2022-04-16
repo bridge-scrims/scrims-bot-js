@@ -1,4 +1,5 @@
 const { OAuth2Guild, Guild, User, PartialUser, GuildMember } = require("discord.js")
+const ScrimsUser = require("./scrims/user")
 
 class ScrimsUserUpdater {
 
@@ -62,25 +63,27 @@ class ScrimsUserUpdater {
         if (guild instanceof OAuth2Guild) guild = await guild.fetch()
 
         const members = await guild.members.fetch()
-        await Promise.all(members.map(member => this.initializeMember(member)))
+        const scrimsUsers = this.bot.database.users.cache.getMap("discord_id")
+        await Promise.all(members.map(member => this.initializeMember(member, scrimsUsers)))
 
     }
 
     /**
-     * @param { GuildMember } member 
+     * @param { GuildMember } member
+     * @param { Object.<string, ScrimsUser> } scrimsUsers
      */
-    async initializeMember(member) {
+    async initializeMember(member, scrimsUsers) {
 
-        const user = await this.fetchScrimsUser(member.id)
-        if (!user) return this.createScrimsUser(member);
+        const scrimsUser = scrimsUsers[member.id]
+        if (!scrimsUser) return this.createScrimsUser(member);
 
         await member.user.fetch()
         
-        if (user && (
-                user.discord_username != member.user.username 
-                || user.discord_discriminator != member.user.discriminator 
-                || user.discord_accent_color != member.user.accentColor 
-                || user.discord_avatar != member.user.avatar
+        if ((
+                scrimsUser.discord_username != member.user.username 
+                || scrimsUser.discord_discriminator != member.user.discriminator 
+                || scrimsUser.discord_accent_color != member.user.accentColor 
+                || scrimsUser.discord_avatar != member.user.avatar
             )
         ) await this.updateScrimsUser(member.id, {
 
@@ -91,7 +94,7 @@ class ScrimsUserUpdater {
 
         })
 
-        return user;
+        return scrimsUser;
 
     }
 
@@ -125,7 +128,7 @@ class ScrimsUserUpdater {
 
     /**
      * @param { String } discordId 
-     * @param { { [s: string]: any } } changes
+     * @param { Object.<string, any> } changes
      */
     async updateScrimsUser(discordId, changes) {
 

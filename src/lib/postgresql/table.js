@@ -19,62 +19,12 @@ class TableRow {
          */
         this.bot
 
-        this.handles = {}
         this.updateWith(data)
 
     }
 
-    /**
-     * @param { String } key 
-     * @param { DBTable } table 
-     * @param { { [s: string]: any } } selector 
-     * @param { { [s: string]: any } } data 
-     * @returns { TableRow }
-     */
-    createHandle(key, table, selector, data) {
+    createHandle() {
 
-        this.removeHandle(key, table, selector)
-
-        const cached = table.cache.get(selector)[0]
-        if (cached) {
-
-            const handle = table.cache.addHandle(selector)
-            if (!handle) return null;
-
-            this.handles[key] = handle
-            return cached;
-
-        }
-
-        if (!data) return null;
-
-        const newRow = table.getRow(data)
-        
-        const handle = 1
-        table.cache.push(newRow, 0, [ handle ])    
-        
-        this.handles[key] = handle
-        return newRow;
-
-    }
-
-    /**
-     * @param { String } key 
-     * @param { DBTable } table 
-     * @param { { [s: string]: any } } selector 
-     */
-    removeHandle(key, table, selector) {
-
-        if (this[key] && (key in this.handles)) {
-
-            table.cache.removeHandle(selector, this.handles[key])
-            delete this.handles[key]
-
-        } 
-            
-    }
-
-    close() {
 
         
     }
@@ -86,19 +36,13 @@ class TableRow {
 
     }
 
-    toJSON() {
-
-        return Object.fromEntries(Object.entries(this).filter(([key, _]) => key !== "handles"));
-
-    }
-
 }
 
 class DBTable {
 
     static Row = TableRow;
 
-    constructor(client, name, getFunction=null, foreigners=[], cacheConfig={}, RowClass=TableRow) {
+    constructor(client, name, getFunction=null, foreigners=[], RowClass=TableRow, CacheClass=DBCache) {
 
         Object.defineProperty(this, 'client', { value: client });
 
@@ -116,7 +60,7 @@ class DBTable {
         /**
          * @type { DBCache }
          */
-        this.cache = new DBCache(cacheConfig?.defaultTTL ?? 3600, cacheConfig?.maxKeys ?? 5000)
+        this.cache = new CacheClass()
 
     }
 
@@ -258,9 +202,23 @@ class DBTable {
 
     }
 
+    /**
+     * @param { Object.<string, any>[] } rowDatas 
+     * @returns { TableRow[] }
+     */
+    getRows(rowDatas) {
+
+        return rowDatas.map(rowData => this.getRow(rowData));
+
+    }
+
+    /**
+     * @param { Object.<string, any> } rowData
+     * @returns { TableRow }
+     */
     getRow(rowData) {
 
-        return new this.RowClass(this.client, rowData)
+        return new this.RowClass(this.client, rowData);
 
     }
 
@@ -277,8 +235,14 @@ class DBTable {
         const result = await this.query( ...query )
         
         const items = (this.getFunction === null) ? result.rows : result.rows[0][this.getFunction]
-        const rows = items.map(item => this.getRow(item))
-        rows.forEach(row => this.cache.push(row))
+        const rows = this.getRows(items)
+        
+        if (JSON.stringify(selectCondition) === "{}") {
+            
+            this.cache.set(rows)
+
+        }else rows.forEach(row => this.cache.push(row))
+
         return rows;
 
     }
