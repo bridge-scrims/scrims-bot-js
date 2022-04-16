@@ -95,16 +95,16 @@ class ScrimsBot extends Client {
         this.emit("databaseConnected")
         console.log("Connected to database!")
 
-        console.log("Initializing guilds...")
-        await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
-        await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
-        console.log("Guilds initialized!")
-
         console.log("Initializing commands...")
         await this.commands.initializeCommands()
         console.log("Commands initialized!")
 
-        this.addEventListeners();
+        this.addEventListeners()
+
+        console.log("Initializing guilds...")
+        await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
+        await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
+        console.log("Guilds initialized!")
 
         this.emit("startupComplete")
         console.log("Startup complete!")

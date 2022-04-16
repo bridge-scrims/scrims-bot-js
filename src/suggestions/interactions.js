@@ -25,31 +25,20 @@ async function onInteraction(interaction) {
 
 }
 
-async function logDanger(interaction, message, error=null) {
-
-    const context = { 
-
-        guild_id: interaction.guild.id, 
-        suggestion: interaction.suggestion,
-        executor_id: interaction.user.id,
-        error
-
-    }
-
-    await interaction.client.suggestions.logError(message, context)
-
-}
-
 async function onError(interaction, action, error, abort) {
 
     if (abort) {
 
-        if (interaction.replied) await interaction.editReply(SuggestionsResponseMessageBuilder.failedMessage(action))
+        if (interaction.replied || interaction.deferred) await interaction.editReply(SuggestionsResponseMessageBuilder.failedMessage(action))
         else await interaction.reply(SuggestionsResponseMessageBuilder.failedMessage(action))
 
     }
 
-    await logDanger(interaction, `Unable to ${action} while handling a **${interaction.commandName}** command!`, error)
+    await interaction.client.suggestions.logError(
+        `Unable to ${action} while handling a **${interaction.commandName}** command!`, 
+        { guild_id: interaction.guild.id, executor_id: interaction.user.id, error }
+    )
+
     return false;
 
 }
@@ -161,7 +150,7 @@ async function onRemoveSuggestion(interaction) {
     await interaction.client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion })
         .catch(error => onError(interaction, `remove suggestion from the database`, error, false))
 
-    await logDanger(interaction, `Removed a suggestion.`)
+    interaction.client.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: interaction.user.id })
     
     const message = (interactorIsAuthor) ? `Your suggestion was successfully removed.` : `The suggestion was foribly removed.`
     await interaction.reply({ content: message, ephemeral: true })
@@ -175,6 +164,19 @@ function addCooldown(userId) {
 
 }
 
+function getSuggestionText(text) {
+
+    while (text.includes("\n\n")) 
+        text = text.replace("\n\n", "\n");
+
+    const lines = text.split("\n")
+    if (lines.length > 10)
+        text = lines.slice(0, lines.length-(lines.length-10)).join("\n") + lines.slice(lines.length-(lines.length-10)).join(" ")
+
+    return text;
+
+}
+
 async function onModalSubmit(interaction) {
 
     const allowed = await verifySuggestionRequest(interaction)
@@ -182,7 +184,9 @@ async function onModalSubmit(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    const suggestion = interaction.getTextInputValue('suggestion')
+    const inputValue = interaction.getTextInputValue('suggestion')
+    if (typeof inputValue !== 'string') return interaction.editReply(SuggestionsResponseMessageBuilder.errorMessage('Invalid Suggestion', "You suggestion must contain at least 15 letters to be valid."));
+    const suggestion = getSuggestionText(inputValue)
 
     const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(60, suggestion, interaction.createdTimestamp, interaction.user)
     const message = await interaction.channel.send({ embeds: [embed] }).catch(error => onError(interaction, `send suggestions message`, error, true))
@@ -198,6 +202,7 @@ async function onModalSubmit(interaction) {
 
     const newSuggestion = { 
 
+        scrimsGuild: { discord_id: interaction.guild.id },
         channel_id: message.channel.id, 
         message_id: message.id, 
         created_at: Math.round(interaction.createdTimestamp/1000),

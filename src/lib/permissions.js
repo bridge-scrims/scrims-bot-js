@@ -111,7 +111,7 @@ class ScrimsPermissionsClient {
 
         // If the user has the required discord roles for the position
         const requiredRoles = this.getPositionRequiredRoles(permissible.guild.id, positionResolvable) 
-        return (requiredRoles.every(roleId => permissible?.roles?.cache?.has(roleId)));
+        return (requiredRoles.some(roleId => permissible?.roles?.cache?.has(roleId)));
 
     }
 

@@ -19,9 +19,9 @@ class DBCache extends BridgeScrimsCache {
 
         const existing = this.getEntrys(value)[0] ?? []
         const key = existing[0] ?? this.index
-        if (!existing[0]) this.index += 1
 
         const inserted = this.set( key, value, ttl, handels )
+        if ((key === this.index) && inserted) this.index += 1
         if (inserted) this.emit('push', inserted)
         
         return inserted;
@@ -75,7 +75,6 @@ class DBCache extends BridgeScrimsCache {
 
         const entrys = this.getEntrys(filter, false)
 
-        entrys.forEach(([ _, value ]) => value.close())
         entrys.forEach(([ key, _ ]) => this.delete(key))
         entrys.forEach(([ _, value ]) => this.emit('remove', value))
 
@@ -120,6 +119,20 @@ class DBCache extends BridgeScrimsCache {
         if (!entry) return false;
 
         return super.removeHandle(entry[0], handleIndex)
+
+    }
+
+    /**
+     * @override
+     */
+    delete(key) {
+
+        if (key in this.data) {
+
+            this.data[key].value.close()
+            delete this.data[key];
+
+        }
 
     }
 

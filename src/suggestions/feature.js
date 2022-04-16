@@ -32,7 +32,7 @@ class SuggestionsFeature {
         this.database.addTable("suggestions", new SuggestionsTable(this.database))
 
         this.bot.on('ready', () => this.onReady())
-        this.bot.on('startupComplete', () => this.onStartup())
+        this.bot.on('databaseConnected', () => this.onStartup())
 
     }
 
@@ -130,7 +130,7 @@ class SuggestionsFeature {
         
         context.channel_name = channel.name
 
-        await this.logSuccess(`Suggestions channel found and is initializing with a vote const of ${this.getVoteConst(guildId)}.`, context)
+        await this.logSuccess(`Suggestions channel found and is initializing with a vote const of ${this.getVoteConst(guildId)}.`, { ...context, executor_id: this.bot.user.id })
 
         const messages = await channel.messages.fetch()
             .catch(error => this.logError(`Suggestions channel messages could not be fetched!`, { ...context, error }))
@@ -238,18 +238,7 @@ class SuggestionsFeature {
 
         if (suggestion) {
 
-            const context = { 
-
-                guild_id: message.guild.id,
-
-                message_id: message.id, 
-                suggestion,
-    
-                executor_id: message?.executor?.id
-    
-            }
-    
-            await this.logError(`Deleted a suggestion message!`, context)
+            this.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: message?.executor?.id })
 
         }
         

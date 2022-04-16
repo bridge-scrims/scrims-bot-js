@@ -170,7 +170,7 @@ class DBTable {
         if (Object.keys(parameters).length === 0) return [ "", [] ];
 
         return [
-            `${Object.entries(parameters).map(([key, value], idx) => `${key} => ${this.getValue(value, idx, prevValues)}`).join(", ")}`,
+            `${this.getEntries(parameters, prevValues).map(([key, value]) => `${key} => ${value}`).join(", ")}`,
             this.getValues(parameters, prevValues)
         ];
 
@@ -180,10 +180,10 @@ class DBTable {
 
         if (Object.keys(selectCondition).length === 0) return [ "", [] ];
 
-        const getSymbol = (value) => (value === null) ? " IS " : "="
+        const getSymbol = (value) => (value == "NULL") ? " IS " : "="
         
         return [
-            `WHERE ${Object.entries(selectCondition).map(([key, value], idx) => `${key}${getSymbol(value)}${this.getValue(value, idx, prevValues)}`).join(" AND ")}`,
+            `WHERE ${this.getEntries(selectCondition, prevValues).map(([key, value]) => `${key}${getSymbol(value)}${value}`).join(" AND ")}`,
             this.getValues(selectCondition, prevValues)
         ];
 
@@ -192,7 +192,7 @@ class DBTable {
     createInsertQuery(data, prevValues=[]) {
 
         const keys = Object.keys(data)
-        const values = Object.values(data).map((value, idx) => this.getValue(value, idx, prevValues))
+        const values = this.getEntries(data, prevValues).map(([_, value]) => value)
 
         return [ 
             `INSERT INTO ${this.name} (${keys.join(", ")}) VALUES (${values.join(", ")})`, 
@@ -204,7 +204,7 @@ class DBTable {
     createSetClause(data, prevValues=[]) {
 
         return [ 
-            `SET ${Object.entries(data).map(([key, value], idx) => `${key}=${this.getValue(value, idx, prevValues)}`).join(", ")}`, 
+            `SET ${this.getEntries(data, prevValues).map(([key, value]) => `${key}=${value}`).join(", ")}`, 
             this.getValues(data, prevValues) 
         ];
 
@@ -216,11 +216,23 @@ class DBTable {
 
     }
 
-    getValue(value, idx, prevValues) {
+    getEntries(data, prevValues=[]) {
 
-        if (value === null) return 'NULL';
-        if (value instanceof Array) return value[0];
-        return `$${idx+1+prevValues.length}`;
+        let index = prevValues.length + 1
+        return Object.entries(data).map(([key, value]) => {
+
+            if (value === null) value = 'NULL';
+            else if (value instanceof Array) value = value[0];
+            else {
+
+                value = `$${index}`
+                index += 1
+
+            }
+
+            return [ key, value ];
+
+        });
 
     }
 

@@ -1,12 +1,29 @@
 const { MessageEmbed } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
 
+function getReasonText(text) {
+
+    while (text.includes("\n\n")) 
+        text = text.replace("\n\n", "\n");
+
+    const lines = text.split("\n")
+    if (lines.length > 10)
+        text = lines.slice(0, lines.length-(lines.length-10)).join("\n") + lines.slice(lines.length-(lines.length-10)).join(" ")
+
+    return text;
+    
+}
+
 async function onSubmit(interaction) {
 
     if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
     
     interaction.ticketType = interaction.args.shift()
-    interaction.firstResponse = interaction.getTextInputValue('request-reason');
+
+    const inputValue = interaction.getTextInputValue('request-reason')
+    if (typeof inputValue !== 'string') return interaction.editReply(ScrimsMessageBuilder.errorMessage('Invalid Reason', "You reason must contain at least 15 letters to be valid."));
+    
+    interaction.firstResponse = getReasonText(inputValue)
 
     const allowed = await interaction.client.support.verifyTicketRequest(interaction, interaction.ticketType)
     if (!allowed) return false;

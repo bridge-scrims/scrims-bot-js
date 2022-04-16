@@ -22,7 +22,7 @@ class ScrimsSyncHostFeature {
         this.positionUpdater = new ScrimsPositionUpdater(this)
 
         bot.on('ready', () => this.addEventHandlers())
-        bot.on('databaseConnected', () => this.startUp())
+        bot.on('startupComplete', () => this.startUp())
 
     }
 

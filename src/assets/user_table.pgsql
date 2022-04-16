@@ -19,6 +19,8 @@ CREATE TABLE scrims_user (
     
 );
 
+INSERT INTO scrims_user (id_user, joined_at, discord_id, discord_discriminator, discord_avatar) VALUES (0, 1650023597, '954865888383885352', 1291, 'b4e754f165a915e76bab013393251bfb');
+
 
 CREATE OR REPLACE FUNCTION get_users (
     id_user int default null,

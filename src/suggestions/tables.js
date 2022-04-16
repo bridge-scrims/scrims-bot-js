@@ -22,7 +22,8 @@ class SuggestionsTable extends DBTable {
     constructor(client) {
 
         const foreigners = [
-            [ "creator", "id_creator", "get_user_id" ]
+            [ "creator", "id_creator", "get_user_id" ],
+            [ "scrimsGuild", "id_guild", "get_guild_id" ]
         ]
 
         super(client, "scrims_suggestion", "get_suggestions", foreigners, { defaultTTL: 7*24*60*60 }, ScrimsSuggestion);

@@ -114,7 +114,7 @@ class ScrimsTicket extends DBTable.Row {
     
     setGuild(obj) {
 
-        this.guild = this.createHandle("guild", this.client.guilds, { id_guild: this.id_guild }, obj);
+        this.scrimsGuild = this.createHandle("scrimsGuild", this.client.guilds, { id_guild: this.id_guild }, obj);
 
     }
 
@@ -167,7 +167,7 @@ class ScrimsTicket extends DBTable.Row {
         this.removeHandle("type", this.client.ticketTypes, { id_type: this.id_type })
         this.removeHandle("user", this.client.users, { id_user: this.id_user })
         this.removeHandle("status", this.client.ticketStatuses, { id_status: this.id_status })
-        this.removeHandle("guild", this.client.guilds, { id_guild: this.id_guild })
+        this.removeHandle("scrimsGuild", this.client.guilds, { id_guild: this.id_guild })
 
     }
 

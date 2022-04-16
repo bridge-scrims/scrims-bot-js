@@ -113,14 +113,14 @@ class BridgeScrimsCache extends EventEmitter {
  
             const deleteable = this.getDeleteable()
 
-            if (deleteable.length < difference) {
+            if (deleteable.length < (difference+1)) {
 
                 deleteable.forEach(([key, _]) => this.delete(key))
                 return false;
 
             }
 
-            deleteable.slice(difference).forEach(([key, _]) => this.delete(key))
+            deleteable.slice(0, (difference+1)).forEach(([key, _]) => this.delete(key))
 
         }
 

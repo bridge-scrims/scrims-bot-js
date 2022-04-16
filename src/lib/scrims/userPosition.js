@@ -112,6 +112,13 @@ class ScrimsUserPosition extends DBTable.Row {
         
     }
 
+    getDuration() {
+
+        return (this.expires_at === null) ? `\`permanently\`` 
+            : ((!this.expires_at) ? '\`for an unknown time period\`' : `until <t:${this.expires_at}:F>`);
+
+    }
+
     /**
      * @override 
      */

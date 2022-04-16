@@ -228,10 +228,32 @@ class ScrimsUserPositionCache extends DBCache {
         const expired = this.getEntrys().filter(([ _, userPos ]) => userPos.expires_at !== null && userPos.expires_at <= (Date.now()/1000))
         
         expired.forEach(([ _, value ]) => this.emit('remove', value))
-        expired.forEach(([ key, _ ]) => this.del(key))
+        expired.forEach(([ key, _ ]) => this.delete(key))
 
         return super.get(filter, invert);
 
+    }
+
+    /**
+     * @override
+     * @param { ScrimsUserPosition } value
+     */
+    set(key, value, ttl, handels) {
+
+        if (value?.position?.name != "bridge_scrims_member") ttl = -1
+
+        return super.set(key, value, ttl, handels);
+
+    }
+
+    /**
+     * @override
+     */
+    getDeleteable() {
+
+        return Object.entries(this.data).filter(([_, entry]) => entry.handels.length === 0)
+            .sort(([_, a], [__, b]) => (a.value?.position?.name != "bridge_scrims_member") - (b.value?.position?.name != "bridge_scrims_member"));
+    
     }
 
 }
@@ -674,7 +696,7 @@ class ScrimsTicketTable extends DBTable {
             [ "scrimsGuild", "id_guild", "get_guild_id" ]
         ]
 
-        super(client, "scrims_ticket", "get_tickets", foreigners, { defaultTTL: -1 });
+        super(client, "scrims_ticket", "get_tickets", foreigners, { defaultTTL: -1 }, ScrimsTicket);
 
         /**
          * @type { ScrimsTicketCache }

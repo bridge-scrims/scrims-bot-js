@@ -79,6 +79,21 @@ class ScrimsUser extends DBTable.Row {
 
     }
 
+    get tag() {
+
+        if (!this.discord_username || !this.discord_discriminator) return null;
+        return `${this.discord_username}#${this.discord_discriminator}`;
+
+    }
+
+    getMention(effect="") {
+
+        if (this.discordUser) return `${this.discordUser}`;
+        if (this.tag) return `${effect}${this.tag}${effect}`;
+        return `${effect}Unknown User${effect}`;
+
+    }
+
     getCurrentTime() {
 
         if (!this.timezone) return null;
@@ -94,8 +109,12 @@ class ScrimsUser extends DBTable.Row {
 
         const cdn = Constants.Endpoints.CDN("https://cdn.discordapp.com")
         
+        if (!this.discord_discriminator) return null;
         const defaultAvatar = cdn.DefaultAvatar(this.discord_discriminator % 5)
+
+        if (!this.discord_id || !this.discord_avatar) return defaultAvatar;
         const avatar = cdn.Avatar(this.discord_id, this.discord_avatar, undefined, undefined, true)
+        
         return avatar ?? defaultAvatar;
 
     }

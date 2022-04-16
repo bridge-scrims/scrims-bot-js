@@ -74,6 +74,8 @@ class ScrimsUserUpdater {
         const user = await this.fetchScrimsUser(member.id)
         if (!user) return this.createScrimsUser(member);
 
+        await member.user.fetch()
+        
         if (user && (
                 user.discord_username != member.user.username 
                 || user.discord_discriminator != member.user.discriminator 
