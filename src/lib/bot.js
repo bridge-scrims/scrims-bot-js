@@ -241,6 +241,9 @@ class ScrimsBot extends Client {
         if (interactEvent.commandName == "CANCEL" && isComponentInteraction) 
             return interactEvent.update({ content: `Operation cancelled.`, embeds: [], components: [] });
 
+        if (interactEvent.commandName == "ping" && (interactEvent instanceof CommandInteraction)) 
+            return interactEvent.reply({ content: `hello`, embeds: [], components: [], ephemeral: true });
+
         if (interactEvent instanceof Message || interactEvent instanceof MessageReaction) {
 
             interactEvent.scrimsUser = this.database.users.cache.get({ discord_id: interactEvent?.user?.id })[0] ?? null;

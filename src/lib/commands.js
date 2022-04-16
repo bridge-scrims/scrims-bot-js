@@ -21,6 +21,9 @@ async function onReloadCommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
+    await interaction.client.database.guildEntryTypes.get({ }, false)
+    await interaction.client.database.guildEntrys.get({ }, false)    
+
     await interaction.client.database.positions.get({ }, false)
     await interaction.client.database.userPositions.get({ }, false)
     await interaction.client.database.positionRoles.get({ }, false)
@@ -112,9 +115,19 @@ function getConfigCommand() {
 
 }
 
+function getPingCommand() {
+
+    const pingCommand = new SlashCommandBuilder()
+        .setName("ping")
+        .setDescription("Used to test the bots connection.")
+    
+    return [ pingCommand, { } ];
+
+}
+
 module.exports = {
 
     interactionHandler: onInteraction,
-    commands: [ getReloadCommand(), getConfigCommand() ]
+    commands: [ getReloadCommand(), getConfigCommand(), getPingCommand() ]
 
 }
