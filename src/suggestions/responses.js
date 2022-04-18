@@ -55,18 +55,73 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
     }
 
     static suggestionSentMessage() {
-        const deleteInstructions = "by right-clicking on your suggestion's message and clicking on **Apps** -> **Remove Suggestion**."
         return {
+
             embeds: [
                 new MessageEmbed()
                     .setColor(this.successGreen)
                     .setTitle("Suggestion Sent")
                     .setDescription(
-                        "Your suggestion was successfully created!"
+                        "Your suggestion was successfully created! "
+                            + `To remove it use the **/remove-suggestion** command in any channel and pick this suggestion.`
                     )
             ],
+
             ephemeral: true
+
         }
+    }
+
+    static getSuggestionFields(suggestions) {
+
+        return suggestions.map((suggestion, idx) => ({
+
+            name: `${idx+1}. Suggestion`,
+            value: `**Created <t:${suggestion.created_at}:R>:**\n\`\`\`${suggestion.suggestion}\`\`\``,
+            inline: false
+
+        }))
+
+    }
+
+    static getSuggestionButtons(suggestions) {
+
+        return suggestions.map((suggestion, idx) => (
+
+            new MessageButton()
+                .setLabel(`Remove ${idx+1}.`)
+                .setCustomId(`suggestionRemove/${suggestion.id_suggestion}`)
+                .setStyle('DANGER')
+
+        ))
+
+    }
+
+    static removeSuggestionConfirmMessage(suggestions) {
+
+        return {
+
+            embeds: [
+
+                new MessageEmbed()
+                    .setColor('#FF255F')
+                    .setTitle("Remove Suggestion")
+                    .setDescription(`Please confirm which suggestion you would like to remove.`)
+                    .addFields(this.getSuggestionFields(suggestions))
+
+            ],
+
+            components: [
+
+                new MessageActionRow().addComponents(this.getSuggestionButtons(suggestions)),
+                new MessageActionRow().addComponents(this.cancelButton())
+
+            ],
+
+            ephemeral: true
+
+        }
+
     }
 
 

@@ -1,6 +1,7 @@
 const DBCache = require("../lib/postgresql/cache");
 const DBTable = require("../lib/postgresql/table");
 
+const { Message } = require("discord.js");
 const ScrimsGuild = require("../lib/scrims/guild");
 const ScrimsUser = require("../lib/scrims/user");
 
@@ -155,6 +156,33 @@ class ScrimsSuggestion extends DBTable.Row {
 
         if (!this.scrimsGuild) return null;
         return this.scrimsGuild.discord_id;
+
+    }
+
+    get channel() {
+
+        if (!this.guild || !this.channel_id) return null;
+        return this.guild.channels.resolve(this.channel_id);
+
+    }
+
+    /**
+     * @returns { Message }
+     */
+    get message() {
+
+        if (!this.channel || !this.message_id) return null;
+        return this.channel.messages.resolve(this.message_id);
+
+    }
+
+    /**
+     * @returns { Promise<Message> }
+     */
+    async fetchMessage() {
+
+        if (!this.channel || !this.message_id) return null;
+        return this.channel.messages.fetch(this.message_id);
 
     }
 

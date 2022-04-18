@@ -146,7 +146,7 @@ class ScrimsSyncHostFeature {
 
     }
 
-    async removeUnstickyPositions(id_user, userPositions) {
+    async removeUnstickyPositions(id_user, userPositions=[]) {
 
         const nonStickyPositions = userPositions.filter(userPos => userPos.position).filter(userPos => !userPos.position.sticky)
         await Promise.all(

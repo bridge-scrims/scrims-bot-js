@@ -2,7 +2,9 @@ const SuggestionsResponseMessageBuilder = require("./responses");
 const ScrimsSuggestion = require("./suggestion");
 const onReactionUpdate = require("./reactions");
 
-const { interactionHandler, commands } = require("./interactions");
+const { interactionHandler, contextMenus } = require("./interactions");
+const { commandHandler, eventListeners, commands } = require("./commands");
+
 const { Message } = require("discord.js");
 
 class SuggestionsFeature {
@@ -28,6 +30,7 @@ class SuggestionsFeature {
         this.suggestionChannels = {}
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
+        contextMenus.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
 
         this.database.addTable("suggestions", new ScrimsSuggestion.Table(this.database))
 
@@ -255,8 +258,10 @@ class SuggestionsFeature {
 
         this.bot.addEventHandler("suggestion", interactionHandler)
 
-        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, interactionHandler))
-        
+        contextMenus.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, interactionHandler))
+        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
+        eventListeners.forEach(eventName => this.bot.addEventHandler(eventName, commandHandler))
+
     }
 
     async sendSuggestionInfoMessage(channel, resend) {

@@ -5,7 +5,8 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 const interactionHandlers = {
 
     "reload": onReloadCommand,
-    "config": onConfigCommand
+    "config": onConfigCommand,
+    "kill": onKillCommand
 
 }
 async function onInteraction(interaction) {
@@ -32,7 +33,16 @@ async function onReloadCommand(interaction) {
 
     await interaction.client.commands.update().catch(console.error)
 
-    await interaction.editReply({ content: "Commands, positions, user-positions and position-roles reloaded!", ephemeral: true })
+    await interaction.editReply({ content: "Everything was reloaded!", ephemeral: true })
+
+}
+
+async function onKillCommand(interaction) {
+
+    await interaction.reply({ content: 'Goodbye 👋', ephemeral: true })
+    
+    interaction.client.destroy()
+    process.exit(0)
 
 }
 
@@ -127,9 +137,19 @@ function getPingCommand() {
 
 }
 
+function getKillCommand() {
+
+    const killCommand = new SlashCommandBuilder()
+        .setName("kill")
+        .setDescription("Used to kill the bot.")
+    
+    return [ killCommand, { permissionLevel: "owner" } ];
+
+}
+
 module.exports = {
 
     interactionHandler: onInteraction,
-    commands: [ getReloadCommand(), getConfigCommand(), getPingCommand() ]
+    commands: [ getReloadCommand(), getConfigCommand(), getPingCommand(), getKillCommand() ]
 
 }

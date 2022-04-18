@@ -62,7 +62,7 @@ class ScrimsBot extends Client {
     destroy() {
 
         super.destroy()
-        this.database.destroy()
+        this.database.destroy().catch(() => null)
         
     }
 
@@ -246,7 +246,7 @@ class ScrimsBot extends Client {
             return interactEvent.update({ content: `Operation cancelled.`, embeds: [], components: [] });
 
         if (interactEvent.commandName === "ping" && (interactEvent instanceof CommandInteraction)) 
-            return interactEvent.reply({ content: `hello`, embeds: [], components: [], ephemeral: true });
+            return interactEvent.reply({ content: `pong`, embeds: [], components: [], ephemeral: true });
 
         if (interactEvent instanceof Message || interactEvent instanceof MessageReaction) {
 

@@ -131,7 +131,7 @@ class TicketTranscriber {
 
             const embed = new MessageEmbed()
                 .setColor("#FFFFFF")
-                .setTitle(`Support Ticket Transcript`)
+                .setTitle(`${ticket?.type?.capitalizedName} Ticket Transcript`)
                 .setDescription(`Ticket created by <@${ticket.user.discord_id}>`)
                 .setFooter({ text: guild.name, iconURL: guild.iconURL({ dynamic: true }) })
                 .setTimestamp(ticket.created_at*1000)

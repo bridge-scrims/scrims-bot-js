@@ -12,6 +12,14 @@ class ScrimsCommandInstaller {
 
         this.appCommands = []
 
+        this.bot.on('guildCreate', guild => this.onGuildCreate(guild))
+
+    }
+
+    async onGuildCreate(guild) {
+
+        await this.updateGuildCommandsPermissions(guild)
+
     }
 
     async initializeCommands() {
@@ -131,7 +139,11 @@ class ScrimsCommandInstaller {
     getCommandPermissionsGuildCommandPermissions(guild, perms) {
 
         const positions = this.bot.permissions.getCommandAllowedPositions(perms)
+        if (positions.length === 0) return [];
+
         const roles = positions.map(position => this.bot.permissions.getPositionRequiredRoles(guild.id, position)).flat()
+        
+        if (roles.length === 0) return [{ id: guild.id, permission: true, type: 'ROLE' }];
         return roles.map(roleId => ({ id: roleId, permission: true, type: 'ROLE' }))
 
     }
@@ -149,7 +161,7 @@ class ScrimsCommandInstaller {
         if ((JSON.stringify(existingPerms) == JSON.stringify(permissions))) return true;
         
         // Can not block the command client side, since discord only allows up to 10 permissions
-        if (permissions.length === 0 || permissions.length > 10) {
+        if (appCmd.defaultPermission || permissions.length === 0 || permissions.length > 10) {
 
             await appCmd.permissions.set({ command: appCmd.id, guild: guild.id, permissions: [] })
                 .catch(error => console.error(`Unable to set permissions for command ${appCmd.name}/${appCmd.id} to none!`, error))

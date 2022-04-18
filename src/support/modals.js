@@ -72,7 +72,9 @@ async function createTicket(interaction) {
 
     }
     await interaction.client.support.transcriber.transcribe(result.id_ticket, logMessage).catch(console.error)
-    await channel.setName(`${channel.name}-${result.id_ticket}`).catch(console.error)
+    
+    if (interaction.ticketType !== 'support')
+        await channel.setName(`${channel.name}-${result.id_ticket}`).catch(console.error)
 
 }
 
@@ -116,9 +118,16 @@ function getSupportLevelRoles(client, guild) {
 
 }
 
+function getChannelName(type, user) {
+
+    if (type === 'support') return `${type}-${user.username.toLowerCase()}`;
+    return `${type}`;
+
+}
+
 async function createTicketChannel(client, guild, categoryId, user, type) {
 
-    const title = `${type}-${user.username.toLowerCase()}`;
+    const title = getChannelName(type, user);
 
     return guild.channels.create(title, {
         parent: categoryId || null,

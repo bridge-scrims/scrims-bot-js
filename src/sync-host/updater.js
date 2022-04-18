@@ -114,8 +114,12 @@ class ScrimsPositionUpdater {
         if (member.guild.id === this.hostGuildId) {
             
             const id_user = await this.database.users.get({ discord_id: member.id }).then(users => users[0]?.id_user)
-            const userPositions = await this.bot.database.userPositions.get({ id_user }, false)
-            await this.sync.scrimsMemberRemove(id_user, userPositions)
+            if (id_user) {
+
+                const userPositions = await this.bot.database.userPositions.get({ id_user }, false)
+                await this.sync.scrimsMemberRemove(id_user, userPositions)
+                
+            }
 
         }
 
