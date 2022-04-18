@@ -205,7 +205,7 @@ class ScrimsSyncHostFeature {
         const remove = this.getMemberUnallowedPositions(member, userPositions)
         const removeResults = await Promise.all(
             remove.map(userPos => this.bot.database.userPositions.remove({ id_user: userPos.id_user, id_position: userPos.id_position })
-                .then(() => this.bot.database.ipc.emit("audited_user_position_remove", { id_executor, userPosition: userPos })).then(() => true)
+                .then(() => this.bot.database.ipc.notify("audited_user_position_remove", { id_executor, userPosition: userPos })).then(() => true)
                 .catch(error => console.error(`Unable to remove user position because of ${error}!`, userPos))
             )
         )

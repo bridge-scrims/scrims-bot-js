@@ -195,6 +195,12 @@ class ScrimsUserPosition extends DBTable.Row {
 
     }
 
+    isExpired() {
+
+        return (this.expires_at !== null && this.expires_at <= (Date.now()/1000));
+
+    }
+
     setScrimsUser(obj) {
 
         if (obj === null) this.user = null

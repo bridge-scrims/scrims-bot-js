@@ -65,6 +65,13 @@ class LoggingFeature {
 
         }
 
+        if (payload.id_guild) {
+
+            const guild = await this.database.guilds.get({ id_guild: payload.id_guild }).then(results => results[0])
+            if (guild) return { text: guild.name, iconURL: guild.iconURL() };
+
+        }
+
         if (payload.suggestion?.id_guild) {
 
             const guild = await this.database.guilds.get({ id_guild: payload.suggestion.id_guild }).then(results => results[0])

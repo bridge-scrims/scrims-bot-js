@@ -36,6 +36,7 @@ class PositionLoggingFeature {
         this.database.ipc.on('audited_user_position_remove', message => this.onUserPositionRemove(message.payload).catch(console.error))
         this.database.ipc.on('audited_user_position_expire_update', message => this.onUserPositionExpireUpdate(message.payload).catch(console.error))
         this.database.ipc.on('user_position_create', message => this.onUserPositionCreate(message.payload).catch(console.error))
+        this.database.ipc.on('user_position_remove', message => this.onDatabaseUserPositionRemove(message.payload).catch(console.error))
         
         this.database.ipc.on('audited_position_create', message => this.onPositionCreate(message.payload).catch(console.error))
         this.database.ipc.on('audited_position_remove', message => this.onPositionRemove(message.payload).catch(console.error))
@@ -72,10 +73,8 @@ class PositionLoggingFeature {
 
     async onPositionRoleRemove(payload) {
 
-        payload = { guild_id: payload?.selector?.scrimsGuild?.discord_id, ...payload }
-
-        const guild = payload.guild_id ? this.bot.guilds.resolve(payload.guild_id) : null
-        const role = (guild && payload?.selector?.role_id) ? `@${guild.roles.resolve(payload?.selector?.role_id)?.name}` : payload?.selector?.role_id
+        const guild = payload?.selector?.id_guild ? (await this.database.guilds.get({ id_guild: payload.selector.id_guild }).then(results => results[0]?.guild ?? null)) : null
+        const role = (guild && payload?.selector?.role_id) ? `@${guild.roles.resolve(payload.selector.role_id)?.name}` : payload?.selector?.role_id
 
         const position = (payload?.selector?.id_position) ? this.database.positions.cache.get({ id_position: payload.selector.id_position })[0]?.name : payload?.selector?.id_position
 
@@ -88,10 +87,23 @@ class PositionLoggingFeature {
 
         const userPosition = new ScrimsUserPosition(this.database, payload?.userPosition || {})
 
-        const msg = `Lost bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}**.`
-            + ` Because of ${await this.logging.getExecutorMention(payload.id_executor, payload.executor_id)} removing it.`
+        const msg = `Lost bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}**, `
+            + `because of ${await this.logging.getExecutorMention(payload.id_executor, payload.executor_id)} removing it.`
 
         return this.logging.sendLogMessages({ msg, ...payload, executor_id: undefined, id_executor: userPosition?.user?.id_user ?? null }, "positions_log_channel", "Position Taken", '#fc2360');
+
+    }
+
+    async onDatabaseUserPositionRemove(userPositionData) {
+
+        if (userPositionData?.position?.name === "bridge_scrims_member") return false;
+        const userPosition = new ScrimsUserPosition(this.database, userPositionData)
+        if (userPosition.isExpired()) {
+
+            const msg = `Lost bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}**, because of it expiring.`
+            return this.logging.sendLogMessages({ msg, id_executor: userPosition?.user?.id_user ?? null }, "positions_log_channel", "Position Expired", '#002360');
+
+        }
 
     }
 
@@ -123,7 +135,7 @@ class PositionLoggingFeature {
 
         const position = new ScrimsPosition(this.database, payload.position)
 
-        const msg = `${this.logging.getExecutorMention(payload.id_executor)} created a new bridge scrims position called **${position.name}** `
+        const msg = `${await this.logging.getExecutorMention(payload.id_executor)} created a new bridge scrims position called **${position.name}** `
             + `with a level of \`${position.level}\` in the hierarchy and a sticky value of \`${position.sticky}\`. `
         
         return this.logging.sendLogMessages({ msg, id_executor: payload.id_executor ?? null }, "positions_log_channel", "Position Created", '#00FF00');
@@ -134,7 +146,7 @@ class PositionLoggingFeature {
 
         const position = new ScrimsPosition(this.database, payload.position)
 
-        const msg = `${this.logging.getExecutorMention(payload.id_executor)} removed a bridge scrims position called **${position.name}** `
+        const msg = `${await this.logging.getExecutorMention(payload.id_executor)} removed a bridge scrims position called **${position.name}** `
             + `with a level of \`${position.level}\` in the hierarchy and a sticky value of \`${position.sticky}\`. `
         
         return this.logging.sendLogMessages({ msg, id_executor: payload.id_executor ?? null }, "positions_log_channel", "Position Removed", '#FF0000');

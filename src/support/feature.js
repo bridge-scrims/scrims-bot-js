@@ -20,7 +20,7 @@ class SupportFeature {
         this.transcriptChannels = {}
         this.ticketCategorys = {}
 
-        bot.on('ready', () => this.onReady())
+        bot.on('databaseConnected', () => this.onReady())
 
     }
 
@@ -36,6 +36,12 @@ class SupportFeature {
 
         const channelConfigs = this.database.guildEntrys.cache.get({ type: { name: "tickets_transcript_channel" } })
         await Promise.all(channelConfigs.map(entry => this.setTranscriptChannel(entry.guild_id, entry.value)))
+
+        const reportCategoryConfigs = this.database.guildEntrys.cache.get({ type: { name: "tickets_report_category" } })
+        await Promise.all(reportCategoryConfigs.map(entry => this.setTicketsCategory(entry.guild_id, entry.value, 'report')))
+
+        const supportCategoryConfigs = this.database.guildEntrys.cache.get({ type: { name: "tickets_support_category" } })
+        await Promise.all(supportCategoryConfigs.map(entry => this.setTicketsCategory(entry.guild_id, entry.value, 'support')))
 
         this.database.guildEntrys.cache.on('push', config => this.onConfigCreate(config))
         this.database.guildEntrys.cache.on('update', config => this.onConfigCreate(config))
@@ -134,7 +140,7 @@ class SupportFeature {
 
         if (channel) {
 
-            this.logSuccess(`The category for ${typeName} tickets set as **${channel.name}**.`, { guild_id: guildId })
+            this.logSuccess(`The category for \`${typeName}\` tickets set as **${channel}**.`, { guild_id: guildId })
             
             if (!(guildId in this.ticketCategorys)) this.ticketCategorys[guildId] = {}
             this.ticketCategorys[guildId][typeName] = channel

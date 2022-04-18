@@ -59,25 +59,39 @@ class ScrimsPositionUpdater {
         const members = await this.sync.fetchHostGuildMembers()
         if (!members) return false;
 
+        const position = await this.database.positions.get({ id_position }).then(results => results[0] ?? null)
+            .catch(error => console.error(`Unable to fetch scrims position because of ${error}!`, id_position))
+
+        if (!position || position.name === "bridge_scrims_member") return false;
+
         const scrimsUsers = await this.database.users.getMap({}, ['discord_id'])
             .catch(error => console.error(`Unable to fetch scrims users because of ${error}!`, id_position))
           
-        if (scrimsUsers) await Promise.all(members.map(member => this.reloadMemberPosition(member, scrimsUsers[member.id]?.id_user, id_position)))
+        const userPositions = await this.bot.database.userPositions.getArrayMap({}, ['user', 'discord_id'])
+            .catch(error => console.error(`Unable to fetch scrims user positions because of ${error}!`, id_position))
+
+        if (scrimsUsers && userPositions) 
+            await Promise.all(members.map(member => this.reloadMemberPosition(member, scrimsUsers[member.id]?.id_user, id_position, userPositions[member.id])))
 
     }
 
-    async reloadMemberPosition(member, id_user, id_position) {
+    async reloadMemberPosition(member, id_user, id_position, userPositions=[]) {
 
         if (!id_user) return false;
 
-        const hasPossition = this.bot.permissions.hasRequiredPosition(member, id_position)
+        const userPosition = userPositions.filter(userPos => userPos.id_user === id_user && userPos.id_position === id_position)[0]
         const shouldHavePossition = this.bot.permissions.hasRequiredPositionRoles(member, id_position)
         
-        if (hasPossition && !shouldHavePossition)
-            await this.database.userPositions.remove({ id_position, id_user })
+        if (userPosition && !shouldHavePossition) {
+
+            const success = await this.database.userPositions.remove({ id_position, id_user }).then(() => true)
                 .catch(error => console.error(`Unable to remove position ${id_position} from ${member?.tag} because of ${error}!`, hasPossition, shouldHavePossition, id_position))
 
-        if (shouldHavePossition && !hasPossition) {
+            if (success === true) this.bot.database.ipc.notify("audited_user_position_remove", { executor_id: this.bot.user.id, userPosition })
+
+        }
+            
+        if (shouldHavePossition && !userPosition) {
 
             const userPosition = {
 
