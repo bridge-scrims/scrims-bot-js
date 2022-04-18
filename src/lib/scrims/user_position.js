@@ -22,6 +22,27 @@ class ScrimsUserPositionCache extends DBCache {
 
     }
 
+    /**
+     * @param { ScrimsUserPosition } userPosition 
+     * @returns { ScrimsUserPosition }
+     */
+    push(userPosition) {
+
+        if (userPosition?.position?.name === "bridge_scrims_member") return userPosition;
+        return super.push(userPosition)
+
+    }
+
+    /**
+     * @param { ScrimsUserPosition[] } userPosition 
+     */
+    set(userPositions) {
+
+        userPositions = userPositions.filter(userPosition => userPosition?.position?.name !== "bridge_scrims_member")
+        return super.set(userPositions)
+
+    }
+
 }
 
 class ScrimsUserPositionsTable extends DBTable {
@@ -60,8 +81,6 @@ class ScrimsUserPositionsTable extends DBTable {
      */
     getRows(userPositionDatas) {
 
-        userPositionDatas = userPositionDatas.filter(userPositionData => userPositionData?.position?.name !== "bridge_scrims_member")
-        
         const scrimsUsers = this.client.users.cache.getMap("id_user")
         const scrimsPositions = this.client.positions.cache.getMap("id_position")
 
@@ -93,6 +112,13 @@ class ScrimsUserPositionsTable extends DBTable {
      * @returns { Promise<ScrimsUserPosition> }
      */
     async create(data) {
+
+        if (data?.position?.name === "bridge_scrims_member") {
+
+            const [ formated, formatValues ] = this.format({ ...data })
+            return this.query( ...this.createInsertQuery(formated, formatValues) );
+
+        }
 
         return super.create(data);
 

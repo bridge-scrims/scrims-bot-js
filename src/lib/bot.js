@@ -106,18 +106,11 @@ class ScrimsBot extends Client {
         console.log("Guilds initialized!")
         
         console.log("Initializing guild members...")
-        Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
-            .then(() => this.onGuildMembersInitialized()).catch(console.error)
-
+        await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
+        console.log("Guild members initialized!")
+        
         this.emit("startupComplete")
         console.log("Startup complete!")
-
-    }
-
-    onGuildMembersInitialized() {
-
-        this.emit("guildMembersInitialized")
-        console.log("Guild members initialized!")
 
     }
 
@@ -219,7 +212,8 @@ class ScrimsBot extends Client {
 
     async ensureScrimsUser(interactEvent) {
 
-        interactEvent.scrimsUser = await this.scrimsUsers.fetchScrimsUser(interactEvent.user.id)
+        interactEvent.scrimsUser = await this.database.users.get({ discord_id: interactEvent.user.id }).then(result => result[0] ?? null)
+            .catch(error => console.error(`Getting scrims user failed because of ${error}!`, interactEvent.user))
             
         if (!interactEvent.scrimsUser && interactEvent.member) {
 
@@ -248,10 +242,10 @@ class ScrimsBot extends Client {
         if (isComponentInteraction || isModalSumbitInteraction) this.expandComponentInteraction(interactEvent)
 
         if (interactEvent.user) interactEvent.userId = interactEvent.user.id
-        if (interactEvent.commandName == "CANCEL" && isComponentInteraction) 
+        if (interactEvent.commandName === "CANCEL" && isComponentInteraction) 
             return interactEvent.update({ content: `Operation cancelled.`, embeds: [], components: [] });
 
-        if (interactEvent.commandName == "ping" && (interactEvent instanceof CommandInteraction)) 
+        if (interactEvent.commandName === "ping" && (interactEvent instanceof CommandInteraction)) 
             return interactEvent.reply({ content: `hello`, embeds: [], components: [], ephemeral: true });
 
         if (interactEvent instanceof Message || interactEvent instanceof MessageReaction) {

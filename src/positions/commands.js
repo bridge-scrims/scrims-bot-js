@@ -3,10 +3,11 @@ const {
     SlashCommandSubcommandGroupBuilder,
     SlashCommandSubcommandBuilder, 
     SlashCommandIntegerOption,
+    SlashCommandStringOption,
     SlashCommandUserOption,
     SlashCommandRoleOption,
-    SlashCommandBuilder
-
+    SlashCommandBuilder,
+    
 } = require("@discordjs/builders");
 
 const { MessageActionRow, MessageButton } = require("discord.js");
@@ -133,7 +134,7 @@ async function syncMembersCommandHandler(interaction) {
     const actions = new MessageActionRow()
         .addComponents( 
             new MessageButton().setLabel("Confirm").setStyle(3).setCustomId(`SyncMembers/CONFIRM`),
-            new MessageButton().setLabel("Cancel").setStyle(2).setCustomId(`SyncMembers/CANCEL`)  
+            PositionsResponseMessageBuilder.cancelButton()
         )
 
     await interaction.editReply({ content: message, components: [ actions ], ephemeral: true })
@@ -156,6 +157,15 @@ function getPositionOption(description) {
         .setDescription(description)
         .setAutocomplete(true)
         .setRequired(true)    
+
+}
+
+function getGuildOption() {
+
+    return new SlashCommandStringOption()
+        .setName("guild")
+        .setDescription("The guild this command should effect.")
+        .setRequired(false)    
 
 }
 
@@ -208,6 +218,7 @@ function getPositionRolesStatusSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("status")
         .setDescription("Shows the current servers position roles.")
+        .addStringOption( getGuildOption() )
 
 }
 

@@ -96,7 +96,7 @@ class ScrimsTicket extends DBTable.Row {
         this.id_type = ticketData.id_type;
 
         /**
-         * @type { { id_type: Integer, name: String } }
+         * @type { ScrimsTicketType }
          */
         this.type
         this.setType(ticketData.type)
@@ -118,7 +118,7 @@ class ScrimsTicket extends DBTable.Row {
         this.id_status = ticketData.id_status;
 
         /**
-         * @type { { id_status: Integer, name: String } }
+         * @type { ScrimsTicketStatus }
          */
         this.status
         this.setStatus(ticketData.status)
@@ -211,6 +211,13 @@ class ScrimsTicket extends DBTable.Row {
 
         }
 
+        if (!data.id_type && data.type) {
+
+            this.id_type = this.client.ticketTypes.cache.get(data.type)[0]?.id_type
+            this.setType(this.id_type)
+
+        }
+
         if (data.id_user && (data.id_user != this.id_user)) {
 
             this.id_user = data.id_user
@@ -222,6 +229,13 @@ class ScrimsTicket extends DBTable.Row {
 
             this.id_status = data.id_status
             this.setStatus(data.id_status)
+
+        }
+
+        if (!data.id_status && data.status) {
+
+            this.id_status = this.client.ticketStatuses.cache.get(data.status)[0]?.id_status
+            this.setStatus(this.id_status)
 
         }
 

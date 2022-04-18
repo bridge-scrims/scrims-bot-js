@@ -86,7 +86,7 @@ async function supportMessage(interaction) {
             + `\n _ _ \n`
             + `If you are sending a montage make sure that it is in cooperation with rules and if `
             + `there is NSFW, racism, etc. you will be blacklisted from sending montages. `
-            + `Sending montages are for **privates** and Above!`
+            + `Sending montages are for **privates** and above!`
         ).setFooter({ text: `Managed by the support team`, iconURL: supportRole.iconURL() })
 
     await interaction.channel.send({ embeds: [embed], components: [action] })

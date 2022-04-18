@@ -50,7 +50,8 @@ class ScrimsUserUpdater {
      */
     async onMemberAdd(member) {
 
-        member.scrimsUser = await this.initializeMember(member)
+        const scrimsUsers = this.bot.database.users.cache.getMap("discord_id")
+        member.scrimsUser = await this.createMember(member, scrimsUsers)
         this.bot.emit('scrimsGuildMemberAdd', member)
 
     }
@@ -64,7 +65,9 @@ class ScrimsUserUpdater {
 
         const members = await guild.members.fetch()
         const scrimsUsers = this.bot.database.users.cache.getMap("discord_id")
-        await Promise.all(members.map(member => this.initializeMember(member, scrimsUsers)))
+        await Promise.all(members.map(member => this.createMember(member, scrimsUsers)))
+
+        Promise.all(members.map(member => this.updateMember(member, scrimsUsers))).catch(console.error)
 
     }
 
@@ -72,10 +75,28 @@ class ScrimsUserUpdater {
      * @param { GuildMember } member
      * @param { Object.<string, ScrimsUser> } scrimsUsers
      */
-    async initializeMember(member, scrimsUsers) {
+     async createMember(member, scrimsUsers) {
 
         const scrimsUser = scrimsUsers[member.id]
-        if (!scrimsUser) return this.createScrimsUser(member);
+        if (!scrimsUser) {
+
+            await member.user.fetch()
+            return this.createScrimsUser(member);
+
+        }
+
+        return scrimsUser;
+
+    }
+
+    /**
+     * @param { GuildMember } member
+     * @param { Object.<string, ScrimsUser> } scrimsUsers
+     */
+    async updateMember(member, scrimsUsers) {
+
+        const scrimsUser = scrimsUsers[member.id]
+        if (!scrimsUser) return false
 
         await member.user.fetch()
         
@@ -113,16 +134,6 @@ class ScrimsUserUpdater {
             joined_at: Math.round(member.joinedTimestamp/1000) 
             
         }).catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))
-
-    }
-
-    /**
-     * @param { String } memberId 
-     */
-    async fetchScrimsUser(memberId) {
-
-        return this.bot.database.users.get({ discord_id: memberId }).then(users => users[0] ?? null)
-            .catch(error => console.error(`Unable to get scrims user with discord id ${memberId} because of ${error}!`))
 
     }
 

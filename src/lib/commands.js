@@ -21,12 +21,14 @@ async function onReloadCommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    await interaction.client.database.guildEntryTypes.get({ }, false)
-    await interaction.client.database.guildEntrys.get({ }, false)    
+    await interaction.client.database.guilds.initializeCache()
+    await interaction.client.database.guildEntryTypes.initializeCache()
+    await interaction.client.database.guildEntrys.initializeCache()  
 
-    await interaction.client.database.positions.get({ }, false)
-    await interaction.client.database.userPositions.get({ }, false)
-    await interaction.client.database.positionRoles.get({ }, false)
+    await interaction.client.database.users.initializeCache()
+    await interaction.client.database.positions.initializeCache()
+    await interaction.client.database.userPositions.initializeCache()
+    await interaction.client.database.positionRoles.initializeCache()
 
     await interaction.client.commands.update().catch(console.error)
 
@@ -38,7 +40,7 @@ async function onConfigAutocomplete(interaction) {
 
     const focused = interaction.options.getFocused().toLowerCase()
 
-    const entryTypes = await interaction.client.database.guildEntryTypes.get({ }, false)
+    const entryTypes = interaction.client.database.guildEntryTypes.cache.data
     const relevant = entryTypes.filter(type => type.name.toLowerCase().includes(focused))
     
     await interaction.respond([ { name: "All", value: -1 }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])
@@ -64,13 +66,13 @@ async function onConfigCommand(interaction) {
     }
 
     const selector = { scrimsGuild: { discord_id: interaction.guild.id }, id_type: entryTypeId }
-    const entry = await interaction.client.database.guildEntrys.get(selector)
+    const entrys = await interaction.client.database.guildEntrys.get(selector)
 
-    if (!value) return interaction.reply({ content: `${entry[0]?.value || null}`, allowedMentions: { parse: [] }, ephemeral: true });
+    if (!value) return interaction.reply({ content: `${entrys[0]?.value || null}`, allowedMentions: { parse: [] }, ephemeral: true });
     
-    if (entry.length > 0) {
+    if (entrys.length > 0) {
 
-        const oldValue = entry[0].value
+        const oldValue = entrys[0].value
         
         await interaction.client.database.guildEntrys.update(selector, { value })
         return interaction.reply({ content: `${oldValue} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
@@ -78,7 +80,7 @@ async function onConfigCommand(interaction) {
     }
 
     await interaction.client.database.guildEntrys.create({ ...selector, value })
-    await interaction.reply({ content: `${value}`, allowedMentions: { parse: [] }, ephemeral: true });
+    await interaction.reply({ content: `${value}`, allowedMentions: { parse: [] }, ephemeral: true })
 
 } 
 

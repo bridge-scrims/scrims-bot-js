@@ -72,6 +72,7 @@ async function createTicket(interaction) {
 
     }
     await interaction.client.support.transcriber.transcribe(result.id_ticket, logMessage).catch(console.error)
+    await channel.setName(`${channel.name}-${result.id_ticket}`).catch(console.error)
 
 }
 

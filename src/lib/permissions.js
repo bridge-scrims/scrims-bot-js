@@ -22,7 +22,7 @@ class ScrimsPermissionsClient {
 
     get hierarchy() {
 
-        return this.database.positions.cache.get({ }).filter(v => typeof v?.level === "number").sort((a, b) => a.level - b.level).map(v => v.name);
+        return this.database.positions.cache.data.filter(v => typeof v?.level === "number").sort((a, b) => a.level - b.level).map(v => v.name);
     
     }
 
@@ -94,7 +94,7 @@ class ScrimsPermissionsClient {
     async hasRequiredPosition(permissible, positionResolvable) {
 
         const positionSelector = (typeof positionResolvable === "number") ? { id_position: positionResolvable } : { position: { name: positionResolvable } };
-        const userPositions = await this.database.userPositions.get({ user: { discord_id: permissible.id }, ...positionSelector })
+        const userPositions = this.database.userPositions.cache.get({ user: { discord_id: permissible.id }, ...positionSelector })
         
         return (userPositions.length > 0 && this.hasRequiredPositionRoles(permissible, positionResolvable));
 
@@ -105,12 +105,15 @@ class ScrimsPermissionsClient {
      * 
      * @param  { GuildMember | Role } permissible
      * @param  { String | Integer } positionResolvable
+     * @param  { Boolean } allowNone
      * @returns { Boolean } If the permissible has the positionResolvable according to their discord roles
      */
-    hasRequiredPositionRoles(permissible, positionResolvable) {
+    hasRequiredPositionRoles(permissible, positionResolvable, allowNone=true) {
 
         // If the user has the required discord roles for the position
         const requiredRoles = this.getPositionRequiredRoles(permissible.guild.id, positionResolvable) 
+        if (requiredRoles.length === 0 && !allowNone) return false;
+
         return (requiredRoles.some(roleId => permissible?.roles?.cache?.has(roleId)));
 
     }

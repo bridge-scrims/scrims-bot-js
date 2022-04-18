@@ -27,7 +27,7 @@ async function onGetSubcommand(interaction) {
 
     const user = interaction.options.getUser('user')
 
-    const userPositions = await interaction.client.database.userPositions.get({ user: { discord_id: user.id } })
+    const userPositions = await interaction.client.database.userPositions.get({ user: { discord_id: user.id } }, false)
 
     if (userPositions.length === 0) return interaction.reply( { content: `${user} does not have any positions!`, allowedMentions: { parse: [] }, ephemeral: true } );
 
@@ -79,7 +79,7 @@ async function onTakeSubcommand(interaction) {
     if (!(await hasPositionPermissions(interaction, position, `take the \`${position.name}\` position from ${user}`))) return false;
 
     const selector = { user: { discord_id: user.id }, id_position: position.id_position }
-    const existing = await interaction.client.database.userPositions.get({ ...selector, show_expired: true })
+    const existing = await interaction.client.database.userPositions.get({ ...selector, show_expired: true }, false)
 
     if (existing.length === 0) {
 
@@ -167,7 +167,7 @@ async function onGiveSubcommand(interaction) {
     }
 
     const selector = { user: { discord_id: user.id }, id_position: position.id_position }
-    const existing = await interaction.client.database.userPositions.get({ ...selector, show_expired: true })
+    const existing = await interaction.client.database.userPositions.get({ ...selector, show_expired: true }, false)
     if (existing.length > 0) {
 
         const eventPayload = { guild_id: interaction.guild.id, executor_id: interaction.user.id, userPosition: existing[0], expires_at }

@@ -22,7 +22,7 @@ class ScrimsSyncHostFeature {
         this.positionUpdater = new ScrimsPositionUpdater(this)
 
         bot.on('ready', () => this.addEventHandlers())
-        bot.on('membersInitialized', () => this.startUp())
+        bot.on('startupComplete', () => this.startUp())
 
     }
 
@@ -33,6 +33,8 @@ class ScrimsSyncHostFeature {
     }
 
     async startUp() {
+
+        // at this point the updater has started listening for events
 
         this.bot.on('guildCreate', guild => this.onGuildJoin(guild))
         
@@ -49,9 +51,8 @@ class ScrimsSyncHostFeature {
 
     async intitializeGuild(guild) {
 
-        // First add the bot as a scrims user so that it can be an executor
-
-        const members = await this.fetchHostGuildMembers()
+        const members = await guild.members.fetch()
+            .catch(error => console.error(`Unable to fetch members of host discord server because of ${error}!`, guild.id))
 
         if (members) {
 
@@ -91,21 +92,18 @@ class ScrimsSyncHostFeature {
 
     }
 
-    getMemberMissingPositions(member) {
+    getMemberMissingPositions(member, userPositions=[]) {
 
-        const positions = this.bot.database.userPositions.cache.get({ user: { discord_id: member.id } })
-        
         const allPositionRoles = this.permissions.getGuildPositionRoles(member.guild.id)
         const allowedPositionRoles = allPositionRoles.filter(pRole => this.permissions.hasRequiredPositionRoles(member, pRole.id_position))
-        const missingPositionRoles = allowedPositionRoles.filter(pRoleA => positions.filter(pRoleB => pRoleA.id_position == pRoleB.id_position).length === 0)
+        const missingPositionRoles = allowedPositionRoles.filter(pRoleA => userPositions.filter(pRoleB => pRoleA.id_position == pRoleB.id_position).length === 0)
         
         return missingPositionRoles;
 
     }
 
-    getMemberUnallowedPositions(member) {
+    getMemberUnallowedPositions(member, userPositions=[]) {
 
-        const userPositions = this.bot.database.userPositions.cache.get({ user: { discord_id: member.id } })
         return userPositions.filter(userPos => !this.memberIsAllowedPosition(member, userPos.position))
 
     }
@@ -119,14 +117,16 @@ class ScrimsSyncHostFeature {
 
     async addUserMemberPosition(memberId) {
 
-        return this.createScrimsPosition({ position: { name: "bridge_scrims_member" }, user: { discord_id: memberId } }, null)
+        const selector = { position: { name: "bridge_scrims_member" }, user: { discord_id: memberId } }
+
+        const existing = await this.bot.database.userPositions.get(selector).catch(console.error)
+        if (existing && existing.length > 0) return true;
+
+        return this.createScrimsPosition(selector, null)
 
     }
 
     async createScrimsPosition(selector, auditEntry) {
-
-        const existing = this.bot.database.userPositions.cache.get(selector)
-        if (existing.length > 0) return true;
 
         const userPositionData = {
             given_at: Math.round((auditEntry?.createdTimestamp || Date.now())/1000), 
@@ -146,71 +146,72 @@ class ScrimsSyncHostFeature {
 
     }
 
-    async addPositionRoles(member, onlySticky) {
+    async removeUnstickyPositions(id_user, userPositions) {
 
-        const stickySelector = (onlySticky ? { position: { sticky: true } } : {})
-        const userPositions = await this.bot.database.userPositions.get({ user: { discord_id: member.id }, ...stickySelector })
-        const discordRoleIds = userPositions.map(p => this.permissions.getPositionRequiredRoles(member.guild.id, p.id_position)).flat()
-        const missingRoleIds = discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))
-        
-        if (missingRoleIds.length > 0 ) {
-            await member.roles.add([ ...new Set(missingRoleIds) ])
-                .catch(error => console.error(`Unable to add position roles to ${member.user.tag}!`, userPositions, missingRoleIds, error))
-        }
+        const nonStickyPositions = userPositions.filter(userPos => userPos.position).filter(userPos => !userPos.position.sticky)
+        await Promise.all(
+            nonStickyPositions.map(userPos => this.bot.database.userPositions.remove({ id_user, id_position: userPos.id_position })
+                .catch(error => console.error(`Unable to remove non sticky positions of user with discord id ${memberId}!`, error))
+            )
+        )
         
     }
 
-    async removeUnstickyPositions(memberId) {
-
-        await this.bot.database.userPositions.remove({ user: { discord_id: memberId }, position: { sticky: 0 } })
-            .catch(error => console.error(`Unable to remove non sticky positions of user with discord id ${memberId}!`, error))
-
-    }
-
-    async scrimsMemberRemove(memberId) {
+    async scrimsMemberRemove(id_user, userPositions) {
 
         // Remove all non sticky positions
-        await this.removeUnstickyPositions(memberId)
+        await this.removeUnstickyPositions(id_user, userPositions)
 
     }
 
     async initializeMembers(guild, members) {
 
-        const userPositions = this.bot.database.userPositions.cache.data
-        await Promise.all(members.map(member => this.initializeMember(member, userPositions.filter(userPos => userPos.user.discord_id == member.id))))
+        const userPositions = await this.bot.database.userPositions.getArrayMap({ }, ['user', 'discord_id'])
 
-        const ghostUsers = this.bot.database.users.cache.get({ }).filter(scrimsUser => !guild.members.cache.has(scrimsUser.discord_id))
-        await Promise.all(ghostUsers.map(ghost => this.scrimsMemberRemove(ghost.discord_id)))
+        await Promise.all(members.map(member => this.initializeMember(member, userPositions[member.id])))
+
+        const ghostUsers = this.bot.database.users.cache.data
+            .filter(scrimsUser => userPositions[scrimsUser.discord_id] && userPositions[scrimsUser.discord_id].filter(userPos => userPos?.position?.name === "bridge_scrims_member").length > 0)
+            .filter(scrimsUser => !guild.members.cache.has(scrimsUser.discord_id))
+
+        await Promise.all(ghostUsers.map(ghost => this.scrimsMemberRemove(ghost.id_user, userPositions[ghost.discord_id])))
 
     }
 
     async getMembersPositionsDifference(guild) {
 
+        const userPositions = this.bot.database.userPositions.cache.getArrayMap("user", "discord_id")
         const members = await guild.members.fetch()
-        return members.map(member => [ this.getMemberMissingPositions(member), this.getMemberUnallowedPositions(member) ]);
+
+        return members.map(member => [ 
+            this.getMemberMissingPositions(member, userPositions[member.id]), 
+            this.getMemberUnallowedPositions(member, userPositions[member.id]) 
+        ]);
 
     }
 
-    async transferPositions(guild) {
+    async transferPositions(guild, id_executor) {
 
+        const userPositions = await this.bot.database.userPositions.getArrayMap({}, ["user", "discord_id"])
         const members = await guild.members.fetch()
-        await Promise.all(members.map(member => this.transferPositionsForMember(member)))
+
+        return Promise.all(members.map(member => this.transferPositionsForMember(id_executor, member, userPositions[member.id])))
+            .then(results => results.reduce(([rmv, create], [removeResults, createResults]) => [ [...rmv, ...removeResults], [...create, ...createResults] ], [[], []]))
 
     }
 
-    async transferPositionsForMember(member) {
+    async transferPositionsForMember(id_executor, member, userPositions) {
 
-        const remove = this.getMemberUnallowedPositions(member)
+        const remove = this.getMemberUnallowedPositions(member, userPositions)
         const removeResults = await Promise.all(
-            remove.map(userPos => this.bot.database.userPositions.remove({ id_user: userPos.id_user, id_position: userPos.id_position }).then(() => true)
+            remove.map(userPos => this.bot.database.userPositions.remove({ id_user: userPos.id_user, id_position: userPos.id_position })
+                .then(() => this.bot.database.ipc.emit("audited_user_position_remove", { id_executor, userPosition: userPos })).then(() => true)
                 .catch(error => console.error(`Unable to remove user position because of ${error}!`, userPos))
             )
         )
 
-        if (!removeResults.every(v => v === true)) throw new Error(`TransferPositionsForMember failed.`) 
-
-        const create = this.getMemberMissingPositions(member)
-            .map(posRole => ({ user: { discord_id: member.id }, id_position: posRole.id_position, given_at: Math.round(Date.now()/1000), executor: { discord_id: this.bot.user.id } }))
+        const create = this.getMemberMissingPositions(member, userPositions)
+            .map(posRole => ({ user: { discord_id: member.id }, id_position: posRole.id_position, given_at: Math.round(Date.now()/1000), id_executor }))
         
         const createResults = await Promise.all(
             create.map(userPos => this.bot.database.userPositions.create( userPos ).then(() => true)
@@ -218,14 +219,30 @@ class ScrimsSyncHostFeature {
             )
         )
 
-        if (!createResults.every(v => v === true)) throw new Error(`TransferPositionsForMember failed.`) 
+        return [removeResults, createResults];
 
     }
 
-    async initializeMember(member, positions) {
+    async initializeMember(member, userPositions) {
 
-        if (positions && positions.filter(position => position.position_name == "bridge_scrims_member").length === 0)
-            await this.addUserMemberPosition(member.id)
+        if (!userPositions || userPositions.filter(userPos => userPos?.position?.name == "bridge_scrims_member").length === 0)
+            await this.createScrimsPosition({ position: { name: "bridge_scrims_member" }, user: { discord_id: member.id } }, null)
+
+        const positions = this.permissions.getPermissionLevelPositions("staff")
+            .filter(position => !userPositions || userPositions.filter(userPos => userPos?.position?.name === position).length === 0) 
+
+        await Promise.all(positions.map(position => this.givePosition(member, position)))
+
+    }
+
+    async givePosition(member, positionName) {
+
+        const authorized = this.permissions.hasRequiredPositionRoles(member, positionName, false)
+        if (authorized) {
+
+            await this.createScrimsPosition({ user: { discord_id: member.id }, position: { name: positionName } }, null)
+
+        }
 
     }
 

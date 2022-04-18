@@ -91,7 +91,7 @@ class DBTable {
 
     async initializeCache() {
 
-        await this.get({ })
+        await this.get({ }, false)
 
     }
 
@@ -244,6 +244,37 @@ class DBTable {
         }else rows.forEach(row => this.cache.push(row))
 
         return rows;
+
+    }
+
+    /**
+     * @param { Object.<string, any> } selectCondition
+     * @param { string[] } mapKeys
+     * @param { Boolean } useCache
+     * @returns { Promise<Object.<string, TableRow>> }
+     */
+    async getMap(selectCondition, mapKeys, useCache=false) {
+
+        const result = await this.get(selectCondition, useCache)
+        return Object.fromEntries(result.map(value => [mapKeys.reduce((v, key) => v[key], value), value]));
+
+    }
+
+    /**
+     * @param { Object.<string, any> } selectCondition
+     * @param { string[] } mapKeys
+     * @param { Boolean } useCache
+     * @returns { Promise<Object.<string, TableRow[]>> }
+     */
+    async getArrayMap(selectCondition, mapKeys, useCache=false) {
+
+        const obj = {}
+
+        const result = await this.get(selectCondition, useCache)
+        result.map(value => [mapKeys.reduce((v, key) => v[key], value), value])
+            .forEach(([key, value]) => (key in obj) ? obj[key].push(value) : obj[key] = [value])
+        
+        return obj;
 
     }
 

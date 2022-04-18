@@ -62,8 +62,7 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
                     .setColor(this.successGreen)
                     .setTitle("Suggestion Sent")
                     .setDescription(
-                        "Your suggestion was successfully created! "
-                        + `If you are unhappy with your suggestion you can delete it any time ${deleteInstructions}`
+                        "Your suggestion was successfully created!"
                     )
             ],
             ephemeral: true

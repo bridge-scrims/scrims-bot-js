@@ -218,6 +218,7 @@ async function onModalSubmit(interaction) {
    
     if (createResult === false) return message.delete().catch(error => onError(interaction, `delete suggestion message after aborting command`, error, false));
 
+    await message.startThread({ name: "Discuss" }).catch(console.error)
     await interaction.editReply(SuggestionsResponseMessageBuilder.suggestionSentMessage());
 
 }

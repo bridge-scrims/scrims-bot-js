@@ -57,7 +57,7 @@ async function onUnpopularSuggestion(client, message, suggestion) {
 
     }
     
-    await client.suggestions.logError(`Removed a suggestion because of it getting ${suggestion.downVotes} down vote(s).`, context)
+    await client.suggestions.logError(`Removed a suggestion because of it getting **${suggestion.downVotes}** \`down vote(s)\` with only **${suggestion.upVotes}** \`up vote(s)\`.`, context)
 
     await client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion })
         .catch(error => console.error(`Unable to remove suggestion from database because of ${error}!`, suggestion))
@@ -71,7 +71,7 @@ async function onPopularSuggestion(client, message, suggestion) {
         -1, suggestion.suggestion, suggestion.created_at*1000, client.users.resolve(suggestion.creator.discord_id)
     )
         
-    if (!message.pinned) await message.pin().catch(console.error)
+    //if (!message.pinned) await message.pin().catch(console.error)
     await message.edit({ embeds: [embed] }).catch(console.error)
 
     if (suggestion.epic) return false;

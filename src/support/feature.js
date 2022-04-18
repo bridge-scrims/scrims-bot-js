@@ -146,13 +146,13 @@ class SupportFeature {
     logError(msg, context) {
 
         if (context.error) console.error(`${msg} Reason: ${context.error}`)
-        this.database.ipc.notify(`support_error`, { msg, ...context })
+        this.database.ipc.notify(`ticket_error`, { msg, ...context })
 
     }
 
     logSuccess(msg, context) {
 
-        this.database.ipc.notify(`support_success`, { msg, ...context })
+        this.database.ipc.notify(`ticket_success`, { msg, ...context })
 
     }
 
@@ -246,22 +246,31 @@ class SupportFeature {
         const hits = Object.entries(categorys).filter(([_, category]) => category.id === channel.id).map(([typeName, _]) => typeName)
         hits.forEach(typeName => delete categorys[typeName])
 
-        this.logError(
-            `Deleted the ${hits.join('and')} ticket category${(hits.length > 1) ? 's' : ''}!`, 
-            { guild_id: channel.guild.id, executor_id: channel?.executor?.id }
-        )
+        if (hits.length > 0) {
 
+            this.logError(
+                `Deleted the ${hits.join('and')} ticket category${(hits.length > 1) ? 's' : ''}!`, 
+                { guild_id: channel.guild.id, executor_id: channel?.executor?.id }
+            )
+
+        }
+        
         const types = [ 'tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category' ]
         await Promise.all(types.map(name => this.database.guildEntrys.remove({ scrimsGuild: { discord_id: channel.guild.id }, type: { name }, value: channel.id }))).catch(console.error)
 
-        const tickets = await this.database.tickets.get({ channel_id: channel.id, status: { name: "open" } }).catch(console.error)
-        await Promise.all(tickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor))).catch(console.error)
+        const tickets = await this.database.tickets.get({ channel_id: channel.id }).catch(console.error)
+        if (tickets) {
+            
+            const openTickets = tickets.filter(ticket => ticket.status.name !== "deleted")
+            await Promise.all(openTickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor))).catch(console.error)
+
+        }
 
     }
 
     async closeTicket(channel, ticket, executor) {
 
-        this.logError(`Closed a ticket.`, { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })
+        this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })
         await this.transcriber.send(channel.guild, ticket)
 
         await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })

@@ -124,6 +124,12 @@ class ScrimsMessageBuilder {
 
     }
     
+    static cancelButton() {
+
+        return new MessageButton().setLabel("Cancel").setStyle(2).setCustomId(`CANCEL`); 
+
+    }
+    
 }
 
 module.exports = ScrimsMessageBuilder;

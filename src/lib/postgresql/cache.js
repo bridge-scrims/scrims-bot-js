@@ -66,17 +66,35 @@ class DBCache extends EventEmitter {
         if (typeof obj1.toJSON === "function") obj1 = obj1.toJSON();
         if (typeof obj2.toJSON === "function") obj2 = obj2.toJSON();
 
-        return obj1.every(([key, value]) => (obj2[key] == value));
+        return obj1.every(([key, value]) => 
+            (value instanceof Object && obj2[key] instanceof Object) 
+                ? this.valuesMatch(Object.entries(value), obj2[key]) : (obj2[key] == value)
+        );
 
     }
 
     /**
-     * @param { string } mapKey 
+     * @param { string[] } mapKeys
      * @returns { Object.<string, TableRow> }
      */
-    getMap(mapKey) {
+    getMap( ...mapKeys ) {
 
-        return Object.fromEntries(this.data.map(value => [value[mapKey], value]));
+        return Object.fromEntries(this.data.map(value => [mapKeys.reduce((v, key) => v[key], value), value]));
+
+    }
+
+    /**
+     * @param { string[] } mapKeys
+     * @returns { Object.<string, TableRow[]> }
+     */
+    getArrayMap( ...mapKeys ) {
+
+        const obj = {}
+
+        this.data.map(value => [mapKeys.reduce((v, key) => v[key], value), value])
+            .forEach(([key, value]) => (key in obj) ? obj[key].push(value) : obj[key] = [value])
+        
+        return obj;
 
     }
 

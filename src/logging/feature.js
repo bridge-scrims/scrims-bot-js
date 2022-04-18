@@ -1,7 +1,7 @@
 const { MessageEmbed, TextChannel } = require("discord.js");
-const ScrimsPositionRole = require("../lib/scrims/position_role");
-const ScrimsUserPosition = require("../lib/scrims/user_position");
+const PositionLoggingFeature = require("./positions");
 const ScrimsUser = require("../lib/scrims/user");
+const ScrimsTicket = require("../lib/scrims/ticket");
 
 class LoggingFeature {
 
@@ -11,6 +11,8 @@ class LoggingFeature {
          * @type { import("../bot") }
          */
         this.bot = bot
+
+        this.positions = new PositionLoggingFeature(this.bot)
 
         bot.on('databaseConnected', () => this.addListeners())
 
@@ -36,16 +38,21 @@ class LoggingFeature {
         this.database.ipc.on('audited_suggestion_remove', message => this.onSuggestionRemove(message.payload).catch(console.error))
         this.database.ipc.on('suggestion_create', message => this.onSuggestionCreate(message.payload).catch(console.error))
 
-        this.database.ipc.on('positions_error', message => this.onPositionsError(message.payload).catch(console.error))
-        this.database.ipc.on('audited_position_role_create', message => this.onPositionRoleCreate(message.payload).catch(console.error))
-        this.database.ipc.on('audited_position_role_remove', message => this.onPositionRoleRemove(message.payload).catch(console.error))
-    
-        this.database.ipc.on('audited_user_position_remove', message => this.onUserPositionRemove(message.payload).catch(console.error))
-        this.database.ipc.on('audited_user_position_expire_update', message => this.onUserPositionExpireUpdate(message.payload).catch(console.error))
-        this.database.ipc.on('user_position_create', message => this.onUserPositionCreate(message.payload).catch(console.error))
+        this.database.ipc.on('ticket_error', message => this.onTicketError(message.payload).catch(console.error))
+        this.database.ipc.on('ticket_success', message => this.onTicketSuccess(message.payload).catch(console.error))
+        this.database.ipc.on('ticket_create', message => this.onTicketCreate(message.payload).catch(console.error))
+        this.database.ipc.on('ticket_closed', message => this.onTicketClose(message.payload).catch(console.error))
+
+    }
+
+    async getExecutorMention(id_executor, executor_id) {
+
+        if (!id_executor && !executor_id) return `**unknown-user**`;
         
-        //this.database.ipc.on('position_discord_roles_received', message => this.onPositionRoleReceived(message.payload))
-        //this.database.ipc.on('position_discord_roles_lost', message => this.onPositionRoleLost(message.payload))
+        const user = await this.database.users.get((id_executor ? { id_user: id_executor } : { discord_id: executor_id })).then(results => results[0]).catch(() => null)
+        if (!user) return `**unknown-user**`;
+
+        return user.getMention("**");
 
     }
 
@@ -86,8 +93,15 @@ class LoggingFeature {
             if (user) return { name: user.tag || 'Unknown User', iconURL: user.avatarURL() ?? this.defaultURL() };
 
         }
+
+        if (payload.id_executor) {
+
+            const user = await this.database.users.get({ id_user: payload.id_executor }).then(results => results[0])
+            if (user) return { name: user.tag || 'Unknown User', iconURL: user.avatarURL() ?? this.defaultURL() };
+
+        }
         
-        if (payload.executor_id === undefined) return null;
+        if (payload.executor_id === undefined && payload.id_executor === undefined) return null;
 
         return { name: `${effect}Unknown User${effect}`, iconURL: this.defaultURL() };
 
@@ -96,15 +110,17 @@ class LoggingFeature {
     /**
      * @returns { Promise<TextChannel[]> }
      */
-    async getChannels(configKey) {
+    async getChannels(configKey, guilds) {
 
-        const configured = this.database.guildEntrys.cache.get({ type: { name: configKey } }).filter(config => config.guild && config.value)
+        const configured = this.database.guildEntrys.cache.get({ type: { name: configKey } })
+            .filter(config => config.guild && config.value && (!guilds || guilds.includes(config.guild.id)))
+        
         return Promise.all(configured.map(config => config.guild.channels.fetch(config.value).catch(() => null)))
             .then(channels => channels.filter(channel => channel && channel.type === "GUILD_TEXT"));
 
     }
 
-    async sendLogMessages(payload, configKey, title, color) {
+    async sendLogMessages(payload, configKey, title, color, guilds) {
 
         if (!payload.msg) return;
 
@@ -132,8 +148,6 @@ class LoggingFeature {
                 false
             )
 
-            creator.close()
-
         }
 
         if (payload.error) {
@@ -142,20 +156,20 @@ class LoggingFeature {
 
         }
 
-        const channels = await this.getChannels(configKey)
+        const channels = await this.getChannels(configKey, guilds)
         await Promise.allSettled(channels.map(channel => channel.send({ embeds: [embed] }).catch(console.error)))
 
     }
 
     async onSuggestionsError(payload) {
 
-        return this.sendLogMessages(payload, "suggestions_log_channel", "Suggestions Error", '#cf1117');
+        return this.sendLogMessages(payload, "suggestions_log_channel", "Suggestions Error", '#cf1117', [payload.guild_id]);
 
     }
 
     async onSuggestionsSuccess(payload) {
 
-        return this.sendLogMessages(payload, "suggestions_log_channel", "Suggestions Success", '#48cf23');
+        return this.sendLogMessages(payload, "suggestions_log_channel", "Suggestions Success", '#00FF44', [payload.guild_id]);
         
     }
 
@@ -163,99 +177,47 @@ class LoggingFeature {
 
         const executorIsCreator = (payload?.executor_id === payload?.suggestion?.creator?.discord_id)
         const msg = (executorIsCreator ? `Removed their own suggestion.` : `Removed a suggestion.`)
-        return this.sendLogMessages({ msg, ...payload }, "suggestions_log_channel", "Suggestions Remove", '#fc2344');
+        return this.sendLogMessages({ msg, ...payload }, "suggestions_log_channel", "Suggestions Remove", '#fc2344', [payload?.suggestion?.scrimsGuild?.discord_id]);
 
     }
 
     async onSuggestionCreate(suggestion) {
 
         const payload = { msg: "Created a suggestion.", executor_id: suggestion?.creator?.discord_id, suggestion }
-        return this.sendLogMessages(payload, "suggestions_log_channel", "Suggestions Create", '#23cf6e');
+        return this.sendLogMessages(payload, "suggestions_log_channel", "Suggestions Create", '#23cf6e', [suggestion?.guild?.discord_id]);
         
     }
 
-    async onPositionsError(payload) {
+    async onTicketError(payload) {
 
-        return this.sendLogMessages(payload, "positions_log_channel", "Positions Error", '#cf1117');
-
-    }
-
-    async onPositionRoleCreate(payload) {
-
-        if (!payload.positionRole) {
-
-            const msg = `Created an unknown new positions role.`
-            return this.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Position Role Created", '#23cf6e');
-
-        }
-
-        const positionRole = new ScrimsPositionRole(this.database, payload.positionRole)
-        const role = positionRole.role ? `@${positionRole.role.name}` : positionRole.role_id
-        const position = positionRole.position?.name ?? positionRole.id_position
-
-        const msg = `Connected discord **${role}** to bridge scrims **${position}**.`
-        return this.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Position Role Created", '#23cf6e');
+        return this.sendLogMessages(payload, "tickets_log_channel", "Ticket Error", '#CF1117', [payload.guild_id]);
 
     }
 
-    async onPositionRoleRemove(payload) {
+    async onTicketSuccess(payload) {
 
-        payload = { guild_id: payload?.selector?.scrimsGuild?.discord_id, ...payload }
-
-        const guild = payload.guild_id ? this.bot.guilds.resolve(payload.guild_id) : null
-        const role = (guild && payload?.selector?.role_id) ? `@${guild.roles.resolve(payload?.selector?.role_id)?.name}` : payload?.selector?.role_id
-
-        const position = (payload?.selector?.id_position) ? this.database.positions.cache.get({ id_position: payload.selector.id_position })[0]?.name : payload?.selector?.id_position
-
-        const msg = `Unconnected discord **${role}** from ` + (position ? `bridge scrims **${position}**.` : `any bridge scrims positions.`)
-        return this.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Position Role Removed", '#fc2344');
-
-    }
-
-    async getExecutorMention(id_executor, executor_id) {
-
-        if (!id_executor && !executor_id) return `**unknown-user**`;
+        return this.sendLogMessages(payload, "tickets_log_channel", "Ticket Success", '#00FF44', [payload.guild_id]);
         
-        const user = await this.database.users.get((id_executor ? { id_user: id_executor } : { discord_id: executor_id })).then(results => results[0]).catch(() => null)
-        if (!user) return `**unknown-user**`;
-
-        return user.getMention("**");
-
     }
 
-    async onUserPositionRemove(payload) {
+    async onTicketCreate(ticketData) {
 
-        const userPosition = new ScrimsUserPosition(this.database, payload?.userPosition || {})
-
-        const msg = `Lost bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}**.`
-            + ` Because of ${await this.getExecutorMention(null, payload.executor_id)} removing it.`
-
-        return this.sendLogMessages({ msg, ...payload, executor_id: userPosition?.user?.discord_id ?? null }, "positions_log_channel", "Position Taken", '#fc2360');
-
-    }
-
-    async onUserPositionCreate(userPositionData) {
-
-        const userPosition = new ScrimsUserPosition(this.database, userPositionData)
-
-        const msg = `Got bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}** `
-            + `${userPosition.getDuration()} from ${await this.getExecutorMention(userPosition.id_executor)}.`
-
-        return this.sendLogMessages({ msg, executor_id: userPosition?.user?.discord_id ?? null }, "positions_log_channel", "Position Given", '#23cf93');
+        const ticket = new ScrimsTicket(this.database, ticketData)
+        const payload = { 
+            msg: `Created a ${ticket.type.name} ticket at ${ticket.channel ?? `**${ticket.channel_id}`} with an id of \`${ticket.id_ticket}\`.`,
+            guild_id: ticket.guild_id, id_executor: ticket.id_user 
+        } 
+        return this.sendLogMessages(payload, "tickets_log_channel", "Ticket Created", '#00FF44', [ticket.guild_id]);
 
     }
+    
+    async onTicketClose(payload) {
 
-    async onUserPositionExpireUpdate(payload) {
-
-        const userPosition = new ScrimsUserPosition(this.database, { ...payload.userPosition, expires_at: payload.expires_at })
-
-        const msg = `Got their bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}** `
-            + `updated by ${await this.getExecutorMention(null, payload.executor_id)} it will now last ${userPosition.getDuration()}.`
-        
-        return this.sendLogMessages({ msg, executor_id: userPosition?.user?.discord_id ?? null }, "positions_log_channel", "Position Updated", '#23cf93');
+        const creator = new ScrimsUser(this.database, payload?.ticket?.user)
+        const msg = `Closed a ${payload?.ticket?.type?.name} ticket from ${creator.getMention('**')} with an id of \`${payload?.ticket?.id_ticket}\`.`
+        return this.sendLogMessages({ msg, ...payload }, "tickets_log_channel", "Ticket Closed", '#CF1117', [payload.guild_id]);
 
     }
-
 
 }
 

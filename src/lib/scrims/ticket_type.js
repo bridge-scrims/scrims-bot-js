@@ -85,6 +85,12 @@ class ScrimsTicketType extends DBTable.Row {
 
     }
 
+    get capitalizedName() {
+
+        return this.name && this.name[0].toUpperCase() + this.name.slice(1);
+
+    }
+
 }
 
 module.exports = ScrimsTicketType;

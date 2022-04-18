@@ -22,9 +22,10 @@ async function onInteraction(interaction) {
 
 async function membersInitialized(interaction) {
 
+    const scrimsMembers = await interaction.client.database.users.getMap({}, ['discord_id'])
     const members = await interaction.guild.members.fetch()
-    const scrimsMembers = await Promise.all(members.map(member => interaction.client.database.users.get({ discord_id: member.id })))
-    return (scrimsMembers.every(scrimsMembers => scrimsMembers.length > 0));
+
+    return (members.every(member => member.id in scrimsMembers));
 
 }
 
@@ -36,7 +37,10 @@ function getNonInitializedErrorPayload() {
 
 async function onTransferPositionsCommand(interaction) {
 
-    if (!(await membersInitialized(interaction))) return interaction.reply( getNonInitializedErrorPayload() );
+    if (interaction.guild.id !== interaction.client.syncHost.hostGuildId) 
+        return interaction.reply({ content: "This command can only be used in the host guild!", ephemeral: true });
+
+    if (!(await membersInitialized(interaction))) return interaction.reply(getNonInitializedErrorPayload());
 
     await interaction.deferReply({ ephemeral: true })
 
@@ -57,7 +61,7 @@ async function onTransferPositionsCommand(interaction) {
     const actions = new MessageActionRow()
         .addComponents( 
             new MessageButton().setLabel("Confirm").setStyle(3).setCustomId(`TransferUserPositions/CONFIRM`),
-            new MessageButton().setLabel("Cancel").setStyle(2).setCustomId(`TransferUserPositions/CANCEL`)  
+            ScrimsMessageBuilder.cancelButton()
         )
 
     await interaction.editReply({ content: message, components: [ actions ], ephemeral: true })
@@ -70,11 +74,12 @@ async function onTransferPositionsComponent(interaction) {
     if (interaction.args.shift() === "CANCEL") return interaction.update( { content: `Operation cancelled.`, embeds: [], components: [] } );
 
     if (!(await membersInitialized(interaction))) return interaction.update( getNonInitializedErrorPayload() );
+    if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
     await interaction.deferUpdate()
     await interaction.editReply({ content: `Transfering...`, embeds: [], components: [] })
 
-    const result = await interaction.client.syncHost.transferPositions(interaction.guild).catch(error => error)
+    const result = await interaction.client.syncHost.transferPositions(interaction.guild, interaction.scrimsUser.id_user).catch(error => error)
     if (result instanceof Error) {
 
         console.error(`Transfer user positions failed!`, result)
@@ -82,12 +87,19 @@ async function onTransferPositionsComponent(interaction) {
 
     }
 
-    await interaction.editReply({ content: `User positions successfully transfered!`, embeds: [], components: [], ephemeral: true })
+    const [ removed, added ] = result
+    
+    const content = `**${removed.filter(v => v === true).length}/${removed.length}** \`removed\` successfully and `
+        + `**${added.filter(v => v === true).length}/${added.length}** \`added\` successfully`
+
+    await interaction.editReply({ content, embeds: [], components: [], ephemeral: true })
         .catch(() => {/* This could take more then 15 minutes, making the interaction token expire. */})
 
 }
 
 async function onCreatePositionCommand(interaction) {
+
+    if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
     const name = interaction.getString("name")
     const sticky = interaction.getBoolean("sticky")
@@ -96,6 +108,7 @@ async function onCreatePositionCommand(interaction) {
     const position = await interaction.client.database.positions.create({ name, sticky, level })
     if (!position) return interaction.reply(ScrimsMessageBuilder.failedMessage(`create this position`));
 
+    interaction.client.database.ipc.send('audited_position_create', { position, id_executor: interaction.scrimsUser.id_user })
     await interaction.reply({ content: `Created **${position.name}**.`, ephemeral: true })
 
 }
@@ -103,13 +116,7 @@ async function onCreatePositionCommand(interaction) {
 async function onPositionAutoComplete(interaction) {
 
     const focused = interaction.options.getFocused().toLowerCase()
-    const positions = await interaction.client.database.positions.get({ }, false).catch(error => error)
-    if (positions instanceof Error) {
-
-        console.error(`Unable to get bridge scrims position because of ${positions}!`)
-        return interaction.respond([]);
-
-    }
+    const positions = interaction.client.database.positions.cache.data
 
     const relevantPositions = positions.filter(position => position.name.toLowerCase().includes(focused))
     await interaction.respond(relevantPositions.map(position => ({ name: position.name, value: position.id_position })))
@@ -120,16 +127,17 @@ async function onRemovePositionCommand(interaction) {
 
     if (interaction.isAutocomplete()) return onPositionAutoComplete(interaction); 
 
+    if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
+
     const positionId = interaction.options.getInteger("position")
-    const position = await interaction.client.database.positions.get({ id_position: positionId })
-    if (position.length === 0)
-        return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
+    const position = interaction.client.database.positions.cache.get({ id_position: positionId })[0]
+    if (!position) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
 
-    const result = await interaction.client.database.positions.remove({ id_position: position[0].id_position }).catch(error => error)
+    const result = await interaction.client.database.positions.remove({ id_position: position.id_position }).catch(error => error)
     if (result instanceof Error)
-        return interaction.reply(ScrimsMessageBuilder.failedMessage(`remove the **${position[0].name}** position`));
+        return interaction.reply(ScrimsMessageBuilder.failedMessage(`remove the **${position.name}** position`));
 
-    await interaction.reply({ content: `Removed **${position[0].name}**.`, ephemeral: true })
+    await interaction.reply({ content: `Removed **${position.name}**.`, ephemeral: true })
     
 }
 
