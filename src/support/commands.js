@@ -243,7 +243,7 @@ function buildForceCloseCommand() {
         .setName("forceclose")
         .setDescription("Use this command in a support channel to force a ticket closure.")
 
-    return [forceCloseCommand, { permissionLevel: "staff" }];
+    return [forceCloseCommand, { permissionLevel: "support" }];
 
 }
 
