@@ -194,10 +194,12 @@ class ScrimsBot extends Client {
 
     async isPermitted(interactEvent) {
 
-        if (!interactEvent.member || !interactEvent.scrimsPermissions) return false;
+        if (!interactEvent.scrimsPermissions) return false;
 
         const { permissionLevel, allowedPositions, requiredPositions } = interactEvent.scrimsPermissions
         if (!permissionLevel && !allowedPositions && !requiredPositions) return true;
+        
+        if (!interactEvent.member) return false;
         
         const hasPermission = await interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions).catch(error => error);
         if (hasPermission instanceof Error) {

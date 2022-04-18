@@ -14,9 +14,7 @@ async function onCommand(interaction) {
 
     const handler = commandHandlers[interaction.commandName]
     if (handler) {
-
-        if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
-
+        
         return handler(interaction);
 
     }

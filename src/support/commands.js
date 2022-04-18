@@ -180,7 +180,7 @@ async function supportTicket(interaction) {
     const operactionPreposition = ((operation === "add") ? "to" : "from")
     
     const permissionOverwrites = interaction.channel.permissionOverwrites;
-    const userPermission = Object.fromEntries(['SEND_MESSAGES', 'VIEW_CHANNEL'].map(perm => [perm, (operation === "add")]))
+    const userPermission = Object.fromEntries(['SEND_MESSAGES', 'VIEW_CHANNEL', 'READ_MESSAGE_HISTORY'].map(perm => [perm, (operation === "add")]))
     
     const result = await permissionOverwrites.edit(user, userPermission).catch(error => error)
     if (result instanceof Error) {
