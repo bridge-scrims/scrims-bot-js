@@ -2,6 +2,7 @@
 
 const ScrimsJSBot = require("./bot.js");
 const Config = require('./config.json');
+const setupLog = require("./logging.js");
 
 function terminate(bot) {
 
@@ -17,6 +18,8 @@ function terminate(bot) {
 }
 
 async function main() {
+
+    await setupLog()
 
     const bot = new ScrimsJSBot(Config)
     await bot.login()

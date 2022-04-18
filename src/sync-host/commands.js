@@ -40,7 +40,7 @@ async function onTransferPositionsCommand(interaction) {
     if (interaction.guild.id !== interaction.client.syncHost.hostGuildId) 
         return interaction.reply({ content: "This command can only be used in the host guild!", ephemeral: true });
 
-    if (!(await membersInitialized(interaction))) return interaction.reply(getNonInitializedErrorPayload());
+    //if (!(await membersInitialized(interaction))) return interaction.reply(getNonInitializedErrorPayload());
 
     await interaction.deferReply({ ephemeral: true })
 
@@ -73,7 +73,7 @@ async function onTransferPositionsComponent(interaction) {
 
     if (interaction.args.shift() === "CANCEL") return interaction.update( { content: `Operation cancelled.`, embeds: [], components: [] } );
 
-    if (!(await membersInitialized(interaction))) return interaction.update( getNonInitializedErrorPayload() );
+    //if (!(await membersInitialized(interaction))) return interaction.update( getNonInitializedErrorPayload() );
     if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
     await interaction.deferUpdate()
@@ -101,9 +101,9 @@ async function onCreatePositionCommand(interaction) {
 
     if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
-    const name = interaction.getString("name")
-    const sticky = interaction.getBoolean("sticky")
-    const level = interaction.getInteger("level")
+    const name = interaction.options.getString("name") ?? 'unamed_position'
+    const sticky = interaction.options.getBoolean("sticky") ?? false
+    const level = interaction.options.getInteger("level") ?? null
 
     const position = await interaction.client.database.positions.create({ name, sticky, level })
     if (!position) return interaction.reply(ScrimsMessageBuilder.failedMessage(`create this position`));
