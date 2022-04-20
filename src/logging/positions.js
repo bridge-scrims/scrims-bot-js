@@ -73,7 +73,7 @@ class PositionLoggingFeature {
 
     async onPositionRoleRemove(payload) {
 
-        const guild = payload?.selector?.id_guild ? (await this.database.guilds.get({ id_guild: payload.selector.id_guild }).then(results => results[0]?.guild ?? null)) : null
+        const guild = payload?.selector?.id_guild ? (await this.database.guilds.get({ id_guild: payload.selector.id_guild }).then(results => results[0]?.discordGuild ?? null)) : null
         const role = (guild && payload?.selector?.role_id) ? `@${guild.roles.resolve(payload.selector.role_id)?.name}` : payload?.selector?.role_id
 
         const position = (payload?.selector?.id_position) ? this.database.positions.cache.get({ id_position: payload.selector.id_position })[0]?.name : payload?.selector?.id_position

@@ -74,13 +74,19 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     static getSuggestionFields(suggestions) {
 
-        return suggestions.map((suggestion, idx) => ({
+        return suggestions.map((suggestion, idx) => {
 
-            name: `${idx+1}. Suggestion`,
-            value: `**Created <t:${suggestion.created_at}:R>:**\n\`\`\`${suggestion.suggestion}\`\`\``,
-            inline: false
+            const suggestionInfo = `**Created <t:${suggestion?.created_at}:R>:**`
+            const suggestionText = suggestion?.suggestion?.substring(0, 1024 - suggestionInfo.length - 25) ?? `Unknown Suggestion.`
 
-        }))
+            return {
+                name: `${idx+1}. Suggestion`,
+                value: `${suggestionInfo}\n\`\`\`\n${suggestionText}`
+                    + `${(suggestion?.suggestion && (suggestionText.length !== suggestion.suggestion.length)) ? "\n..." : ""}\`\`\``,
+                inline: false
+            };
+
+        })
 
     }
 

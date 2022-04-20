@@ -48,7 +48,7 @@ async function suggestionRemoveCommand(interaction) {
     const suggestions = await interaction.client.database.suggestions.get({ id_creator: interaction.scrimsUser.id_user })
         .then(suggestions => suggestions.sort((a, b) => b.created_at - a.created_at).filter(suggestion => !suggestion.epic))
     
-    const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction.guild.id]
+    const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
 
     if (suggestions.length === 0) 
         return interaction.reply( ScrimsMessageBuilder.errorMessage(
