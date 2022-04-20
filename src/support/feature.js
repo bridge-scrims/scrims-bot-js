@@ -262,7 +262,7 @@ class SupportFeature {
         }
         
         const types = [ 'tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category' ]
-        await Promise.all(types.map(name => this.database.guildEntrys.remove({ scrimsGuild: { discord_id: channel.guild.id }, type: { name }, value: channel.id }))).catch(console.error)
+        await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild: { discord_id: channel.guild.id }, type: { name }, value: channel.id }))).catch(console.error)
 
         const tickets = await this.database.tickets.get({ channel_id: channel.id }).catch(console.error)
         if (tickets) {

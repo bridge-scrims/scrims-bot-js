@@ -68,7 +68,7 @@ class ScrimsBot extends Client {
 
     getConfig(guildId, key) {
 
-        return this.database.guildEntrys.cache.get({ scrimsGuild: { discord_id: guildId }, type: { name: key } })[0]?.value;
+        return this.database.guildEntrys.cache.get({ guild: { discord_id: guildId }, type: { name: key } })[0]?.value;
 
     }
 

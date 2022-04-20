@@ -67,7 +67,7 @@ async function onConfigCommand(interaction) {
 
     if (entryTypeId === -1) {
 
-        const entrys = await interaction.client.database.guildEntrys.get({ scrimsGuild: { discord_id: interaction.guild.id } })
+        const entrys = await interaction.client.database.guildEntrys.get({ guild: { discord_id: interaction.guild.id } })
 
         if (entrys.length === 0) return interaction.reply({ content: "Nothing configured for this guild." });
         
@@ -75,7 +75,7 @@ async function onConfigCommand(interaction) {
 
     }
 
-    const selector = { scrimsGuild: { discord_id: interaction.guild.id }, id_type: entryTypeId }
+    const selector = { guild: { discord_id: interaction.guild.id }, id_type: entryTypeId }
     const entrys = await interaction.client.database.guildEntrys.get(selector)
 
     if (!value) return interaction.reply({ content: `${entrys[0]?.value || null}`, allowedMentions: { parse: [] }, ephemeral: true });

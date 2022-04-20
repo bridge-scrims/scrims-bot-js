@@ -133,7 +133,7 @@ class SuggestionsFeature {
         
         context.channel_name = channel.name
 
-        await this.logSuccess(`Suggestions channel found and is initializing with a critical vote ratio of ${this.getVoteConst(guildId)}.`, { ...context, executor_id: this.bot.user.id })
+        await this.logSuccess(`Suggestions channel found and is initializing with a critical vote ratio of ${this.getVoteConst(guildId)}.`, context)
 
         const messages = await channel.messages.fetch()
             .catch(error => this.logError(`Suggestions channel messages could not be fetched!`, { ...context, error }))

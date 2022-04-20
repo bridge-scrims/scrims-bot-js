@@ -45,14 +45,10 @@ class LoggingFeature {
 
     }
 
-    async getExecutorMention(id_executor, executor_id) {
+    async getUser(id_user, discord_id) {
 
-        if (!id_executor && !executor_id) return `**unknown-user**`;
-        
-        const user = await this.database.users.get((id_executor ? { id_user: id_executor } : { discord_id: executor_id })).then(results => results[0]).catch(() => null)
-        if (!user) return `**unknown-user**`;
-
-        return user.getMention("**");
+        if (!id_user && !discord_id) return null;
+        return this.database.users.get((id_user ? { id_user } : { discord_id })).then(results => results[0]).catch(() => null)
 
     }
 
@@ -97,14 +93,14 @@ class LoggingFeature {
         if (payload.executor_id) {
 
             const user = await this.database.users.get({ discord_id: payload.executor_id }).then(results => results[0])
-            if (user) return { name: user.tag || 'Unknown User', iconURL: user.avatarURL() ?? this.defaultURL() };
+            if (user) return { name: user.tag || 'Unknown User', iconURL: user.avatarURL() ?? this.defaultURL(), mention: user.discordUser };
 
         }
 
         if (payload.id_executor) {
 
             const user = await this.database.users.get({ id_user: payload.id_executor }).then(results => results[0])
-            if (user) return { name: user.tag || 'Unknown User', iconURL: user.avatarURL() ?? this.defaultURL() };
+            if (user) return { name: user.tag || 'Unknown User', iconURL: user.avatarURL() ?? this.defaultURL(), mention: user.discordUser };
 
         }
         
@@ -163,8 +159,11 @@ class LoggingFeature {
 
         }
 
+        const mentions = [ authorData?.mention, ...(payload?.mentions ?? []) ].filter(v => v).map(v => `${v}`)
+        const msgPayload = { content: (mentions.length > 0) ? mentions.join(' ') : null, embeds: [embed], allowedMentions: { parse: [] } }
+
         const channels = await this.getChannels(configKey, guilds)
-        await Promise.allSettled(channels.map(channel => channel.send({ embeds: [embed] }).catch(console.error)))
+        await Promise.allSettled(channels.map(channel => channel.send(msgPayload).catch(console.error)))
 
     }
 
@@ -221,8 +220,8 @@ class LoggingFeature {
     async onTicketClose(payload) {
 
         const creator = new ScrimsUser(this.database, payload?.ticket?.user)
-        const msg = `Closed a ${payload?.ticket?.type?.name} ticket from ${creator.getMention('**')} with an id of \`${payload?.ticket?.id_ticket}\`.`
-        return this.sendLogMessages({ msg, ...payload }, "tickets_log_channel", "Ticket Closed", '#CF1117', [payload.guild_id]);
+        const msg = `Closed a ${payload?.ticket?.type?.name} ticket from ${creator?.getMention('**') ?? 'an **unknown user**'} with an id of \`${payload?.ticket?.id_ticket}\`.`
+        return this.sendLogMessages({ msg, mentions: [creator?.discordUser], ...payload }, "tickets_log_channel", "Ticket Closed", '#CF1117', [payload.guild_id]);
 
     }
 

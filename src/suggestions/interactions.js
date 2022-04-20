@@ -166,8 +166,8 @@ function addCooldown(userId) {
 
 function getSuggestionText(text) {
 
-    while (text.includes("\n\n")) 
-        text = text.replace("\n\n", "\n");
+    while (text.includes("\n\n\n")) 
+        text = text.replace("\n\n\n", "\n\n");
 
     const lines = text.split("\n")
     if (lines.length > 10)
@@ -202,7 +202,7 @@ async function onModalSubmit(interaction) {
 
     const newSuggestion = { 
 
-        scrimsGuild: { discord_id: interaction.guild.id },
+        guild: { discord_id: interaction.guild.id },
         channel_id: message.channel.id, 
         message_id: message.id, 
         created_at: Math.round(interaction.createdTimestamp/1000),

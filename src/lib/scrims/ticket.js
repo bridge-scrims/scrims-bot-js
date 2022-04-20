@@ -39,7 +39,7 @@ class ScrimsTicketTable extends DBTable {
             [ "user", "id_user", "get_user_id" ],
             [ "type", "id_type", "get_ticket_type_id" ],
             [ "status", "id_status", "get_ticket_status_id" ],
-            [ "scrimsGuild", "id_guild", "get_guild_id" ]
+            [ "guild", "id_guild", "get_guild_id" ]
         ]
 
         super(client, "scrims_ticket", "get_tickets", foreigners, ScrimsTicket, ScrimsTicketCache);

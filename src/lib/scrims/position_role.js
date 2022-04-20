@@ -24,7 +24,7 @@ class ScrimsPositionRolesTable extends DBTable {
 
         const foreigners = [
             [ "position", "id_position", "get_position_id" ],
-            [ "scrimsGuild", "id_guild", "get_guild_id" ]
+            [ "guild", "id_guild", "get_guild_id" ]
         ]
 
         super(client, "scrims_position_role", "get_position_roles", foreigners, ScrimsPositionRole, ScrimsPositionRolesCache);

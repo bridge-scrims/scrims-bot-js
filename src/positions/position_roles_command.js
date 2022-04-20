@@ -97,7 +97,7 @@ async function onReloadSubcommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    const positionRoles = await interaction.client.database.positionRoles.get({ scrimsGuild: { discord_id: interaction.guild.id } }, false).catch(error => error)
+    const positionRoles = await interaction.client.database.positionRoles.get({ guild: { discord_id: interaction.guild.id } }, false).catch(error => error)
     const result = await interaction.client.database.positions.get({ }, false).catch(error => error)
     
     const error = (positionRoles instanceof Error) ? positionRoles : result

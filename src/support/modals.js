@@ -3,8 +3,8 @@ const ScrimsMessageBuilder = require("../lib/responses");
 
 function getReasonText(text) {
 
-    while (text.includes("\n\n")) 
-        text = text.replace("\n\n", "\n");
+    while (text.includes("\n\n\n")) 
+        text = text.replace("\n\n\n", "\n\n");
 
     const lines = text.split("\n")
     if (lines.length > 10)
@@ -46,7 +46,7 @@ async function createTicket(interaction) {
 
         id_user: interaction.scrimsUser.id_user, 
         type: { name: interaction.ticketType },
-        scrimsGuild: { discord_id: interaction.guild.id },
+        guild: { discord_id: interaction.guild.id },
         status: { name: "open" },
         channel_id: channel.id, 
         created_at: Math.round(Date.now()/1000) 
@@ -92,7 +92,7 @@ function getCreatedPayload(channel) {
 
 async function getMentionRoles(guild) {
 
-    const positionRoles = await guild.client.database.positionRoles.get({ scrimsGuild: { discord_id: guild.id }, position: { name: "ticket_open_mention" } })
+    const positionRoles = await guild.client.database.positionRoles.get({ guild: { discord_id: guild.id }, position: { name: "ticket_open_mention" } })
     return positionRoles.map(posRole => guild.roles.resolve(posRole.role_id)).filter(role => role);
 
 }

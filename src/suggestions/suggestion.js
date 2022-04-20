@@ -24,7 +24,7 @@ class ScrimsSuggestionsTable extends DBTable {
 
         const foreigners = [
             [ "creator", "id_creator", "get_user_id" ],
-            [ "scrimsGuild", "id_guild", "get_guild_id" ]
+            [ "guild", "id_guild", "get_guild_id" ]
         ]
 
         super(client, "scrims_suggestion", "get_suggestions", foreigners, ScrimsSuggestion, SuggestionsTableCache);

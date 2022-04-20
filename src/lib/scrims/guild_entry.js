@@ -24,7 +24,7 @@ class ScrimsGuildEntrysTable extends DBTable {
 
         const foreigners = [
             [ "type", "id_type", "get_guild_entry_type_id" ],
-            [ "scrimsGuild", "id_guild", "get_guild_id" ]
+            [ "guild", "id_guild", "get_guild_id" ]
         ]
 
         super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, ScrimsGuildEntry, ScrimsGuildEntrysCache);
