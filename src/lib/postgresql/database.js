@@ -132,6 +132,7 @@ class DBClient {
         this.ipc = pgIPC(this.ipcClient)
         this.ipc.on('error', error => console.error(`Unexpected pgsql ipc error ${error}!`))
 
+        console.log("Initializing cache...")
         await this.initializeCache()
 
     }

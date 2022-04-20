@@ -12,21 +12,67 @@ class DBCache extends EventEmitter {
         this.setMaxListeners(0)
 
         /**
+         * @type { number }
+         */
+        this.handleIndex = 1
+
+        /**
+         * @type { string }
+         */
+        this.handlesKey = `_${Date.now()}`
+
+        /**
          * @type { TableRow[] }
          */
         this.data = []
 
     }
 
+    createHandle(filter) {
+
+        const row = this.get(filter)[0] ?? null
+        if (!row) return [null, null];
+
+        return this.addHandle(row);
+
+    }
+
+    addHandle(row) {
+
+        const handleId = this.handleIndex
+        this.handleIndex += 1
+
+        if (row[this.handlesKey]) row[this.handlesKey].push(handleId)
+        else row[this.handlesKey] = [handleId]
+
+        return [handleId, row];
+
+    }
+
+    releaseHandle(handleId) {
+
+        this.data.forEach(row => {
+
+            if (row[this.handlesKey]) {
+
+                row[this.handlesKey] = row[this.handlesKey].filter(value => value !== handleId)
+            
+            }
+
+        })
+
+    }
+
     /**
      * @param { TableRow } value
+     * @param { Boolean } withHandle
      * @returns { TableRow }
      */
-    push(value) {
+    push(value, existing=null, withHandle=false) {
 
         if (value === null) return null;
 
-        const existing = this.get(value)[0]
+        if (existing === null) existing = this.get(value)[0]
     
         if (existing) {
             
@@ -35,12 +81,14 @@ class DBCache extends EventEmitter {
 
         }else {
 
+            value.cache()
             this.data.push(value)
 
         }
 
         this.emit('push', value)
         
+        if (withHandle) return this.addHandle(existing ?? value);
         return value;
 
     }
@@ -50,26 +98,7 @@ class DBCache extends EventEmitter {
      */
     set(values) {
 
-        this.data = values
-
-    }
-
-    /**
-     * @param { [ string, any ][] } obj1 
-     * @param { TableRow } obj2 
-     * @returns { Boolean }
-     */
-    valuesMatch(obj1, obj2) {
-
-        if (!obj1 || !obj2) return false;
-
-        if (typeof obj1.toJSON === "function") obj1 = obj1.toJSON();
-        if (typeof obj2.toJSON === "function") obj2 = obj2.toJSON();
-
-        return obj1.every(([key, value]) => 
-            (value instanceof Object && obj2[key] instanceof Object) 
-                ? this.valuesMatch(Object.entries(value), obj2[key]) : (obj2[key] == value)
-        );
+        return values.map(value => this.push(value));
 
     }
 
@@ -79,7 +108,7 @@ class DBCache extends EventEmitter {
      */
     getMap( ...mapKeys ) {
 
-        return Object.fromEntries(this.data.map(value => [mapKeys.reduce((v, key) => v[key], value), value]));
+        return Object.fromEntries(this.data.map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value]));
 
     }
 
@@ -91,7 +120,7 @@ class DBCache extends EventEmitter {
 
         const obj = {}
 
-        this.data.map(value => [mapKeys.reduce((v, key) => v[key], value), value])
+        this.data.map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value])
             .forEach(([key, value]) => (key in obj) ? obj[key].push(value) : obj[key] = [value])
         
         return obj;
@@ -105,10 +134,8 @@ class DBCache extends EventEmitter {
      */ 
     get(filter, invert) {
 
-        const entries = Object.entries(filter)
-
-        if (invert) return this.data.filter(value => !this.valuesMatch(entries, value));
-        else return this.data.filter(value => this.valuesMatch(entries, value));
+        if (invert) return this.data.filter(row => !row.equals(filter));
+        else return this.data.filter(row => row.equals(filter));
 
     }
 

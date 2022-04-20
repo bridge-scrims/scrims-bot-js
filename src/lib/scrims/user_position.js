@@ -23,23 +23,12 @@ class ScrimsUserPositionCache extends DBCache {
     }
 
     /**
-     * @param { ScrimsUserPosition } userPosition 
-     * @returns { ScrimsUserPosition }
-     */
-    push(userPosition) {
-
-        if (userPosition?.position?.name === "bridge_scrims_member") return userPosition;
-        return super.push(userPosition)
-
-    }
-
-    /**
      * @param { ScrimsUserPosition[] } userPosition 
      */
     set(userPositions) {
 
-        userPositions = userPositions.filter(userPosition => userPosition?.position?.name !== "bridge_scrims_member")
-        return super.set(userPositions)
+        const data = this.getArrayMap('id_user')
+        return userPositions.map(userPos => this.push(userPos, (data[userPos.id_user] ?? []).filter(v => v.id_position === userPos.id_position)[0] ?? false, false));
 
     }
 
@@ -145,53 +134,53 @@ class ScrimsUserPosition extends DBTable.Row {
 
     constructor(client, userPositionData) {
 
-        super(client, {})
+        const references = [
+            ['user', ['id_user'], ['id_user'], client.users],
+            ['position', ['id_position'], ['id_position'], client.positions],
+            ['executor', ['id_executor'], ['id_user'], client.users]
+        ]
+
+        super(client, userPositionData, references)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_user = userPositionData.id_user;
+        this.id_user
         
         /**
          * @type { ScrimsUser }
          */
         this.user
-        this.setScrimsUser(userPositionData.user)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_position = userPositionData.id_position;
+        this.id_position
 
         /**
          * @type { ScrimsPosition }
          */
         this.position
-        this.setPosition(userPositionData.position)
         
-
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_executor = userPositionData.id_executor;
+        this.id_executor
 
         /**
          * @type { ScrimsUser }
          */
         this.executor
-        this.setExecutorUser(userPositionData.executor)
-        
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.given_at = userPositionData.given_at;
-
+        this.given_at
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.expires_at = userPositionData.expires_at;
+        this.expires_at
 
     }
 
@@ -201,68 +190,27 @@ class ScrimsUserPosition extends DBTable.Row {
 
     }
 
-    setScrimsUser(obj) {
-
-        if (obj === null) this.user = null
-
-        this.user = (obj instanceof ScrimsUser) ? obj : this.client.users.cache.get({ id_user: this.id_user })[0]
-
-    }
-
-    setPosition(obj) {
-
-        if (obj === null) this.position = null
-
-        this.position = (obj instanceof ScrimsPosition) ? obj : this.client.positions.cache.get({ id_position: this.id_position })[0]
-
-    }
-
-    setExecutorUser(obj) {
-
-        if (obj === null) this.executor = null
-
-        this.executor = (obj instanceof ScrimsUser) ? obj : this.client.users.cache.get({ id_user: this.id_executor })[0]
-
-    }
-
-    /**
-     * @override 
-     */
-    updateWith(data) {
-
-        if (data.id_user && (data.id_user != this.id_user)) {
-
-            this.id_user = data.id_user
-            this.setScrimsUser(data.user)
-
-        }
-
-        if (data.id_position && (data.id_position != this.id_position)) {
-
-            this.id_position = data.id_position
-            this.setPosition(data.position)
-
-        }
-
-        if (data.id_executor && ( data.id_executor != this.id_executor)) {
-
-            this.id_executor = data.id_executor
-            this.setExecutorUser(data.executor)
-
-        }
-
-        if (data.given_at) this.given_at = data.given_at;
-
-        if (data.expires_at) this.expires_at = data.expires_at;
-
-        return this;
-        
-    }
-
     getDuration() {
 
         return (this.expires_at === null) ? `\`permanently\`` 
             : ((!this.expires_at) ? '\`for an unknown time period\`' : `until <t:${this.expires_at}:F>`);
+
+    }
+
+    /**
+     * @override
+     * @param { Object.<string, any> } obj 
+     * @returns { Boolean }
+     */
+    equals(obj) {
+
+        if (obj instanceof ScrimsUserPosition) {
+
+            return (obj.id_user === this.id_user && obj.id_position === this.id_position);
+
+        }
+        
+        return this.valuesMatch(obj, this);
 
     }
 

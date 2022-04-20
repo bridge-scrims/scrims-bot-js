@@ -15,6 +15,16 @@ class ScrimsUserCache extends DBCache {
 
     }
 
+    /**
+     * @param { ScrimsUser[] } users 
+     */
+    set(users) {
+
+        const data = this.getMap('id_user')
+        return users.map(user => this.push(user, data[user.id_user] ?? false, false));
+
+    }
+
 }
 
 class ScrimsUserTable extends DBTable {
@@ -83,70 +93,67 @@ class ScrimsUser extends DBTable.Row {
 
     constructor(client, userData) {
 
-        super(client, {})
+        super(client, userData, [])
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_user = userData.id_user;
-        
-        /**
-         * @type { Integer }
-         */
-        this.joined_at = userData.joined_at;
-
+        this.id_user
 
         /**
-         * @type { String }
+         * @type { number }
          */
-        this.discord_id = userData.discord_id;
+        this.joined_at
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.discord_username = userData.discord_username;
+        this.discord_id
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.discord_discriminator = `${userData.discord_discriminator}`.padStart(4, '0');
+        this.discord_username
 
         /**
-         * @type { Integer }
+         * @type { string }
          */
-        this.discord_accent_color = userData.discord_accent_color;
+        this.discord_discriminator = `${userData.discord_discriminator}`.padStart(4, '0')
 
         /**
-         * @type { String }
+         * @type { number }
          */
-        this.discord_avatar = userData.discord_avatar;
-
+        this.discord_accent_color
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.mc_uuid = userData.mc_uuid;
+        this.discord_avatar
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.mc_name = userData.mc_name;
+        this.mc_uuid
 
         /**
-         * @type { Boolean }
+         * @type { string }
          */
-        this.mc_verified = userData.mc_verified;
-
-
-        /**
-         * @type { String }
-         */
-        this.country = userData.country;
+        this.mc_name
 
         /**
-         * @type { String }
+         * @type { boolean }
          */
-        this.timezone = userData.timezone;
+        this.mc_verified
+
+        /**
+         * @type { string }
+         */
+        this.country
+
+        /**
+         * @type { string }
+         */
+        this.timezone
 
     }
 
@@ -181,7 +188,7 @@ class ScrimsUser extends DBTable.Row {
 
     /**
      * 
-     * @returns { String } The user's avatar URL, default avatar URL or null
+     * @returns { string } The user's avatar URL, default avatar URL or null
      */
     avatarURL() {
 
@@ -194,6 +201,23 @@ class ScrimsUser extends DBTable.Row {
         const avatar = cdn.Avatar(this.discord_id, this.discord_avatar, undefined, undefined, true)
         
         return avatar ?? defaultAvatar;
+
+    }
+
+    /**
+     * @override
+     * @param { Object.<string, any> } obj 
+     * @returns { Boolean }
+     */
+    equals(obj) {
+
+        if (obj instanceof ScrimsUser) {
+
+            return (obj.id_user === this.id_user);
+
+        }
+        
+        return this.valuesMatch(obj, this);
 
     }
 

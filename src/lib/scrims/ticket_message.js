@@ -16,6 +16,16 @@ class ScrimsTicketMessagesCache extends DBCache {
 
     }
 
+    /**
+     * @param { ScrimsTicketMessage[] } messages 
+     */
+    set(messages) {
+
+        const data = this.getMap('message_id')
+        return messages.map(message => this.push(message, data[message.message_id] ?? false, false));
+
+    }
+
 }
 
 class ScrimsTicketMessagesTable extends DBTable {
@@ -78,56 +88,59 @@ class ScrimsTicketMessage extends DBTable.Row {
 
     constructor(client, messageData) {
 
-        super(client, {})
+        const references = [
+            ['ticket', ['id_ticket'], ['id_ticket'], client.tickets], 
+            ['author', ['id_author'], ['id_user'], client.users]
+        ]
+
+        super(client, messageData, references)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_ticket = messageData.id_position;
+        this.id_ticket
 
         /**
          * @type { ScrimsTicket }
          */
         this.ticket
-        this.setTicket(messageData.ticket)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_author = messageData.id_author;
+        this.id_author
 
         /**
          * @type { ScrimsUser }
          */
         this.author
-        this.setAuthor(messageData.author)
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.message_id = messageData.message_id;
+        this.message_id
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.content = messageData.content;
+        this.content
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.deleted = messageData.deleted;
+        this.deleted
         
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.created_at = messageData.created_at;
+        this.created_at
 
     }
 
-    get guild() {
+    get discordGuild() {
 
-        if (!this.ticket?.guild) return null;
-        return this.ticket.guild;
+        if (!this.ticket?.discordGuild) return null;
+        return this.ticket.discordGuild;
 
     }
 
@@ -152,51 +165,21 @@ class ScrimsTicketMessage extends DBTable.Row {
 
     }
 
-    setAuthor(obj) {
-
-        if (obj === null) this.author = null
-
-        this.author = (obj instanceof ScrimsUser) ? obj : this.client.users.cache.get({ id_user: this.id_author })[0]
-
-    }
-
-    setTicket(obj) {
-
-        if (obj === null) this.ticket = null
-
-        this.ticket = (obj instanceof ScrimsTicket) ? obj : this.client.tickets.cache.get({ id_ticket: this.id_ticket })[0]
-
-    }
-
     /**
-     * @override 
+     * @override
+     * @param { Object.<string, any> } obj 
+     * @returns { Boolean }
      */
-    updateWith(data) {
+    equals(obj) {
 
-        if (data.id_ticket && (data.id_ticket != this.id_ticket)) {
+        if (obj instanceof ScrimsTicketMessage) {
 
-            this.id_ticket = data.id_ticket
-            this.setTicket(data.ticket)
+            return (obj.id_ticket === this.id_ticket && obj.message_id === this.message_id);
 
         }
         
-        if (data.id_author && (data.id_author != this.id_author)) {
+        return this.valuesMatch(obj, this);
 
-            this.id_author = data.id_author
-            this.setAuthor(data.author)
-
-        }
-
-        if (data.message_id) this.message_id = data.message_id;
-
-        if (data.content) this.content = data.content;
-
-        if (data.deleted) this.deleted = data.deleted;
-
-        if (data.created_at) this.created_at = data.created_at;
-
-        return this;
-        
     }
 
 }

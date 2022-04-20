@@ -19,6 +19,16 @@ class ScrimsTicketCache extends DBCache {
 
     }
 
+    /**
+     * @param { ScrimsTicket[] } tickets 
+     */
+    set(tickets) {
+
+        const data = this.getMap('id_ticket')
+        return tickets.map(ticket => this.push(ticket, data[ticket.id_ticket] ?? false, false));
+
+    }
+
 }
 
 class ScrimsTicketTable extends DBTable {
@@ -83,80 +93,83 @@ class ScrimsTicket extends DBTable.Row {
 
     constructor(client, ticketData) {
 
-        super(client, {})
+        const references = [
+            ['type', ['id_type'], ['id_type'], client.ticketTypes], 
+            ['user', ['id_user'], ['id_user'], client.users],
+            ['status', ['id_status'], ['id_status'], client.ticketStatuses],
+            ['guild', ['id_guild'], ['id_guild'], client.guilds]
+        ]
+
+        super(client, ticketData, references)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_ticket = ticketData.id_ticket;
+        this.id_ticket
         
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_type = ticketData.id_type;
+        this.id_type;
 
         /**
          * @type { ScrimsTicketType }
          */
         this.type
-        this.setType(ticketData.type)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_user = ticketData.id_user;
+        this.id_user
 
         /**
          * @type { ScrimsUser }
          */
         this.user
-        this.setUser(ticketData.user)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_status = ticketData.id_status;
+        this.id_status
 
         /**
          * @type { ScrimsTicketStatus }
          */
         this.status
-        this.setStatus(ticketData.status)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_guild = ticketData.id_guild;
+        this.id_guild
 
         /**
          * @type { ScrimsGuild }
          */
-        this.scrimsGuild
-        this.setGuild(ticketData.guild)
+        this.guild
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.channel_id = ticketData.channel_id;
+        this.channel_id 
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.created_at = ticketData.created_at;
+        this.created_at
 
     }
 
-    get guild() {
+    get discordGuild() {
 
-        if (!this.scrimsGuild) return null;
-        return this.scrimsGuild.guild;
+        if (!this.guild) return null;
+        return this.guild.discordGuild;
 
     }
 
     get guild_id() {
 
-        if (!this.scrimsGuild) return null;
-        return this.scrimsGuild.discord_id;
+        if (!this.guild) return null;
+        return this.guild.discord_id;
 
     }
 
@@ -165,93 +178,6 @@ class ScrimsTicket extends DBTable.Row {
         if (!this.channel_id) return null;
         return this.bot.channels.resolve(this.channel_id);
 
-    }
-
-    setType(obj) {
-
-        if (obj === null) this.type = null
-
-        this.type = (obj instanceof ScrimsTicketType) ? obj : this.client.ticketTypes.cache.get({ id_type: this.id_type })[0]
-
-    }
-
-    setUser(obj) {
-
-        if (obj === null) this.user = null
-
-        this.user = (obj instanceof ScrimsUser) ? obj : this.client.users.cache.get({ id_user: this.id_user })[0]
-
-    }
-
-    setStatus(obj) {
-
-        if (obj === null) this.status = null
-
-        this.status = (obj instanceof ScrimsTicketStatus) ? obj : this.client.ticketStatuses.cache.get({ id_status: this.id_status })[0]
-
-    }
-    
-    setGuild(obj) {
-
-        if (obj === null) this.scrimsGuild = null
-
-        this.scrimsGuild = (obj instanceof ScrimsGuild) ? obj : this.client.guilds.cache.get({ id_guild: this.id_guild })[0]
-
-    }
-
-    /**
-     * @override 
-     */
-    updateWith(data) {
-
-        if (data.id_type && (data.id_type != this.id_type)) {
-
-            this.id_type = data.id_type
-            this.setType(data.id_type)
-
-        }
-
-        if (!data.id_type && data.type) {
-
-            this.id_type = this.client.ticketTypes.cache.get(data.type)[0]?.id_type
-            this.setType(this.id_type)
-
-        }
-
-        if (data.id_user && (data.id_user != this.id_user)) {
-
-            this.id_user = data.id_user
-            this.setUser(data.id_user)
-
-        }
-
-        if (data.id_status && (data.id_status != this.id_status)) {
-
-            this.id_status = data.id_status
-            this.setStatus(data.id_status)
-
-        }
-
-        if (!data.id_status && data.status) {
-
-            this.id_status = this.client.ticketStatuses.cache.get(data.status)[0]?.id_status
-            this.setStatus(this.id_status)
-
-        }
-
-        if (data.id_guild && (data.id_guild != this.id_guild)) {
-
-            this.id_guild = data.id_guild
-            this.setGuild(data.id_guild)
-
-        }
-
-        if (data.channel_id) this.channel_id = data.channel_id;
-
-        if (data.created_at) this.created_at = data.created_at;
-
-        return this;
-        
     }
 
 }

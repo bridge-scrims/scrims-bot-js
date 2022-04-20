@@ -71,17 +71,17 @@ class ScrimsTicketType extends DBTable.Row {
     
     constructor(client, typeData) {
 
-        super(client, {});
+        super(client, typeData, []);
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_type = typeData.id_type
+        this.id_type
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.name = typeData.name
+        this.name
 
     }
 

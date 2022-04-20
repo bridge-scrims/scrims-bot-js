@@ -71,27 +71,27 @@ class ScrimsPosition extends DBTable.Row {
 
     constructor(client, positionData) {
 
-        super(client, {});
+        super(client, positionData, []);
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_position = positionData.id_position
+        this.id_position
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.name = positionData.name
+        this.name
 
          /**
-         * @type { Boolean }
+         * @type { boolean }
          */
-        this.sticky = positionData.sticky
+        this.sticky
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.level = positionData.level
+        this.level
 
     }
 

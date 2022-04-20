@@ -33,7 +33,7 @@ class ScrimsPositionUpdater {
 
     startUp() {
 
-        this.bot.on('guildMemberUpdate', (oldMember, newMember) => this.onMemberUpdate(oldMember, newMember))
+        this.bot.on('scrimsMemberUpdate', ({ oldMember, newMember, executor }) => this.onMemberUpdate(oldMember, newMember, executor))
         
         this.bot.on('guildMemberRemove', member => this.onMemberRemove(member))
         this.bot.on('scrimsGuildMemberAdd', member => this.onMemberAdd(member))
@@ -46,7 +46,7 @@ class ScrimsPositionUpdater {
 
     async onPositionRoleChange(positionRole) {
 
-        if (positionRole.scrimsGuild.discord_id === this.hostGuildId) {
+        if (positionRole.guild.discord_id === this.hostGuildId) {
 
             return this.reloadPositionMembers(positionRole.id_position);
 
@@ -139,7 +139,7 @@ class ScrimsPositionUpdater {
 
     }
 
-    async onMemberUpdate(oldMember, newMember) {
+    async onMemberUpdate(oldMember, newMember, executor) {
 
         if (newMember.guild.id !== this.hostGuildId) return false;
 
@@ -154,15 +154,8 @@ class ScrimsPositionUpdater {
             const lostPositionRoles = this.getPositionRolesDifference(newMember.guild.id, oldMember.roles, newMember.roles)
             const newPositionRoles = this.getPositionRolesDifference(newMember.guild.id, newMember.roles, oldMember.roles)
 
-            if (lostPositionRoles.length > 0) {
-                const logEntry = await this.getRoleUpdateAuditLogEntry(newMember, lostPositionRoles.map(v => v.role_id), newPositionRoles.map(v => v.role_id)).catch(console.error)
-                await Promise.allSettled(lostPositionRoles.map(role => this.removeScrimsUserPosition(id_user, newMember, role, logEntry)))
-            }
-                
-            if (newPositionRoles.length > 0) {
-                const logEntry = await this.getRoleUpdateAuditLogEntry(newMember, lostPositionRoles.map(v => v.role_id), newPositionRoles.map(v => v.role_id)).catch(console.error)
-                await Promise.allSettled(newPositionRoles.map(role => this.addScrimsUserPosition(id_user, role, logEntry)))
-            }
+            if (lostPositionRoles.length > 0) await Promise.allSettled(lostPositionRoles.map(role => this.removeScrimsUserPosition(id_user, newMember, role, executor)))
+            if (newPositionRoles.length > 0) await Promise.allSettled(newPositionRoles.map(role => this.addScrimsUserPosition(id_user, role, executor)))
             
         }
 
@@ -192,15 +185,15 @@ class ScrimsPositionUpdater {
         return changes.filter(change => change.key === key && (change.new.filter(n => n.id == identifier).length > 0)).length > 0;
     }
 
-    async addScrimsUserPosition(id_user, position, logEntry) {
+    async addScrimsUserPosition(id_user, position, executor) {
 
         const selector = { id_user, id_position: position.id_position }
         const existing = await this.bot.database.userPositions.get({ ...selector, show_expired: true }, false).catch(console.error)
-        if (existing && existing.length === 0) return this.sync.createScrimsPosition(selector, logEntry);
+        if (existing && existing.length === 0) return this.sync.createScrimsPosition(selector, executor);
 
     }
 
-    async removeScrimsUserPosition(id_user, member, position, auditEntry) {
+    async removeScrimsUserPosition(id_user, member, position, executor) {
 
         const positionIdentifier = { id_user, id_position: position.id_position }
 
@@ -213,7 +206,7 @@ class ScrimsPositionUpdater {
 
             if (success === true) {
 
-                this.database.ipc.notify('audited_user_position_remove', { guild_id: member.guild.id, executor_id: (auditEntry?.executor?.id ?? null), userPosition: existing[0] })
+                this.database.ipc.notify('audited_user_position_remove', { guild_id: member.guild.id, executor_id: (executor?.id ?? null), userPosition: existing[0] })
 
             }
             
@@ -222,16 +215,22 @@ class ScrimsPositionUpdater {
     }
 
     getRolesDifference(rolesA, rolesB) {
+
         return rolesA.cache.filter(roleA => rolesB.cache.filter(roleB => roleB.id === roleA.id).size === 0);
+
     }
 
     getPositionRoles(guildId, roles) {
+
         const positionRoles = this.bot.permissions.getGuildPositionRoles(guildId)
         return [ ...new Set(roles.map(role => positionRoles.filter(roleP => roleP.role_id == role.id)).flat()) ];
+
     }
 
     getPositionRolesDifference(guildId, rolesA, rolesB) {
+
         return this.getPositionRoles(guildId, this.getRolesDifference(rolesA, rolesB));
+
     }
 
 

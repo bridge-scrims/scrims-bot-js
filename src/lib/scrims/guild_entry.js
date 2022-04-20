@@ -89,90 +89,52 @@ class ScrimsGuildEntry extends DBTable.Row {
     
     constructor(client, entryData) {
 
-        super(client, {});
+        const references = [
+            ['guild', ['id_guild'], ['id_guild'], client.guilds], 
+            ['type', ['id_type'], ['id_type'], client.guildEntryTypes]
+        ]
+
+        super(client, entryData, references);
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_guild = entryData.id_guild
+        this.id_guild
 
         /**
          * @type { ScrimsGuild }
          */
-        this.scrimsGuild
-        this.setScrimsGuild(entryData.guild)
+        this.guild
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_type = entryData.id_type
+        this.id_type
 
         /**
          * @type { ScrimsGuildEntryType }
          */
         this.type
-        this.setType(entryData.type)
  
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.value = entryData.value
+        this.value
 
     }
 
-    get guild() {
+    get discordGuild() {
 
-        if (!this.scrimsGuild) return null;
-        return this.scrimsGuild.guild;
+        if (!this.guild) return null;
+        return this.guild.discordGuild;
 
     }
 
     get guild_id() {
 
-        if (!this.scrimsGuild) return null;
-        return this.scrimsGuild.discord_id;
+        if (!this.guild) return null;
+        return this.guild.discord_id;
 
-    }
-
-    setScrimsGuild(obj) {
-
-        if (obj === null) this.scrimsGuild = null
-
-        this.scrimsGuild = (obj instanceof ScrimsGuild) ? obj : this.client.guilds.cache.get({ id_guild: this.id_guild })[0]
-
-    }
-
-    setType(obj) {
-
-        if (obj === null) this.type = null
-
-        this.type = (obj instanceof ScrimsGuildEntryType) ? obj : this.client.guildEntryTypes.cache.get({ id_type: this.id_type })[0]
-
-    }
-
-    /**
-     * @override 
-     */
-    updateWith(data) {
-
-        if (data.id_guild && (data.id_guild != this.id_guild)) {
-
-            this.id_guild = data.id_guild
-            this.setScrimsGuild(data.guild)
-
-        }
-
-        if (data.id_type && (data.id_type != this.id_type)) {
-
-            this.id_type = data.id_type
-            this.setType(data.type)
-
-        }
-
-        if (data.value) this.value = data.value;
-
-        return this;
-        
     }
 
 }

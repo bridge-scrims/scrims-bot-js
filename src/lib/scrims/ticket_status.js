@@ -71,20 +71,26 @@ class ScrimsTicketStatus extends DBTable.Row {
     
     constructor(client, statusData) {
 
-        super(client, {});
+        super(client, statusData, []);
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_status = statusData.id_status
+        this.id_status
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.name = statusData.name
+        this.name
 
     }
 
+    get capitalizedName() {
+
+        return this.name && this.name[0].toUpperCase() + this.name.slice(1);
+
+    }
+    
 }
 
 module.exports = ScrimsTicketStatus;

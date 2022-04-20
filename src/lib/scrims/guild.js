@@ -83,27 +83,27 @@ class ScrimsGuild extends DBTable.Row {
 
     constructor(client, guildData) {
 
-        super(client, {});
+        super(client, guildData, []);
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_guild = guildData.id_guild
+        this.id_guild
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.discord_id = guildData.discord_id
+        this.discord_id
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.name = guildData.name
+        this.name
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.icon = guildData.icon
+        this.icon
 
     }
 
@@ -113,7 +113,7 @@ class ScrimsGuild extends DBTable.Row {
 
     }
 
-    get guild() {
+    get discordGuild() {
 
         if (!this.discord_id) return null;
         return this.bot.guilds.resolve(this.discord_id);

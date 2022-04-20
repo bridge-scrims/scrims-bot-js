@@ -89,97 +89,59 @@ class ScrimsPositionRole extends DBTable.Row {
 
     constructor(client, positionRoleData) {
 
-        super(client, {})
+        const references = [
+            ['position', ['id_position'], ['id_position'], client.positions], 
+            ['guild', ['id_guild'], ['id_guild'], client.guilds]
+        ]
+
+        super(client, positionRoleData, references)
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_position = positionRoleData.id_position;
+        this.id_position
 
         /**
          * @type { ScrimsPosition }
          */
         this.position
-        this.setPosition(positionRoleData.position)
 
         /**
-         * @type { String }
+         * @type { string }
          */
-        this.role_id = positionRoleData.role_id;
+        this.role_id
 
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_guild = positionRoleData.id_guild;
+        this.id_guild
 
         /**
          * @type { ScrimsGuild }
          */
-        this.scrimsGuild
-        this.setScrimsGuild(positionRoleData.guild)
+        this.guild
 
     }
 
-    get guild() {
+    get discordGuild() {
 
-        if (!this.scrimsGuild) return null;
-        return this.scrimsGuild.guild;
+        if (!this.guild) return null;
+        return this.guild.discordGuild;
 
     }
 
     get guild_id() {
 
-        if (!this.scrimsGuild) return null;
-        return this.scrimsGuild.discord_id;
+        if (!this.guild) return null;
+        return this.guild.discord_id;
 
     }
 
     get role() {
 
-        if (!this.role_id || !this.guild) return null;
-        return this.guild.roles.resolve(this.role_id);
+        if (!this.role_id || !this.discordGuild) return null;
+        return this.discordGuild.roles.resolve(this.role_id);
 
-    }
-
-    setPosition(obj) {
-
-        if (obj === null) this.position = null
-
-        this.position = (obj instanceof ScrimsPosition) ? obj : this.client.positions.cache.get({ id_position: this.id_position })[0]
-
-    }
-
-    setScrimsGuild(obj) {
-
-        if (obj === null) this.scrimsGuild = null
-
-        this.scrimsGuild = (obj instanceof ScrimsGuild) ? obj : this.client.guilds.cache.get({ id_guild: this.id_guild })[0]
-
-    }
-
-    /**
-     * @override 
-     */
-    updateWith(data) {
-
-        if (data.id_position && (data.id_position != this.id_position)) {
-
-            this.id_position = data.id_position
-            this.setPosition(data.position)
-
-        }
-
-        if (data.role_id) this.role_id = data.role_id;
-        
-        if (data.id_guild && (data.id_guild != this.id_guild)) {
-
-            this.id_guild = data.id_guild
-            this.setScrimsGuild(data.guild)
-
-        }
-
-        return this;
-        
     }
 
 }

@@ -89,80 +89,83 @@ class ScrimsSuggestion extends DBTable.Row {
 
     constructor(client, suggestionData) {
 
-        super(client, {})
+        const references = [
+            ['guild', ['id_guild'], ['id_guild'], client.guilds],
+            ['creator', ['id_creator'], ['id_user'], client.users]
+        ]
+
+        super(client, suggestionData, references)
 
         /**
-         * @type { Integer } 
+         * @type { number } 
          */
-        this.id_suggestion = suggestionData.id_suggestion;
+        this.id_suggestion
         
         /**
-         * @type { Integer }
+         * @type { number }
          */
-        this.id_guild = suggestionData.id_guild;
+        this.id_guild
 
         /**
          * @type { ScrimsGuild }
          */
-        this.scrimsGuild
-        this.setScrimsGuild(suggestionData.guild)
+        this.guild
 
         /**
-         * @type { String } 
+         * @type { string } 
          */
-        this.channel_id = suggestionData.channel_id;
+        this.channel_id
 
         /**
-         * @type { String } 
+         * @type { string } 
          */
-        this.message_id = suggestionData.message_id;
+        this.message_id
 
         /**
-         * @type { String } 
+         * @type { string } 
          */
-        this.suggestion = suggestionData.suggestion;
+        this.suggestion
 
         /**
-         * @type { Integer } 
+         * @type { number } 
          */
-        this.created_at = suggestionData.created_at;
+        this.created_at
 
         /**
-         * @type { Integer } 
+         * @type { number } 
          */
-        this.id_creator = suggestionData.id_creator;
+        this.id_creator
 
         /**
          * @type { ScrimsUser }
          */
         this.creator
-        this.setCreator(suggestionData.creator)
 
         /**
-         * @type { Integer } 
+         * @type { number } 
          */
-        this.epic = suggestionData.epic;
+        this.epic
 
     }
 
-    get guild() {
+    get discordGuild() {
 
-        if (!this.scrimsGuild) return null;
-        return this.scrimsGuild.guild;
+        if (!this.guild) return null;
+        return this.guild.discordGuild;
 
     }
 
     get guild_id() {
 
-        if (!this.scrimsGuild) return null;
-        return this.scrimsGuild.discord_id;
+        if (!this.guild) return null;
+        return this.guild.discord_id;
 
     }
 
     get channel() {
 
-        if (!this.guild || !this.channel_id) return null;
-        return this.guild.channels.resolve(this.channel_id);
+        if (!this.discordGuild || !this.channel_id) return null;
+        return this.discordGuild.channels.resolve(this.channel_id);
 
     }
 
@@ -184,55 +187,6 @@ class ScrimsSuggestion extends DBTable.Row {
         if (!this.channel || !this.message_id) return null;
         return this.channel.messages.fetch(this.message_id);
 
-    }
-
-    setScrimsGuild(obj) {
-
-        if (obj === null) this.scrimsGuild = null
-
-        this.scrimsGuild = (obj instanceof ScrimsGuild) ? obj : this.client.guilds.cache.get({ id_guild: this.id_guild })[0]
-
-    }
-
-    setCreator(obj) {
-
-        if (obj === null) this.creator = null
-
-        this.creator = (obj instanceof ScrimsUser) ? obj : this.client.users.cache.get({ id_user: this.id_creator })[0]
-
-    }
-
-    /**
-     * @override 
-     */
-    updateWith(data) {
-
-        if (data.id_creator && (data.id_creator != this.id_creator)) {
-
-            this.id_creator = data.id_creator
-            this.setCreator(data.creator)
-
-        }
-
-        if (data.id_guild && (data.id_guild != this.id_guild)) {
-
-            this.id_guild = data.id_guild
-            this.setScrimsGuild(data.guild)
-
-        }
-
-        if (data.channel_id) this.channel_id = data.channel_id;
-        
-        if (data.message_id) this.message_id = data.message_id;
-
-        if (data.suggestion) this.suggestion = data.suggestion;
-
-        if (data.created_at) this.created_at = data.created_at;
-
-        if (data.epic) this.epic = data.epic;
-        
-        return this;
-        
     }
 
 }

@@ -126,11 +126,11 @@ class ScrimsSyncHostFeature {
 
     }
 
-    async createScrimsPosition(selector, auditEntry) {
+    async createScrimsPosition(selector, executor) {
 
         const userPositionData = {
-            given_at: Math.round((auditEntry?.createdTimestamp || Date.now())/1000), 
-            executor: { discord_id: (auditEntry?.executor?.id || this.bot.user.id) },
+            given_at: Math.round(Date.now()/1000), 
+            executor: { discord_id: (executor?.id || this.bot.user.id) },
             ...selector
         }
 

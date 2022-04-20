@@ -120,9 +120,9 @@ class LoggingFeature {
     async getChannels(configKey, guilds) {
 
         const configured = this.database.guildEntrys.cache.get({ type: { name: configKey } })
-            .filter(config => config.guild && config.value && (!guilds || guilds.includes(config.guild.id)))
+            .filter(config => config.discordGuild && config.value && (!guilds || guilds.includes(config.discordGuild.id)))
         
-        return Promise.all(configured.map(config => config.guild.channels.fetch(config.value).catch(() => null)))
+        return Promise.all(configured.map(config => config.discordGuild.channels.fetch(config.value).catch(() => null)))
             .then(channels => channels.filter(channel => channel && channel.type === "GUILD_TEXT"));
 
     }
@@ -184,7 +184,7 @@ class LoggingFeature {
 
         const executorIsCreator = (payload?.executor_id === payload?.suggestion?.creator?.discord_id)
         const msg = (executorIsCreator ? `Removed their own suggestion.` : `Removed a suggestion.`)
-        return this.sendLogMessages({ msg, ...payload }, "suggestions_log_channel", "Suggestions Remove", '#fc2344', [payload?.suggestion?.scrimsGuild?.discord_id]);
+        return this.sendLogMessages({ msg, ...payload }, "suggestions_log_channel", "Suggestions Remove", '#fc2344', [payload?.suggestion?.guild?.discord_id]);
 
     }
 
