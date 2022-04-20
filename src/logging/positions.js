@@ -36,7 +36,7 @@ class PositionLoggingFeature {
         this.database.ipc.on('audited_user_position_remove', message => this.onUserPositionRemove(message.payload).catch(console.error))
         this.database.ipc.on('audited_user_position_expire_update', message => this.onUserPositionExpireUpdate(message.payload).catch(console.error))
         this.database.ipc.on('user_position_create', message => this.onUserPositionCreate(message.payload).catch(console.error))
-        this.database.ipc.on('user_position_remove', message => this.onDatabaseUserPositionRemove(message.payload).catch(console.error))
+        this.database.userPositions.cache.on('remove', userPosition => this.onCacheUserPositionRemove(userPosition).catch(console.error))
         
         this.database.ipc.on('audited_position_create', message => this.onPositionCreate(message.payload).catch(console.error))
         this.database.ipc.on('audited_position_remove', message => this.onPositionRemove(message.payload).catch(console.error))
@@ -98,14 +98,13 @@ class PositionLoggingFeature {
 
     }
 
-    async onDatabaseUserPositionRemove(userPositionData) {
+    async onCacheUserPositionRemove(userPosition) {
 
-        if (userPositionData?.position?.name === "bridge_scrims_member") return false;
-        const userPosition = new ScrimsUserPosition(this.database, userPositionData)
+        if (userPosition?.position?.name === "bridge_scrims_member") return false;
         if (userPosition.isExpired()) {
 
             const msg = `Lost bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}**, because of it expiring.`
-            return this.logging.sendLogMessages({ msg, id_executor: userPosition?.user?.id_user ?? null }, "positions_log_channel", "Position Expired", '#002360');
+            return this.logging.sendLogMessages({ msg, id_executor: userPosition?.user?.id_user ?? null }, "positions_log_channel", "Position Expired", '#170055');
 
         }
 
