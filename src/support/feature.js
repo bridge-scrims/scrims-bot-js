@@ -276,10 +276,11 @@ class SupportFeature {
 
     async closeTicket(channel, ticket, executor) {
 
+        const id_status = this.database.ticketStatuses.cache.get({ name: 'deleted' })[0]?.id_status
+        if (id_status) await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { id_status })
+
         this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })
         await this.transcriber.send(channel.guild, ticket)
-
-        await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })
         
         if (typeof channel.delete === "function") await channel.delete().catch(() => { /* Channel could already be deleted. */ })
 
