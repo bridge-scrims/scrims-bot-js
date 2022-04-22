@@ -32,7 +32,7 @@ class TableRow {
 
             if (this._handles) {
 
-                if (uniqueLocalKeys.some(key => data[key] != this[key])) {
+                if (uniqueLocalKeys.some(key => data[key] !== undefined && data[key] != this[key])) {
 
                     if (this._handles[objKey]) table.cache.releaseHandle(this._handles[objKey])
                     delete this._handles[objKey];
@@ -77,6 +77,7 @@ class TableRow {
         const objKeys = this._references.map(([objKey, _, __]) => objKey)
         Object.entries(data).forEach(([key, value]) => {
 
+            if (key.startsWith('_')) return;
             if (!objKeys.includes(key)) this[key] = value
 
         })
