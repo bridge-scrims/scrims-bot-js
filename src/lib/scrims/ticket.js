@@ -180,6 +180,23 @@ class ScrimsTicket extends DBTable.Row {
 
     }
 
+    /**
+     * @override
+     * @param { Object.<string, any> } obj 
+     * @returns { Boolean }
+     */
+    equals(obj) {
+
+        if (obj instanceof ScrimsTicket) {
+
+            return (obj.id_ticket === this.id_ticket);
+
+        }
+        
+        return this.valuesMatch(obj, this);
+
+    }
+
 }
 
 module.exports = ScrimsTicket;

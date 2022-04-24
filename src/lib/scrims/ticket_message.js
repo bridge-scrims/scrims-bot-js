@@ -174,7 +174,7 @@ class ScrimsTicketMessage extends DBTable.Row {
 
         if (obj instanceof ScrimsTicketMessage) {
 
-            return (obj.id_ticket === this.id_ticket && obj.message_id === this.message_id);
+            return (obj.id_ticket === this.id_ticket && obj.message_id === this.message_id && obj.created_at === this.created_at);
 
         }
         

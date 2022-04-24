@@ -1,9 +1,11 @@
 const ScrimsMessageBuilder = require("../lib/responses");
 
 const { SlashCommandBuilder } = require("@discordjs/builders");
+const { MessageActionRow, MessageButton } = require("discord.js");
 
 const interactionHandlers = {
 
+    "killAction": onKillAction,
     "reload": onReloadCommand,
     "config": onConfigCommand,
     "kill": onKillCommand
@@ -15,6 +17,26 @@ async function onInteraction(interaction) {
     if (interactionHandler) return interactionHandler(interaction);
 
     await interaction.reply({ content: `How did we get here?`, ephemeral: true })
+
+}
+
+async function onKillAction(interaction) {
+
+    const action = interaction.args.shift()
+
+    if (action === 'KILL') {
+
+        await interaction.deferUpdate()
+        return kill(interaction);
+
+    }
+
+    if (action === 'CANCEL') {
+
+        interaction.client.blocked = false
+        return interaction.update({ content: 'Shutdown cancelled.', components: [] });
+
+    }
 
 }
 
@@ -37,12 +59,66 @@ async function onReloadCommand(interaction) {
 
 }
 
-async function onKillCommand(interaction) {
+async function kill(interaction) {
 
-    await interaction.reply({ content: 'Goodbye 👋', ephemeral: true })
-    
+    const payload = { content: `👋 **Goodbye**`, embeds: [], components: [], ephemeral: true }
+
+    if (interaction.replied || interaction.deferred) await interaction.editReply(payload).catch(console.error)
+    else await interaction.reply(payload).catch(console.error)
+
     interaction.client.destroy()
     process.exit(0)
+
+}
+
+async function onKillCommand(interaction) {
+
+    /**
+     * @type { import("./bot") }
+     */
+    const bot = interaction.client
+
+    bot.blocked = true
+    bot.handles = bot.handles.filter(v => v !== interaction.id)
+
+    if (bot.handles.length === 0) return kill(interaction);
+
+    const message = `⚠️ **Now rejecting interactions!**\n_ _\n`
+        + `I am waiting for \`${bot.handles.length}\` interaction handler(s) to finish before I shutdown. `
+        + `I will keep you updated on my progress by editing this message.`
+
+    const actions = new MessageActionRow().addComponents(
+        new MessageButton().setCustomId('killAction/KILL').setLabel('Force Kill').setStyle('DANGER'),
+        new MessageButton().setCustomId('killAction/CANCEL').setLabel('Cancel').setStyle('SECONDARY')
+    )
+
+    await interaction.reply({ content: message, components: [actions], ephemeral: true })
+
+    const expiration = interaction.createdTimestamp + 14*60*1000
+
+    const blocked = {}
+    bot.on('blocked', name => (name in blocked) ? blocked[name] += 1 : blocked[name] = 1)
+
+    while(expiration > Date.now()) {
+
+        await new Promise(resolve => setTimeout(resolve, 5*1000))
+        if (!bot.blocked) return interaction.editReply({ content: 'Shutdown cancelled.', components: [] });
+        if (bot.handles.length === 0) return kill(interaction);
+
+        const blockedMessages = Object.entries(blocked).map(([key, value]) => `\`${value}\` **${key + ((value > 1) ? 's' : '')}**`)
+        const blockedMessage = [blockedMessages.slice(0, -1).join(', '), blockedMessages.slice(-1)[0]].filter(v => v).join(' and ')
+            + ` ${(Object.values(blocked).reduce((pv, cv) => pv + cv, 0) > 1) ? 'were' : 'was'} rejected!`
+
+        const message = `⚠️ ${(Object.values(blocked).length === 0) ? '**Now rejecting interactions!**' : blockedMessage}\n_ _\n`
+            + `I am waiting for \`${bot.handles.length}\` interaction handler(s) to finish before I shutdown. `
+            + `I will keep you updated on my progress by editing this message.`
+
+        await interaction.editReply({ content: message, ephemeral: true })
+
+    }
+
+    bot.blocked = false
+    await interaction.editReply({ content: `Shutdown failed because of this interaction expiring.`, components: [], ephemeral: true })
 
 }
 
@@ -150,6 +226,7 @@ function getKillCommand() {
 module.exports = {
 
     interactionHandler: onInteraction,
+    eventHandlers: ['killAction'],
     commands: [ getReloadCommand(), getConfigCommand(), getPingCommand(), getKillCommand() ]
 
 }

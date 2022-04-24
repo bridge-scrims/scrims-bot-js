@@ -4,7 +4,7 @@ function auditEvents(bot) {
     bot.on("messageDelete", message => onMessageDelete(message))
     bot.on("channelDelete", channel => onChannelDelete(channel))
     bot.on("channelCreate", channel => onChannelCreate(channel))
-    bot.on("memberUpdate", (oldMember, newMember) => onMemberUpdate(oldMember, newMember))
+    bot.on("guildMemberUpdate", (oldMember, newMember) => onMemberUpdate(oldMember, newMember))
 
 }
 

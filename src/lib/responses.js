@@ -8,6 +8,22 @@ class ScrimsMessageBuilder {
 
     static intrestingAqua = "#15EFFF"
 
+    /**
+     * @param { string } text 
+     */
+    static stripText(text) {
+
+        while (text.includes("\n\n\n")) 
+            text = text.replace("\n\n\n", "\n\n");
+
+        const lines = text.split("\n")
+        if (lines.length > 10)
+            text = lines.slice(0, lines.length-(lines.length-10)).join("\n") + lines.slice(lines.length-(lines.length-10)).join(" ")
+
+        return text;
+
+    }
+
     static errorMessage(title, description) {
 
         return {
