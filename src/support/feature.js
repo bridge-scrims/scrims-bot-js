@@ -2,10 +2,6 @@ const TicketTranscriber = require("./ticket-transcriber");
 const ScrimsMessageBuilder = require("../lib/responses");
 
 const { commandHandler, eventHandlers, commands } = require("./interactions");
-
-const onComponent = require("./components");
-const onSubmit = require("./modals");
-const { MessageEmbed } = require("discord.js");
 const SupportResponseMessageBuilder = require("./responses");
 
 class SupportFeature {
