@@ -1,7 +1,8 @@
+CREATE EXTENSION pgcrypto;
 
 CREATE TABLE scrims_guild_entry_type (
 
-    id_type SERIAL PRIMARY KEY,
+    id_type uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL
         
 );
@@ -23,14 +24,14 @@ INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestion_down_vote_emoji')
 
 CREATE OR REPLACE FUNCTION get_guild_entry_type_id (
 
-    id_type int default null,
+    id_type uuid default null,
     name text default null
 
 ) 
-RETURNS int 
+RETURNS uuid 
 AS $$
 DECLARE
-    retval INTEGER;
+    retval uuid;
 BEGIN
 EXECUTE '
     SELECT scrims_guild_entry_type.id_type FROM scrims_guild_entry_type 
@@ -45,37 +46,13 @@ LANGUAGE plpgsql;
 
 CREATE TABLE scrims_guild (
 
-    id_guild SERIAL PRIMARY KEY,
-    
-    discord_id TEXT NULL,
+    guild_id TEXT NULL,
     name TEXT NOT NULL,
-    icon TEXT NULL
+    icon TEXT NULL,
+
+    UNIQUE(guild_id)
         
 );
-
-CREATE OR REPLACE FUNCTION get_guild_id (
-
-    discord_id text default null,
-    name text default null,
-    icon text default null
-
-) 
-RETURNS int 
-AS $$
-DECLARE
-    retval INTEGER;
-BEGIN
-EXECUTE '
-    SELECT scrims_guild.id_guild FROM scrims_guild 
-    WHERE 
-    ($1 is null or scrims_guild.discord_id = $1) AND
-    ($2 is null or scrims_guild.name = $2) AND
-    ($3 is null or scrims_guild.icon = $3)
-' USING discord_id, name, icon
-INTO retval;
-RETURN retval;
-END $$ 
-LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION process_guild_change()
 RETURNS trigger 
@@ -89,7 +66,7 @@ BEGIN
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
         'guild_update', json_build_object(
-            'selector', to_json(OLD), 
+            'selector', json_build_object('guild_id', OLD.guild_id), 
             'data', to_json(NEW)
         )::text
     );
@@ -110,20 +87,19 @@ CREATE TRIGGER guild_trigger
 
 CREATE TABLE scrims_guild_entry (
 
-    id_guild INT NULL,
-    id_type INT NOT NULL,
+    guild_id TEXT NULL,
+    id_type uuid NOT NULL,
 
     value TEXT NULL,
 
-    UNIQUE(id_guild, id_type),
-    FOREIGN KEY(id_guild) REFERENCES scrims_guild(id_guild),
+    UNIQUE(guild_id, id_type),
     FOREIGN KEY(id_type) REFERENCES scrims_guild_entry_type(id_type)
         
 );
 
 CREATE OR REPLACE FUNCTION get_guild_entrys(
-    id_guild int default null,
-    id_type int default null,
+    guild_id text default null,
+    id_type uuid default null,
     value text default null
 ) 
 returns json
@@ -135,7 +111,7 @@ EXECUTE '
     SELECT
     json_agg(
         json_build_object(
-            ''id_guild'', scrims_guild_entry.id_guild,
+            ''guild_id'', scrims_guild_entry.guild_id,
             ''guild'', to_json(scrims_guild),
             ''id_type'', scrims_guild_entry.id_type,
             ''type'', to_json(scrims_guild_entry_type),
@@ -144,13 +120,13 @@ EXECUTE '
     )
     FROM 
     scrims_guild_entry 
-    LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.id_guild = scrims_guild_entry.id_guild LIMIT 1) scrims_guild ON true
+    LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.guild_id = scrims_guild_entry.guild_id LIMIT 1) scrims_guild ON true
     LEFT JOIN LATERAL (SELECT * FROM scrims_guild_entry_type WHERE scrims_guild_entry_type.id_type = scrims_guild_entry.id_type LIMIT 1) scrims_guild_entry_type ON true
     WHERE 
-    ($1 is null or scrims_guild_entry.id_guild = $1) AND
+    ($1 is null or scrims_guild_entry.guild_id = $1) AND
     ($2 is null or scrims_guild_entry.id_type = $2) AND
     ($3 is null or scrims_guild_entry.value = $3)
-' USING id_guild, id_type, value
+' USING guild_id, id_type, value
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
@@ -168,11 +144,11 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    EXECUTE 'SELECT get_guild_entrys( id_guild => $1, id_type => $2 )' USING NEW.id_guild, NEW.id_type INTO guild_entrys;
+    EXECUTE 'SELECT get_guild_entrys( guild_id => $1, id_type => $2 )' USING NEW.guild_id, NEW.id_type INTO guild_entrys;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
         'guild_entry_update', json_build_object(
-            'selector', to_json(OLD), 
+            'selector', json_build_object('guild_id', OLD.guild_id, 'id_type', OLD.id_type), 
             'data', (guild_entrys->>0)::json
         )::text
     );

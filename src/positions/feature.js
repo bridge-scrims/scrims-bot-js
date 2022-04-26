@@ -65,7 +65,7 @@ class PositionsFeature {
 
     async onRoleDelete(role) {
 
-        await this.database.positionRoles.remove({ guild: { discord_id: role.guild.id }, role_id: role.id }).catch(console.error)
+        await this.database.positionRoles.remove({ guild_id: role.guild.id, role_id: role.id }).catch(console.error)
 
     }
 

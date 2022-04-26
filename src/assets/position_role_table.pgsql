@@ -1,13 +1,12 @@
 
 CREATE TABLE scrims_position_role (
 
-    id_position INT NOT NULL,
+    id_position uuid NOT NULL,
     role_id text NOT NULL,
-    id_guild int NOT NULL,
+    guild_id text NOT NULL,
 
-    UNIQUE(id_position, role_id, id_guild),
-    FOREIGN KEY(id_position) REFERENCES scrims_position(id_position),
-    FOREIGN KEY(id_guild) REFERENCES scrims_guild(id_guild)
+    UNIQUE(id_position, role_id, guild_id),
+    FOREIGN KEY(id_position) REFERENCES scrims_position(id_position)
 
 );
 
@@ -18,7 +17,7 @@ INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '913
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'owner'), '760148398857912380', '759894401957888031');
 
 -- Bridge Scrims Test Server
-INSERT INTO scrims_position_role VALUES (get_position_id( name => 'developer'), '911778679141597185', '911760601926217819');
+INSERT INTO scrims_position_role VALUES (get_position_id( name => 'owner'), '961638984050692126', '911760601926217819');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'support'), '913084031191633920', '911760601926217819');
 INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '913083965215227925', '911760601926217819');
 
@@ -30,9 +29,9 @@ INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '954
 
 
 CREATE OR REPLACE FUNCTION get_position_roles (
-    id_position int default null,
+    id_position uuid default null,
     role_id text default null,
-    id_guild int default null
+    guild_id text default null
 ) 
 returns json
 AS $$
@@ -46,20 +45,20 @@ EXECUTE '
             ''id_position'', scrims_position_role.id_position,
             ''position'', to_json(position), 
             ''role_id'', scrims_position_role.role_id,
-            ''id_guild'', scrims_position_role.id_guild,
+            ''guild_id'', scrims_position_role.guild_id,
             ''guild'', to_json(scrims_guild)
         )
     )
     FROM 
     scrims_position_role 
     LEFT JOIN LATERAL (SELECT * FROM scrims_position WHERE scrims_position.id_position = scrims_position_role.id_position LIMIT 1) position ON true
-    LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.id_guild = scrims_position_role.id_guild LIMIT 1) scrims_guild ON true
+    LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.guild_id = scrims_position_role.guild_id LIMIT 1) scrims_guild ON true
     WHERE (
         ($1 is null or scrims_position_role.id_position = $1) AND
         ($2 is null or scrims_position_role.role_id = $2) AND
-        ($3 is null or scrims_position_role.id_guild = $3)
+        ($3 is null or scrims_position_role.guild_id = $3)
     )
-' USING id_position, role_id, id_guild
+' USING id_position, role_id, guild_id
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
@@ -79,8 +78,8 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    EXECUTE 'SELECT get_position_roles( id_position => $1, role_id => $2, id_guild => $3 )'
-    USING NEW.id_position, NEW.role_id, NEW.id_guild
+    EXECUTE 'SELECT get_position_roles( id_position => $1, role_id => $2, guild_id => $3 )'
+    USING NEW.id_position, NEW.role_id, NEW.guild_id
     INTO position_roles;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(

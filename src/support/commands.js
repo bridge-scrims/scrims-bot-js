@@ -25,7 +25,7 @@ async function onCommand(interaction) {
 
 async function getSupportRole(interaction) {
 
-    const positionRoles = await interaction.client.database.positionRoles.get({ guild: { discord_id: interaction.guild.id }, position: { name: 'support' } })
+    const positionRoles = await interaction.client.database.positionRoles.get({ guild_id: interaction.guild.id, position: { name: 'support' } })
     if (positionRoles.length === 0) {
 
         return interaction.reply(

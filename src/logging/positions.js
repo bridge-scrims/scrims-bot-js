@@ -62,7 +62,7 @@ class PositionLoggingFeature {
 
         }
 
-        const positionRole = new ScrimsPositionRole(this.database, payload.positionRole)
+        const positionRole = new ScrimsPositionRole(this.database.positionRoles, payload.positionRole)
         const role = positionRole.role ? `@${positionRole.role.name}` : positionRole.role_id
         const position = positionRole.position?.name ?? positionRole.id_position
 
@@ -73,7 +73,7 @@ class PositionLoggingFeature {
 
     async onPositionRoleRemove(payload) {
 
-        const guild = payload?.selector?.id_guild ? (await this.database.guilds.get({ id_guild: payload.selector.id_guild }).then(results => results[0]?.discordGuild ?? null)) : null
+        const guild = payload?.selector?.guild_id ? (await this.database.guilds.get({ guild_id: payload.selector.guild_id }).then(results => results[0]?.discordGuild ?? null)) : null
         const role = (guild && payload?.selector?.role_id) ? `@${guild.roles.resolve(payload.selector.role_id)?.name}` : payload?.selector?.role_id
 
         const position = (payload?.selector?.id_position) ? this.database.positions.cache.get({ id_position: payload.selector.id_position })[0]?.name : payload?.selector?.id_position
@@ -85,7 +85,7 @@ class PositionLoggingFeature {
 
     async onUserPositionRemove(payload) {
 
-        const userPosition = new ScrimsUserPosition(this.database, payload?.userPosition || {})
+        const userPosition = new ScrimsUserPosition(this.database.userPositions, payload?.userPosition || {})
         const executor = await this.logging.getUser(payload.id_executor, payload.executor_id)
 
         const msg = `Lost bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}**, `
@@ -114,7 +114,7 @@ class PositionLoggingFeature {
 
         if (userPositionData?.position?.name === "bridge_scrims_member") return false;
 
-        const userPosition = new ScrimsUserPosition(this.database, userPositionData)
+        const userPosition = new ScrimsUserPosition(this.database.userPositions, userPositionData)
 
         const msg = `Got bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}** `
             + `${userPosition.getDuration()} from ${(userPosition?.executor?.getMention('**') ?? 'an **unknown-user**')}.`
@@ -128,7 +128,7 @@ class PositionLoggingFeature {
 
     async onUserPositionExpireUpdate(payload) {
 
-        const userPosition = new ScrimsUserPosition(this.database, { ...payload.userPosition, expires_at: payload.expires_at })
+        const userPosition = new ScrimsUserPosition(this.database.userPositions, { ...payload.userPosition, expires_at: payload.expires_at })
         const executor = await this.logging.getUser(payload.id_executor, payload.executor_id)
 
         const msg = `Got their bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}** `
@@ -140,7 +140,7 @@ class PositionLoggingFeature {
 
     async onPositionCreate(payload) {
 
-        const position = new ScrimsPosition(this.database, payload.position)
+        const position = new ScrimsPosition(this.database.positions, payload.position)
  
         const msg = `Created a new bridge scrims position called **${position.name}** `
             + `with a level of \`${position.level}\` in the hierarchy and a sticky value of \`${position.sticky}\`. `
@@ -151,7 +151,7 @@ class PositionLoggingFeature {
 
     async onPositionRemove(payload) {
 
-        const position = new ScrimsPosition(this.database, payload.position)
+        const position = new ScrimsPosition(this.database.positions, payload.position)
 
         const msg = `Removed a bridge scrims position called **${position.name}** `
             + `with a level of \`${position.level}\` in the hierarchy and a sticky value of \`${position.sticky}\`. `

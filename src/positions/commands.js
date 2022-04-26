@@ -152,7 +152,7 @@ function getUserOption(description) {
 
 function getPositionOption(description) {
 
-    return new SlashCommandIntegerOption()
+    return new SlashCommandStringOption()
         .setName("position")
         .setDescription(description)
         .setAutocomplete(true)
@@ -193,7 +193,7 @@ function getPositionsGiveSubcommand() {
         .setName("give")
         .setDescription("Gives a user a bridge scrims position.")
         .addUserOption( getUserOption("The user to give the birdge scrims positions to.") )
-        .addIntegerOption( getPositionOption("The birdge scrims positions to give the user.") )
+        .addStringOption( getPositionOption("The birdge scrims positions to give the user.") )
         .addIntegerOption(option => (
             option
                 .setName("expiration")
@@ -209,7 +209,7 @@ function getPositionsTakeSubcommand() {
         .setName("take")
         .setDescription("Takes away a bridge scrims position from a user.")
         .addUserOption( getUserOption("The user to take the birdge scrims positions from.") )
-        .addIntegerOption( getPositionOption("The birdge scrims positions to remove from the user.") )
+        .addStringOption( getPositionOption("The birdge scrims positions to remove from the user.") )
 
 }
 
@@ -237,7 +237,7 @@ function getPositionRolesAddSubcommand() {
         .setName("add")
         .setDescription("Adds a role that is connected to a bridge scrims position.")
         .addRoleOption( getRoleOption("The role that should be connected to the position.") )
-        .addIntegerOption( getPositionOption("The position that should be connected to the role.") )
+        .addStringOption( getPositionOption("The position that should be connected to the role.") )
 
 }
 
@@ -248,7 +248,7 @@ function getPositionRolesRemoveSubcommand() {
         .setName("remove")
         .setDescription("Removes a role that is currently connected to a bridge scrims position.")
         .addRoleOption( getRoleOption("The role that should be disconnected from any scrims position roles.") )
-        .addIntegerOption( getPositionOption("The position that should be disconnected from the role.").setRequired(false) )
+        .addStringOption( getPositionOption("The position that should be disconnected from the role.").setRequired(false) )
 
 }
 

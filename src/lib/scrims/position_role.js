@@ -2,6 +2,7 @@ const DBTable = require("../postgresql/table");
 const DBCache = require("../postgresql/cache");
 const ScrimsPosition = require("./position");
 const ScrimsGuild = require("./guild");
+const TableRow = require("../postgresql/row");
 
 class ScrimsPositionRolesCache extends DBCache {
 
@@ -23,11 +24,12 @@ class ScrimsPositionRolesTable extends DBTable {
     constructor(client) {
 
         const foreigners = [
-            [ "position", "id_position", "get_position_id" ],
-            [ "guild", "id_guild", "get_guild_id" ]
+            [ "position", "id_position", "get_position_id" ]
         ]
 
-        super(client, "scrims_position_role", "get_position_roles", foreigners, ScrimsPositionRole, ScrimsPositionRolesCache);
+        const uniqueKeys = [ 'id_position', 'role_id', 'guild_id' ]
+
+        super(client, "scrims_position_role", "get_position_roles", foreigners, uniqueKeys, ScrimsPositionRole, ScrimsPositionRolesCache);
 
         /**
          * @type { ScrimsPositionRolesCache }
@@ -80,24 +82,24 @@ class ScrimsPositionRolesTable extends DBTable {
 
 }
 
-class ScrimsPositionRole extends DBTable.Row {
+class ScrimsPositionRole extends TableRow {
 
     /**
      * @type { ScrimsPositionRolesTable }
      */
     static Table = ScrimsPositionRolesTable
 
-    constructor(client, positionRoleData) {
+    constructor(table, positionRoleData) {
 
         const references = [
-            ['position', ['id_position'], ['id_position'], client.positions], 
-            ['guild', ['id_guild'], ['id_guild'], client.guilds]
+            ['position', ['id_position'], ['id_position'], table.client.positions], 
+            ['guild', ['guild_id'], ['guild_id'], table.client.guilds]
         ]
 
-        super(client, positionRoleData, references)
+        super(table, positionRoleData, references)
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_position
 
@@ -112,9 +114,9 @@ class ScrimsPositionRole extends DBTable.Row {
         this.role_id
 
         /**
-         * @type { number }
+         * @type { string }
          */
-        this.id_guild
+        this.guild_id
 
         /**
          * @type { ScrimsGuild }
@@ -127,13 +129,6 @@ class ScrimsPositionRole extends DBTable.Row {
 
         if (!this.guild) return null;
         return this.guild.discordGuild;
-
-    }
-
-    get guild_id() {
-
-        if (!this.guild) return null;
-        return this.guild.discord_id;
 
     }
 
