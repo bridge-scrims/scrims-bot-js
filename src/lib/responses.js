@@ -1,4 +1,4 @@
-const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent } = require("discord.js");
+const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent, GuildMember, Guild } = require("discord.js");
 
 class ScrimsMessageBuilder {
 
@@ -21,6 +21,50 @@ class ScrimsMessageBuilder {
             text = lines.slice(0, lines.length-(lines.length-10)).join("\n") + lines.slice(lines.length-(lines.length-10)).join(" ")
 
         return text;
+
+    }
+
+    /**
+     * @param { Guild } guild 
+     * @param { string } text
+     * @returns { Promise<(GuildMember | string)[]> }
+     */
+    static async parseDiscordUsers(guild, text) {
+
+        if (!text) return [];
+        text = text.replace(/\n/g, ' ')
+
+        const members = await guild.members.fetch()
+        const userResolvables = text.split(' ')
+
+        return userResolvables.map(resolvable => {
+
+            if (members.get(resolvable)) return members.get(resolvable);
+
+            let matches = members.filter(member => member.displayName.toLowerCase() === resolvable.toLowerCase())
+            if (matches.size === 1) return matches.first();
+
+            matches = members.filter(member => member.displayName === resolvable)
+            if (matches.size === 1) return matches.first();
+
+            matches = members.filter(member => member.user.tag.toLowerCase() === resolvable.toLowerCase())
+            if (matches.size === 1) return matches.first();
+
+            matches = members.filter(member => member.user.tag === resolvable)
+            if (matches.size === 1) return matches.first();
+
+            return `**${resolvable}**`;
+
+        })
+
+    }
+
+    /**
+     * @param { any[] } array
+     */
+    static stringifyArray(array) {
+
+        return [array.slice(0, -1).join(', '), array.slice(-1)[0]].filter(v => v).join(' and ');
 
     }
 

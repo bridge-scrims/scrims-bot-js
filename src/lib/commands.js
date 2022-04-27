@@ -129,7 +129,7 @@ async function onConfigAutocomplete(interaction) {
     const entryTypes = interaction.client.database.guildEntryTypes.cache.data
     const relevant = entryTypes.filter(type => type.name.toLowerCase().includes(focused))
     
-    await interaction.respond([ { name: "All", value: -1 }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])
+    await interaction.respond([ { name: "All", value: 'ALL' }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])
 
 }
 
@@ -138,35 +138,37 @@ async function onConfigCommand(interaction) {
     if (interaction.isAutocomplete()) return onConfigAutocomplete(interaction);
     if (!interaction.guild) return interaction.reply( ScrimsMessageBuilder.guildOnlyMessage() );
 
-    const entryTypeId = interaction.options.getInteger("key")
+    await interaction.deferReply({ ephemeral: true })
+
+    const entryTypeId = interaction.options.getString("key")
     const value = interaction.options.getString("value") ?? null
 
-    if (entryTypeId === -1) {
+    if (entryTypeId === 'ALL') {
 
-        const entrys = await interaction.client.database.guildEntrys.get({ guild: { discord_id: interaction.guild.id } })
+        const entrys = await interaction.client.database.guildEntrys.get({ guild_id: interaction.guild.id })
 
-        if (entrys.length === 0) return interaction.reply({ content: "Nothing configured for this guild." });
+        if (entrys.length === 0) return interaction.editReply({ content: "Nothing configured for this guild." });
         
-        return interaction.reply(ScrimsMessageBuilder.configEntrysMessage(entrys));
+        return interaction.editReply(ScrimsMessageBuilder.configEntrysMessage(entrys));
 
     }
 
-    const selector = { guild: { discord_id: interaction.guild.id }, id_type: entryTypeId }
+    const selector = { guild_id: interaction.guild.id, id_type: entryTypeId }
     const entrys = await interaction.client.database.guildEntrys.get(selector)
 
-    if (!value) return interaction.reply({ content: `${entrys[0]?.value || null}`, allowedMentions: { parse: [] }, ephemeral: true });
+    if (!value) return interaction.editReply({ content: `${entrys[0]?.value || null}`, allowedMentions: { parse: [] }, ephemeral: true });
     
     if (entrys.length > 0) {
 
         const oldValue = entrys[0].value
         
         await interaction.client.database.guildEntrys.update(selector, { value })
-        return interaction.reply({ content: `${oldValue} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
+        return interaction.editReply({ content: `${oldValue} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
 
     }
 
     await interaction.client.database.guildEntrys.create({ ...selector, value })
-    await interaction.reply({ content: `${value}`, allowedMentions: { parse: [] }, ephemeral: true })
+    await interaction.editReply({ content: `${value}`, allowedMentions: { parse: [] }, ephemeral: true })
 
 } 
 
@@ -185,7 +187,7 @@ function getConfigCommand() {
     const configCommand = new SlashCommandBuilder()
         .setName("config")
         .setDescription("Used to configure the bot for this discord server.")
-        .addIntegerOption(option => (
+        .addStringOption(option => (
             option
                 .setName("key")
                 .setDescription("What exact you are trying to configure.")

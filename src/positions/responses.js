@@ -49,7 +49,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    static positionRolesAddConfirmMessage(existing, role, position, id_guild) {
+    static positionRolesAddConfirmMessage(existing, role, position) {
 
         return { 
 
@@ -58,7 +58,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
             components: [ 
                 new MessageActionRow()
                     .addComponents(
-                        this.button(`Overrite`, 4, `PositionRoles/overwrite/${role.id}/${position.id_position}/${id_guild}`),
+                        this.button(`Overrite`, 4, `PositionRoles/overwrite/${role.id}/${position.id_position}`),
                         this.cancelButton(),
                     ) 
             ],

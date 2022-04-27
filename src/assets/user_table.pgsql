@@ -1,7 +1,7 @@
 
 CREATE TABLE scrims_user (
 
-    id_user SERIAL PRIMARY KEY,
+    id_user uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     joined_at bigint NOT NULL,
 
     discord_id text NULL,
@@ -12,18 +12,15 @@ CREATE TABLE scrims_user (
     
     mc_uuid text NULL,
     mc_name text NULL,
-    mc_verified boolean,
+    mc_verified boolean DEFAULT false,
 
     country text NULL,
     timezone text NULL
     
 );
 
-INSERT INTO scrims_user (id_user, joined_at, discord_id, discord_discriminator, discord_avatar) VALUES (0, 1650023597, '954865888383885352', 1291, 'b4e754f165a915e76bab013393251bfb');
-
-
 CREATE OR REPLACE FUNCTION get_users (
-    id_user int default null,
+    id_user uuid default null,
     joined_at bigint default null,
 
     discord_id text default null,
@@ -71,17 +68,17 @@ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION get_user_id (
-    id_user int default null,
+    id_user uuid default null,
     discord_id text default null,
     discord_username text default null,
     discord_discriminator int default null,
     mc_uuid text default null,
     mc_name text default null
 ) 
-returns int 
+returns uuid 
 AS $$
 DECLARE
-    retval INTEGER;
+    retval uuid;
 BEGIN
 EXECUTE '
     SELECT scrims_user.id_user FROM scrims_user

@@ -1,10 +1,8 @@
 const TicketTranscriber = require("./ticket-transcriber");
 const ScrimsMessageBuilder = require("../lib/responses");
 
-const { commandHandler, commands } = require("./commands");
-
-const onComponent = require("./components");
-const onSubmit = require("./modals");
+const { commandHandler, eventHandlers, commands } = require("./interactions");
+const SupportResponseMessageBuilder = require("./responses");
 
 class SupportFeature {
 
@@ -17,6 +15,7 @@ class SupportFeature {
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
 
+        this.modalResponses = {}
         this.transcriptChannels = {}
         this.ticketCategorys = {}
 
@@ -210,24 +209,26 @@ class SupportFeature {
 
     async verifyTicketRequest(interaction, typeName) {
 
-        if (!interaction.scrimsUser)
-            return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage()).then(() => false);
+        if (!interaction.scrimsUser) return ScrimsMessageBuilder.scrimsUserNeededMessage()
 
         const bannedPosition = await interaction.client.database.userPositions.get({ id_user: interaction.scrimsUser.id_user, position: { name: "support_blacklisted" } })
         if (bannedPosition.length > 0) {
 
             const length = bannedPosition[0].expires_at ? `until <t:${bannedPosition[0].expires_at}:f>` : `permanently`;
-            return interaction.reply(
-                ScrimsMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to create tickets ${length} since you didn't follow the rules.`)
-            ).then(() => false);
+            
+            return ScrimsMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to create tickets ${length} since you didn't follow the rules.`)
 
         }
 
         const existing = await this.database.tickets.get({ type: { name: typeName }, id_user: interaction.scrimsUser.id_user, status: { name: "open" } })
         if (existing.length > 0) {
-
+            
             const channel = await this.bot.channels.fetch(existing[0].channel_id).catch(() => null)
-            if (channel) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (${channel})!`)).then(() => false);
+            if (channel) {
+                
+                return ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (${channel})!`)
+
+            }
 
             // Ticket is open, but the channel does not exist
             await this.closeTicket({ guild: interaction.guild }, existing[0], null)
@@ -236,6 +237,24 @@ class SupportFeature {
 
         return true;
 
+    }
+
+    async getSupportRole(guild) {
+
+        const positionRoles = await this.database.positionRoles.get({ guild_id: guild.id, position: { name: 'support' } })
+        if (positionRoles.length === 0) return null;
+    
+        const role = guild.roles.resolve(positionRoles[0].role_id)
+        return role ?? null;
+    
+    }
+
+    async getTicketInfoPayload(member, mentionRoles, ticketData) {
+
+        const supportRole = await this.getSupportRole(member.guild)
+
+        return SupportResponseMessageBuilder.ticketInfoMessage(member, mentionRoles, supportRole, ticketData);
+    
     }
 
     async onChannelDelete(channel) {
@@ -262,7 +281,7 @@ class SupportFeature {
         }
         
         const types = [ 'tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category' ]
-        await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild: { discord_id: channel.guild.id }, type: { name }, value: channel.id }))).catch(console.error)
+        await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name }, value: channel.id }))).catch(console.error)
 
         const tickets = await this.database.tickets.get({ channel_id: channel.id }).catch(console.error)
         if (tickets) {
@@ -276,25 +295,19 @@ class SupportFeature {
 
     async closeTicket(channel, ticket, executor) {
 
-        const id_status = this.database.ticketStatuses.cache.get({ name: 'deleted' })[0]?.id_status
-        if (id_status) await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { id_status })
+        await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })
 
         this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })
         await this.transcriber.send(channel.guild, ticket)
-        
+  
         if (typeof channel.delete === "function") await channel.delete().catch(() => { /* Channel could already be deleted. */ })
 
     }
 
     addEventHandlers() {
 
-        this.bot.addEventHandler("support", onComponent)
-        this.bot.addEventHandler("report", onComponent)
-        this.bot.addEventHandler("TicketCloseRequest", onComponent)
-
         commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
-
-        this.bot.addEventHandler("support-modal", onSubmit)
+        eventHandlers.forEach(eventName => this.bot.addEventHandler(eventName, commandHandler))
 
     }
 

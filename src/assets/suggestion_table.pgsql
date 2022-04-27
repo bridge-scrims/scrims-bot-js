@@ -1,30 +1,31 @@
 CREATE TABLE scrims_suggestion (
 
-    id_suggestion SERIAL PRIMARY KEY,
+    id_suggestion uuid DEFAULT gen_random_uuid() PRIMARY KEY,
 
-    id_guild int NULL,
+    guild_id text NULL,
     channel_id text NULL,
     message_id text NULL,
     suggestion text NULL,
 
     created_at bigint NOT NULL,
-    id_creator int NOT NULL,
+    id_creator uuid NOT NULL,
     epic bigint NULL,
 
-    FOREIGN KEY(id_guild) REFERENCES scrims_guild(id_guild),
     FOREIGN KEY(id_creator) REFERENCES scrims_user(id_user)
         
 );
 
+CREATE SEQUENCE support_ticket_index;
+
 CREATE OR REPLACE FUNCTION get_suggestions (
 
-    id_suggestion int default null,
-    id_guild int default null,
+    id_suggestion uuid default null,
+    guild_id text default null,
     channel_id text default null,
     message_id text default null,
     suggestion text default null,
     created_at bigint default null,
-    id_creator bigint default null,
+    id_creator uuid default null,
     epic bigint default null
 
 ) 
@@ -38,7 +39,7 @@ EXECUTE '
     json_agg(
         json_build_object(
             ''id_suggestion'', scrims_suggestion.id_suggestion,
-            ''id_guild'', scrims_suggestion.id_guild,
+            ''guild_id'', scrims_suggestion.guild_id,
             ''guild'', to_json(scrims_guild),
             ''channel_id'', scrims_suggestion.channel_id,
             ''message_id'', scrims_suggestion.message_id,
@@ -52,7 +53,7 @@ EXECUTE '
     FROM 
     scrims_suggestion 
     LEFT JOIN LATERAL (SELECT * FROM scrims_user WHERE scrims_user.id_user = scrims_suggestion.id_creator LIMIT 1) creator ON true
-    LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.id_guild = scrims_suggestion.id_guild LIMIT 1) scrims_guild ON true
+    LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.guild_id = scrims_suggestion.guild_id LIMIT 1) scrims_guild ON true
     WHERE 
     ($1 is null or scrims_suggestion.id_suggestion = $1) AND
     ($2 is null or scrims_suggestion.channel_id = $2) AND
@@ -61,8 +62,8 @@ EXECUTE '
     ($5 is null or scrims_suggestion.created_at = $5) AND
     ($6 is null or scrims_suggestion.id_creator = $6) AND
     ($7 is null or scrims_suggestion.epic = $7) AND
-    ($8 is null or scrims_suggestion.id_guild = $8)
-' USING id_suggestion, channel_id, message_id, suggestion, created_at, id_creator, epic, id_guild
+    ($8 is null or scrims_suggestion.guild_id = $8)
+' USING id_suggestion, channel_id, message_id, suggestion, created_at, id_creator, epic, guild_id
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
@@ -84,7 +85,7 @@ BEGIN
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
         'suggestion_update', json_build_object(
-            'selector', to_json(OLD), 
+            'selector', json_build_object('id_suggestion', OLD.id_suggestion),
             'data', (suggestions->>0)::json
         )::text
     );

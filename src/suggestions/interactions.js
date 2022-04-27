@@ -129,7 +129,7 @@ async function onRemoveSuggestion(interaction) {
 
     const interactorIsAuthor = (suggestion.creator.discord_id == interaction.userId);
     if (suggestion.epic && interactorIsAuthor) 
-        return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Not Removable", "Since your suggestion is so liked it can not be removed!"));
+        return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Not Removable", "Since your suggestion is so liked it can not be removed! Have a nice day :)"));
 
     if (!(await interaction.member.hasPermission("staff")) && !interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
@@ -202,10 +202,11 @@ async function onModalSubmit(interaction) {
 
     const newSuggestion = { 
 
-        guild: { discord_id: interaction.guild.id },
+        id_suggestion: interaction.client.database.generateUUID(),
+        guild_id: interaction.guild.id,
         channel_id: message.channel.id, 
         message_id: message.id, 
-        created_at: Math.round(interaction.createdTimestamp/1000),
+        created_at: Math.round(Date.now()/1000),
         suggestion,
         id_creator: interaction.scrimsUser.id_user
 

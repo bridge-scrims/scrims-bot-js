@@ -4,6 +4,7 @@ const DBTable = require("../lib/postgresql/table");
 const { Message } = require("discord.js");
 const ScrimsGuild = require("../lib/scrims/guild");
 const ScrimsUser = require("../lib/scrims/user");
+const TableRow = require("../lib/postgresql/row");
 
 class SuggestionsTableCache extends DBCache {
 
@@ -23,11 +24,10 @@ class ScrimsSuggestionsTable extends DBTable {
     constructor(client) {
 
         const foreigners = [
-            [ "creator", "id_creator", "get_user_id" ],
-            [ "guild", "id_guild", "get_guild_id" ]
+            [ "creator", "id_creator", "get_user_id" ]
         ]
 
-        super(client, "scrims_suggestion", "get_suggestions", foreigners, ScrimsSuggestion, SuggestionsTableCache);
+        super(client, "scrims_suggestion", "get_suggestions", foreigners, ['id_suggestion'], ScrimsSuggestion, SuggestionsTableCache);
 
         /**
          * @type { SuggestionsTableCache }
@@ -80,31 +80,31 @@ class ScrimsSuggestionsTable extends DBTable {
     
 }
 
-class ScrimsSuggestion extends DBTable.Row {
+class ScrimsSuggestion extends TableRow {
 
     /**
      * @type { ScrimsSuggestionsTable }
      */
     static Table = ScrimsSuggestionsTable
 
-    constructor(client, suggestionData) {
+    constructor(table, suggestionData) {
 
         const references = [
-            ['guild', ['id_guild'], ['id_guild'], client.guilds],
-            ['creator', ['id_creator'], ['id_user'], client.users]
+            ['guild', ['guild_id'], ['guild_id'], table.client.guilds],
+            ['creator', ['id_creator'], ['id_user'], table.client.users]
         ]
 
-        super(client, suggestionData, references)
+        super(table, suggestionData, references)
 
         /**
-         * @type { number } 
+         * @type { string } 
          */
         this.id_suggestion
         
         /**
-         * @type { number }
+         * @type { string }
          */
-        this.id_guild
+        this.guild_id
 
         /**
          * @type { ScrimsGuild }
@@ -132,7 +132,7 @@ class ScrimsSuggestion extends DBTable.Row {
         this.created_at
 
         /**
-         * @type { number } 
+         * @type { string } 
          */
         this.id_creator
 
@@ -152,13 +152,6 @@ class ScrimsSuggestion extends DBTable.Row {
 
         if (!this.guild) return null;
         return this.guild.discordGuild;
-
-    }
-
-    get guild_id() {
-
-        if (!this.guild) return null;
-        return this.guild.discord_id;
 
     }
 

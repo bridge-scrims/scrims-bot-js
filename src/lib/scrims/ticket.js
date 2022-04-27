@@ -5,6 +5,7 @@ const ScrimsUser = require("./user");
 
 const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
+const TableRow = require("../postgresql/row");
 
 class ScrimsTicketCache extends DBCache {
 
@@ -42,7 +43,7 @@ class ScrimsTicketTable extends DBTable {
             [ "guild", "id_guild", "get_guild_id" ]
         ]
 
-        super(client, "scrims_ticket", "get_tickets", foreigners, ScrimsTicket, ScrimsTicketCache);
+        super(client, "scrims_ticket", "get_tickets", foreigners, ['id_ticket'], ScrimsTicket, ScrimsTicketCache);
 
         /**
          * @type { ScrimsTicketCache }
@@ -84,31 +85,31 @@ class ScrimsTicketTable extends DBTable {
 
 }
 
-class ScrimsTicket extends DBTable.Row {
+class ScrimsTicket extends TableRow {
 
     /**
      * @type { ScrimsTicketTable }
      */
     static Table = ScrimsTicketTable
 
-    constructor(client, ticketData) {
+    constructor(table, ticketData) {
 
         const references = [
-            ['type', ['id_type'], ['id_type'], client.ticketTypes], 
-            ['user', ['id_user'], ['id_user'], client.users],
-            ['status', ['id_status'], ['id_status'], client.ticketStatuses],
-            ['guild', ['id_guild'], ['id_guild'], client.guilds]
+            ['type', ['id_type'], ['id_type'], table.client.ticketTypes], 
+            ['user', ['id_user'], ['id_user'], table.client.users],
+            ['status', ['id_status'], ['id_status'], table.client.ticketStatuses],
+            ['guild', ['guild_id'], ['guild_id'], table.client.guilds]
         ]
 
-        super(client, ticketData, references)
+        super(table, ticketData, references)
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_ticket
         
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_type;
 
@@ -118,7 +119,7 @@ class ScrimsTicket extends DBTable.Row {
         this.type
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_user
 
@@ -128,7 +129,7 @@ class ScrimsTicket extends DBTable.Row {
         this.user
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_status
 
@@ -138,9 +139,9 @@ class ScrimsTicket extends DBTable.Row {
         this.status
 
         /**
-         * @type { number }
+         * @type { string }
          */
-        this.id_guild
+        this.guild_id
 
         /**
          * @type { ScrimsGuild }
@@ -166,34 +167,10 @@ class ScrimsTicket extends DBTable.Row {
 
     }
 
-    get guild_id() {
-
-        if (!this.guild) return null;
-        return this.guild.discord_id;
-
-    }
-
     get channel() {
 
         if (!this.channel_id) return null;
         return this.bot.channels.resolve(this.channel_id);
-
-    }
-
-    /**
-     * @override
-     * @param { Object.<string, any> } obj 
-     * @returns { Boolean }
-     */
-    equals(obj) {
-
-        if (obj instanceof ScrimsTicket) {
-
-            return (obj.id_ticket === this.id_ticket);
-
-        }
-        
-        return this.valuesMatch(obj, this);
 
     }
 
