@@ -33,11 +33,12 @@ async function fix() {
             .map(position => newDatabase.positions.create({ ...position.toJSON(), id_position: uuidv4() }).catch(console.error))
     )
 
-    const existingUserPositions = await newDatabase.userPositions.get({ }, false)
+    const existingUserPositions = await newDatabase.userPositions.getArrayMap({ }, ['user', 'discord_id'], false)
+    console.log(`found ${Object.values(existingUserPositions).length} existing user positions...`)
     const userPositions = await oldDatabase.userPositions.get({ }, false).then(userPositions => 
-        userPositions.filter(userPos => existingUserPositions.filter(existing => existing.position?.name === userPos.position?.name && existing.user.discord_id === userPos.user.discord_id).length === 0)
+        userPositions.filter(userPos => !existingUserPositions[userPos.user?.discord_id] || existingUserPositions[userPos.user?.discord_id].filter(existing => existing.position?.name === userPos.position?.name).length === 0)
     )
-        
+
     console.log(`adding ${userPositions.length} new user positions...`)
     await Promise.all(userPositions
         .map(userPos => newDatabase.userPositions.create({ 
