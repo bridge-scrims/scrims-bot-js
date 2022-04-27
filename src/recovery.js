@@ -34,7 +34,8 @@ async function fix() {
     await newDatabase.query(`DELETE FROM scrims_user_position;`)
     const userPositions = await oldDatabase.userPositions.get({ }, false)
     await Promise.all(userPositions.map(userPos => newDatabase.userPositions.create({ 
-        user: { discord_id: userPos.user.discord_id }, position: { name: userPos.position.name }, executor: { discord_id: userPos.executor.discord_id }, 
+        user: { discord_id: userPos.user.discord_id }, position: { name: userPos.position.name }, 
+        ...(userPos.executor ? { executor: { discord_id: userPos.executor.discord_id } } : { id_executor: null }), 
         given_at: userPos.given_at, expires_at: userPos.expires_at
     }).catch(console.error)))
 
