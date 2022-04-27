@@ -1,5 +1,4 @@
 const DBCache = require("../postgresql/cache");
-const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 const ScrimsGuild = require("./guild");
 const ScrimsGuildEntryType = require("./guild_entry_type");
@@ -24,10 +23,11 @@ class ScrimsGuildEntrysTable extends DBTable {
     constructor(client) {
 
         const foreigners = [
-            [ "type", "id_type", "get_guild_entry_type_id" ]
+            [ "type", "id_type", "get_guild_entry_type_id" ],
+            [ "guild", "id_guild", "get_guild_id" ]
         ]
 
-        super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, ['guild_id', 'id_type'], ScrimsGuildEntry, ScrimsGuildEntrysCache);
+        super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, ScrimsGuildEntry, ScrimsGuildEntrysCache);
 
         /**
          * @type { ScrimsGuildEntrysCache }
@@ -80,26 +80,26 @@ class ScrimsGuildEntrysTable extends DBTable {
 
 }
 
-class ScrimsGuildEntry extends TableRow {
+class ScrimsGuildEntry extends DBTable.Row {
 
     /**
      * @type { ScrimsGuildEntrysTable }
      */
     static Table = ScrimsGuildEntrysTable
     
-    constructor(table, entryData) {
+    constructor(client, entryData) {
 
         const references = [
-            ['guild', ['guild_id'], ['guild_id'], table.client.guilds], 
-            ['type', ['id_type'], ['id_type'], table.client.guildEntryTypes]
+            ['guild', ['id_guild'], ['id_guild'], client.guilds], 
+            ['type', ['id_type'], ['id_type'], client.guildEntryTypes]
         ]
 
-        super(table, entryData, references);
+        super(client, entryData, references);
 
         /**
-         * @type { string }
+         * @type { number }
          */
-        this.guild_id
+        this.id_guild
 
         /**
          * @type { ScrimsGuild }
@@ -107,7 +107,7 @@ class ScrimsGuildEntry extends TableRow {
         this.guild
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_type
 
@@ -127,6 +127,13 @@ class ScrimsGuildEntry extends TableRow {
 
         if (!this.guild) return null;
         return this.guild.discordGuild;
+
+    }
+
+    get guild_id() {
+
+        if (!this.guild) return null;
+        return this.guild.discord_id;
 
     }
 

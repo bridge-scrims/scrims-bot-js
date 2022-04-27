@@ -22,7 +22,7 @@ class DBCache extends EventEmitter {
         this.handlesKey = `_${Date.now()}`
 
         /**
-         * @type { import("./row")[] }
+         * @type { TableRow[] }
          */
         this.data = []
 
@@ -64,7 +64,7 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { import("./row") } value
+     * @param { TableRow } value
      * @param { Boolean } withHandle
      * @returns { TableRow }
      */
@@ -76,29 +76,25 @@ class DBCache extends EventEmitter {
     
         if (existing) {
             
-            if (!existing.exactlyEquals(value)) {
+            const index = this.data.indexOf(existing)
+            this.data[index] = existing.updateWith(value)
 
-                const index = this.data.indexOf(existing)
-                this.data[index] = existing.updateWith(value)
-                this.emit('update', this.data[index])
-
-            }
-            
         }else {
 
             value.cache()
             this.data.push(value)
-            this.emit('push', value)
 
         }
 
+        this.emit('push', value)
+        
         if (withHandle) return this.addHandle(existing ?? value);
-        return existing ?? value;
+        return value;
 
     }
 
     /**
-     * @param { import("./row")[] } values 
+     * @param { TableRow[] } values 
      */
     set(values) {
 
@@ -108,7 +104,7 @@ class DBCache extends EventEmitter {
 
     /**
      * @param { string[] } mapKeys
-     * @returns { Object.<string, import("./row")> }
+     * @returns { Object.<string, TableRow> }
      */
     getMap( ...mapKeys ) {
 
@@ -118,7 +114,7 @@ class DBCache extends EventEmitter {
 
     /**
      * @param { string[] } mapKeys
-     * @returns { Object.<string, import("./row")[]> }
+     * @returns { Object.<string, TableRow[]> }
      */
     getArrayMap( ...mapKeys ) {
 
@@ -134,7 +130,7 @@ class DBCache extends EventEmitter {
     /**
      * @param { Object.<string, any> } filter
      * @param { Boolean } invert
-     * @returns { import("./row")[] }
+     * @returns { TableRow[] }
      */ 
     get(filter, invert) {
 
@@ -144,14 +140,13 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @returns { import("./row")[] }
+     * @returns { TableRow[] }
      */
     remove(filter) {
 
         const remove = this.get(filter)
         
         this.data = this.data.filter(value => !remove.includes(value))
-        remove.forEach(value => value.uncache())
         remove.forEach(value => this.emit('remove', value))
 
         return remove;
@@ -159,15 +154,13 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { import("./row") } newValue 
+     * @param { TableRow } newValue 
      * @param { Object.<string, any> } filter 
      */
     update(newValue, filter) {
 
         const matches = this.get(filter)
         matches.forEach(value => {
-
-            if (value.exactlyEquals(newValue)) return;
 
             const index = this.data.indexOf(value)
             this.data[index] = value.updateWith(newValue)

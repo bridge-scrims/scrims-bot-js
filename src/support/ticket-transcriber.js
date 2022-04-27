@@ -78,7 +78,7 @@ class TicketTranscriber {
             + `<style>${style}</style>`
         )
 
-        // Create a template to insert all the data into
+        // Mainly create a template to insert all the data into
         const body = (
             `<h1>Ticket Transcript</h1>`
             + `<table class="table table-striped">`
@@ -119,32 +119,6 @@ class TicketTranscriber {
 
     }
 
-    getUserMessageEmbed(ticket) {
-
-        return new MessageEmbed()
-            .setColor("#FFFFFF")
-            .setTitle(`${ticket?.type?.capitalizedName} Ticket Transcript`)
-            .setDescription(
-                `Your ${ticket?.type?.name} ticket from <t:${ticket.created_at}:f> was closed. `
-                + `Attached to this message you will find the message log of your ${ticket?.type?.name} channel. `
-                + `Hopefully we were able to help you. Have a nice day :)`
-            )
-            .setFooter({ text: ticket?.discordGuild?.name, iconURL: ticket?.discordGuild?.iconURL({ dynamic: true }) })
-
-    }
-
-    getLogMessageEmbed(ticket) {
-
-        return new MessageEmbed()
-            .setColor("#FFFFFF")
-            .setTitle(`${ticket?.type?.capitalizedName} Ticket Transcript`)
-            .setDescription(
-                `Ticket created by ${ticket?.user?.getMention('**')} with a ticket id of **${ticket.id_ticket}**.`
-            )
-            .setFooter({ text: ticket?.discordGuild?.name, iconURL: ticket?.discordGuild?.iconURL({ dynamic: true }) })
-
-    }
-
     async send(guild, ticket) {
         
         try {
@@ -153,16 +127,23 @@ class TicketTranscriber {
             const transcriptContent = this.getHTMLContent(ticketMessages)
 
             const buff = Buffer.from(transcriptContent, "utf-8");
-            const file = new MessageAttachment(buff, `Bridge_Scrims_Support_Transcript_${ticket.id_ticket.replace(/-/g, '_')}.html`);
+            const file = new MessageAttachment(buff, `Bridge_Scrims_Support_Transcript_${ticket.id_ticket}.html`);
 
+            const embed = new MessageEmbed()
+                .setColor("#FFFFFF")
+                .setTitle(`${ticket?.type?.capitalizedName} Ticket Transcript`)
+                .setDescription(`Ticket created by <@${ticket.user.discord_id}>`)
+                .setFooter({ text: guild.name, iconURL: guild.iconURL({ dynamic: true }) })
+                .setTimestamp(ticket.created_at*1000)
+    
             const channel = guild.client.support.getTranscriptChannel(guild.id)
-            if (channel) await channel.send({ embeds: [this.getLogMessageEmbed(ticket)], files: [file] });
+            if (channel) await channel.send({ embeds: [embed], files: [file] });
             
             const user = await guild.client.users.fetch(ticket.user.discord_id)
                 .catch(error => this.onUserDMMissed(channel, ticket.user.discord_id, `${error}`).then(() => null))
             
             if (user !== null) 
-                await user.send({ embeds: [this.getUserMessageEmbed(ticket)], files: [file] }).catch(error => this.onUserDMMissed(channel, ticket.user.discord_id, `${error}`));
+                await user.send({ embeds: [embed], files: [file] }).catch(error => this.onUserDMMissed(channel, ticket.user.discord_id, `${error}`));
 
         }catch(error) {
 

@@ -1,5 +1,4 @@
 const DBCache = require("../postgresql/cache");
-const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
 class ScrimsPositionCache extends DBCache {
@@ -21,7 +20,7 @@ class ScrimsPositionTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_position", "get_positions", [], ['id_position'], ScrimsPosition, ScrimsPositionCache);
+        super(client, "scrims_position", "get_positions", [], ScrimsPosition, ScrimsPositionCache);
 
         /**
          * @type { ScrimsPositionCache }
@@ -63,7 +62,7 @@ class ScrimsPositionTable extends DBTable {
 
 }
 
-class ScrimsPosition extends TableRow {
+class ScrimsPosition extends DBTable.Row {
 
     /**
      * @type { ScrimsPositionTable }
@@ -75,7 +74,7 @@ class ScrimsPosition extends TableRow {
         super(client, positionData, []);
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_position
 
