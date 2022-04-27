@@ -1,8 +1,8 @@
 
 CREATE TABLE scrims_ticket_message (
 
-    id_ticket uuid NOT NULL,
-    id_author uuid NOT NULL,
+    id_ticket int NOT NULL,
+    id_author int NOT NULL,
 
     message_id text NOT NULL,
     content text NOT NULL,
@@ -16,8 +16,8 @@ CREATE TABLE scrims_ticket_message (
 );
 
 CREATE OR REPLACE FUNCTION get_ticket_messages (
-    id_ticket uuid default null,
-    id_author uuid default null,
+    id_ticket int default null,
+    id_author int default null,
     message_id text default null,
     content text default null,
     deleted bigint default null,

@@ -1,6 +1,5 @@
 const { Constants } = require("discord.js");
 const DBCache = require("../postgresql/cache");
-const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
 class ScrimsUserCache extends DBCache {
@@ -32,7 +31,7 @@ class ScrimsUserTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_user", "get_users", [], ['id_user'], ScrimsUser, ScrimsUserCache);
+        super(client, "scrims_user", "get_users", [], ScrimsUser, ScrimsUserCache);
 
         /**
          * @type { ScrimsUserCache }
@@ -85,7 +84,7 @@ class ScrimsUserTable extends DBTable {
 
 }
 
-class ScrimsUser extends TableRow {
+class ScrimsUser extends DBTable.Row {
 
     /**
      * @type { ScrimsUserTable }
@@ -97,7 +96,7 @@ class ScrimsUser extends TableRow {
         super(client, userData, [])
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_user
 
@@ -119,9 +118,7 @@ class ScrimsUser extends TableRow {
         /**
          * @type { string }
          */
-        this.discord_discriminator
-
-        if (typeof this.discord_discriminator === 'number') this.discord_discriminator = `${this.discord_discriminator}`.padStart(4, '0')
+        this.discord_discriminator = `${userData.discord_discriminator}`.padStart(4, '0')
 
         /**
          * @type { number }
@@ -204,6 +201,23 @@ class ScrimsUser extends TableRow {
         const avatar = cdn.Avatar(this.discord_id, this.discord_avatar, undefined, undefined, true)
         
         return avatar ?? defaultAvatar;
+
+    }
+
+    /**
+     * @override
+     * @param { Object.<string, any> } obj 
+     * @returns { Boolean }
+     */
+    equals(obj) {
+
+        if (obj instanceof ScrimsUser) {
+
+            return (obj.id_user === this.id_user);
+
+        }
+        
+        return this.valuesMatch(obj, this);
 
     }
 

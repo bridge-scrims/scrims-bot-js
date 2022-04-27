@@ -126,7 +126,6 @@ class ScrimsUserUpdater {
 
         return this.bot.database.users.create({ 
 
-            id_user: this.bot.database.generateUUID(),
             discord_id: member.id, 
             discord_username: member.user.username, 
             discord_discriminator: member.user.discriminator,

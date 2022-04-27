@@ -1,7 +1,7 @@
 
 CREATE TABLE scrims_position (
 
-    id_position uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    id_position SERIAL PRIMARY KEY,
     name text NOT NULL,
     sticky boolean NOT NULL,
     level INT NULL
@@ -31,7 +31,7 @@ INSERT INTO scrims_position (name, level, sticky) VALUES('bridge_scrims_member',
 
 CREATE OR REPLACE FUNCTION get_positions(
 
-    id_position uuid default null,
+    id_position int default null,
     name text default null,
     sticky boolean default null,
     level int default null
@@ -62,16 +62,16 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_position_id(
 
-    id_position uuid default null,
+    id_position int default null,
     name text default null,
     sticky boolean default null,
     level int default null
     
 ) 
-RETURNS uuid 
+RETURNS int 
 AS $$
 DECLARE
-    retval uuid;
+    retval INTEGER;
 BEGIN
 EXECUTE '
     SELECT scrims_position.id_position FROM scrims_position 

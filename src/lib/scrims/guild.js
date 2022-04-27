@@ -1,6 +1,5 @@
 const { Constants } = require("discord.js");
 const DBCache = require("../postgresql/cache");
-const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
 class ScrimsGuildCache extends DBCache {
@@ -22,7 +21,7 @@ class ScrimsGuildTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_guild", null, [], ['id_guild'], ScrimsGuild, ScrimsGuildCache);
+        super(client, "scrims_guild", null, [], ScrimsGuild, ScrimsGuildCache);
 
         /**
          * @type { ScrimsGuildCache }
@@ -75,7 +74,7 @@ class ScrimsGuildTable extends DBTable {
 
 }
 
-class ScrimsGuild extends TableRow {
+class ScrimsGuild extends DBTable.Row {
 
     /**
      * @type { ScrimsGuildTable }
@@ -87,9 +86,14 @@ class ScrimsGuild extends TableRow {
         super(client, guildData, []);
 
         /**
+         * @type { number }
+         */
+        this.id_guild
+
+        /**
          * @type { string }
          */
-        this.guild_id
+        this.discord_id
 
         /**
          * @type { string }
@@ -105,14 +109,14 @@ class ScrimsGuild extends TableRow {
 
     get id() {
 
-        return this.guild_id;
+        return this.discord_id;
 
     }
 
     get discordGuild() {
 
-        if (!this.guild_id) return null;
-        return this.bot.guilds.resolve(this.guild_id);
+        if (!this.discord_id) return null;
+        return this.bot.guilds.resolve(this.discord_id);
 
     }
 
@@ -125,7 +129,7 @@ class ScrimsGuild extends TableRow {
         if (!this.icon) return null;
 
         const cdn = Constants.Endpoints.CDN("https://cdn.discordapp.com")
-        return cdn.Icon(this.guild_id, this.icon, undefined, undefined, true);
+        return cdn.Icon(this.discord_id, this.icon, undefined, undefined, true);
 
     }
 
