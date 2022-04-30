@@ -33,13 +33,13 @@ class SupportFeature {
 
         this.transcriber = new TicketTranscriber(this.database.ticketMessages)
 
-        const channelConfigs = this.database.guildEntrys.cache.get({ type: { name: "tickets_transcript_channel" } })
+        const channelConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_transcript_channel" } })
         await Promise.all(channelConfigs.map(entry => this.setTranscriptChannel(entry.guild_id, entry.value)))
 
-        const reportCategoryConfigs = this.database.guildEntrys.cache.get({ type: { name: "tickets_report_category" } })
+        const reportCategoryConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_report_category" } })
         await Promise.all(reportCategoryConfigs.map(entry => this.setTicketsCategory(entry.guild_id, entry.value, 'report')))
 
-        const supportCategoryConfigs = this.database.guildEntrys.cache.get({ type: { name: "tickets_support_category" } })
+        const supportCategoryConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_support_category" } })
         await Promise.all(supportCategoryConfigs.map(entry => this.setTicketsCategory(entry.guild_id, entry.value, 'support')))
 
         this.database.guildEntrys.cache.on('push', config => this.onConfigCreate(config))
@@ -163,7 +163,7 @@ class SupportFeature {
 
     async onMessageCreate(message) {
 
-        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
+        const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
         if (message.author.id == this.bot.user.id) return false;
@@ -193,7 +193,7 @@ class SupportFeature {
 
     async onMessageDelete(message) {
 
-        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
+        const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
         await this.database.ticketMessages.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })

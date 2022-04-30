@@ -122,7 +122,7 @@ async function onRemoveSuggestion(interaction) {
     if (interaction.targetId == interaction.client.suggestions.suggestionsInfoMessage)
         return interaction.reply({ content: "This should be used on suggestion messages. Not the suggestions channel info message!", ephemeral: true });
 
-    const suggestion = interaction.client.database.suggestions.cache.get({ message_id: interaction.targetId })[0]
+    const suggestion = interaction.client.database.suggestions.cache.find({ message_id: interaction.targetId })[0]
     if (!suggestion) return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Unkown Suggestion", "This can only be used on suggestion messages!"));
     
     interaction.suggestion = suggestion

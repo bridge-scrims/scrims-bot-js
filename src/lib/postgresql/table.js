@@ -201,7 +201,7 @@ class DBTable {
      */
     async get(selectCondition, useCache=true) { 
 
-        const cached = this.cache.get(this.getRow(selectCondition))
+        const cached = this.cache.find(this.getRow(selectCondition))
         if (cached.length > 0 && useCache) return cached;
 
         const [ formated, values1 ] = this.format({ ...selectCondition })
@@ -211,12 +211,8 @@ class DBTable {
         const items = (this.getFunction === null) ? result.rows : result.rows[0][this.getFunction]
         const rows = this.getRows(items)
         
-        if (JSON.stringify(selectCondition) === "{}") {
-            
-            this.cache.set(rows)
-
-        }else rows.forEach(row => this.cache.push(row))
-
+        if (JSON.stringify(selectCondition) === "{}") this.cache.setAll(rows)
+        else rows.forEach(row => this.cache.push(row))
         return rows;
 
     }
@@ -295,7 +291,7 @@ class DBTable {
 
         await this.query(`DELETE FROM ${this.name} ${whereClause}`, values2)
         
-        const removed = this.cache.remove(selector)
+        const removed = this.cache.filterOut(selector)
         return removed;
 
     }

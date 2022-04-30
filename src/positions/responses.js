@@ -6,10 +6,12 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     static syncViolet = "#673AB7"
 
-    static positionRolesStatusMessage(positionRoles) {
+    static positionRolesStatusMessage(positionRoles, guild_id) {
 
         if (positionRoles.length === 0) 
             return { ephemeral: true, components: [], content: "No position roles configured." };
+
+        const getRoleMention = (role) => (role.guild.id === guild_id) ? `${role}` : `@${role.name}`;
 
         return { 
 
@@ -19,7 +21,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
                 new MessageEmbed()
                     .setTitle("Connected Roles")
                     .setColor(this.syncViolet)
-                    .setDescription(positionRoles.map(posRole => `\`•\`${posRole.role} -> **${posRole.position.name}** (${posRole.id_position})`).join("\n"))
+                    .setDescription(positionRoles.map(posRole => `\`•\`${getRoleMention(posRole.role)} -> **${posRole.position.name}** (${posRole.id_position})`).join("\n"))
                     .setFooter({ text: `Page ${idx+1}/${containers.length}` })
                     .setTimestamp(Date.now())
             ))

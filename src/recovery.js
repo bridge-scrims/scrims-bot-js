@@ -5,7 +5,7 @@ const oldDBClient = require("./oldlib/postgresql/database");
 const newScrimsSuggestion = require("./suggestions/suggestion");
 const oldScrimsSuggestion = require("./oldsuggestions/suggestion");
 
-const Config = require("./config.json");
+const Config = require("../src/config.json");
 
 async function fix() {
 

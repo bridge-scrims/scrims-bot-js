@@ -79,7 +79,7 @@ class ScrimsBot extends Client {
 
     getConfig(guild_id, key) {
 
-        return this.database.guildEntrys.cache.get({ guild_id, type: { name: key } })[0]?.value;
+        return this.database.guildEntrys.cache.find({ guild_id, type: { name: key } })[0]?.value;
 
     }
 
@@ -111,7 +111,7 @@ class ScrimsBot extends Client {
         this.addEventListeners()
 
         console.log("Initializing commands...")
-        await this.commands.initializeCommands()
+        //await this.commands.initializeCommands()
         console.log("Commands initialized!")
 
         console.log("Initializing guilds...")
@@ -317,7 +317,7 @@ class ScrimsBot extends Client {
 
         if (interactEvent instanceof Message || interactEvent instanceof MessageReaction) {
 
-            interactEvent.scrimsUser = this.database.users.cache.get({ discord_id: interactEvent?.user?.id })[0] ?? null;
+            interactEvent.scrimsUser = this.database.users.cache.find({ discord_id: interactEvent?.user?.id })[0] ?? null;
 
         }else if (interactEvent.user) await this.ensureScrimsUser(interactEvent)
 
@@ -340,7 +340,7 @@ class ScrimsBot extends Client {
 
     async updateScrimsGuild(oldGuild, newGuild) {
 
-        const existing = this.database.guilds.cache.get({ guild_id: newGuild.id })[0]
+        const existing = this.database.guilds.cache.get(newGuild.id)
         if (!existing) {
 
             return this.database.guilds.create({

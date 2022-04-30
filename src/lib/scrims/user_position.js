@@ -8,28 +8,17 @@ class ScrimsUserPositionCache extends DBCache {
 
     /**
      * @override
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsUserPosition[] }
+     * @param { string[] } ids
+     * @returns { ScrimsUserPosition }
      */
-    get(filter, invert) {
+    get( ...ids ) {
 
-        const expired = this.data.filter(userPos => userPos.expires_at !== null && userPos.expires_at <= (Date.now()/1000))
+        const expired = this.values().filter(userPos => userPos.expires_at !== null && userPos.expires_at <= (Date.now()/1000))
         
-        this.data = this.data.filter(value => !expired.includes(value))
+        expired.forEach(value => this.remove(value.id))
         expired.forEach(value => this.emit('remove', value))
 
-        return super.get(filter, invert);
-
-    }
-
-    /**
-     * @param { ScrimsUserPosition[] } userPosition 
-     */
-    set(userPositions) {
-
-        const data = this.getArrayMap('id_user')
-        return userPositions.map(userPos => this.push(userPos, (data[userPos.id_user] ?? []).filter(v => v.id_position === userPos.id_position)[0] ?? false, false));
+        return super.get(...ids);
 
     }
 
@@ -61,30 +50,9 @@ class ScrimsUserPositionsTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('user_position_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('user_position_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('user_position_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('user_position_create', message => this.cache.push(this.getRow(message.payload)))
-
-    }
-
-    /**
-     * @param { Object.<string, any>[] } userPositionDatas 
-     * @returns { ScrimsUserPosition[] }
-     */
-    getRows(userPositionDatas) {
-
-        const scrimsUsers = this.client.users.cache.getMap("id_user")
-        const scrimsPositions = this.client.positions.cache.getMap("id_position")
-
-        userPositionDatas.forEach(userPositionData => {
-
-            userPositionData.user = scrimsUsers[userPositionData.id_user] ?? null
-            userPositionData.position = scrimsPositions[userPositionData.id_position] ?? null
-            userPositionData.executor = scrimsUsers[userPositionData.id_executor] ?? null
-
-        })
-
-        return super.getRows(userPositionDatas);
 
     }
     

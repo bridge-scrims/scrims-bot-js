@@ -117,7 +117,7 @@ async function onCreatePositionCommand(interaction) {
 async function onPositionAutoComplete(interaction) {
 
     const focused = interaction.options.getFocused().toLowerCase()
-    const positions = interaction.client.database.positions.cache.data
+    const positions = interaction.client.database.positions.cache.values()
 
     const relevantPositions = positions.filter(position => position.name.toLowerCase().includes(focused))
     await interaction.respond(relevantPositions.map(position => ({ name: position.name, value: position.id_position })))
@@ -131,7 +131,7 @@ async function onRemovePositionCommand(interaction) {
     if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
     const positionId = interaction.options.getString("position")
-    const position = interaction.client.database.positions.cache.get({ id_position: positionId })[0]
+    const position = interaction.client.database.positions.cache.get(positionId)
     if (!position) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
 
     const result = await interaction.client.database.positions.remove({ id_position: position.id_position }).catch(error => error)

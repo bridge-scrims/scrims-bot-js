@@ -36,7 +36,7 @@ function getTicketTypeFromId(interaction) {
     const id_type = interaction.args.shift()
     if (!id_type) return null;
 
-    return interaction.client.database.ticketTypes.cache.get({ id_type })[0] ?? null;
+    return interaction.client.database.ticketTypes.cache.get(id_type);
 
 }
 
@@ -91,7 +91,7 @@ function getTicketTypeFromName(interaction) {
     const ticketTypeName = interaction.args.shift()
     if (!ticketTypeName) return null;
 
-    return interaction.client.database.ticketTypes.cache.get({ name: ticketTypeName })[0] ?? null;
+    return interaction.client.database.ticketTypes.cache.find({ name: ticketTypeName })[0] ?? null;
 
 }
 

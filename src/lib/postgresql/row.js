@@ -36,6 +36,12 @@ class TableRow {
 
     }
 
+    get id() {
+
+        return this.uniqueKeys.map(key => this[key]).join('#');
+
+    }
+
     get uniqueKeys() {
 
         return this.table.uniqueKeys;
@@ -79,9 +85,7 @@ class TableRow {
 
         this.removePotentialHandle(table, objKey)
         
-        if (existingObject.partial) return table.cache.createHandle(existingObject);
-        
-        return table.cache.push(existingObject, null, true);
+        return table.cache.createHandle(existingObject.id);
 
     }
 
@@ -109,9 +113,15 @@ class TableRow {
 
         }
 
-        //This object is not cached so we either use the existing object if it is not partial
-        if (!existingObject.partial) this[objKey] = existingObject
-        else this[objKey] = table.cache.get(existingObject)[0] ?? null; //Or get the full object cache
+        this[objKey] = this.getObject(table, existingObject)
+
+    }
+
+    getObject(table, filter) {
+
+        if (!filter.partial) return filter;
+        if (filter.id) return table.cache.get(filter.id);
+        return table.cache.find(filter)[0] ?? null;
 
     }
 
@@ -141,7 +151,7 @@ class TableRow {
         }else {
 
             //This row is not cached so no worry about handles
-            this[objKey] = table.cache.get(filter)[0]
+            this[objKey] = this.getObject(table, filter)
 
         }
         

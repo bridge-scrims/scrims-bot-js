@@ -4,16 +4,6 @@ const DBTable = require("../postgresql/table");
 
 class ScrimsGuildEntryTypeCache extends DBCache {
 
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsGuildEntryType[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
 
 }
 

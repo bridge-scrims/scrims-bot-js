@@ -108,7 +108,7 @@ class LoggingFeature {
      */
     async getChannels(configKey, guilds) {
 
-        const configured = this.database.guildEntrys.cache.get({ type: { name: configKey } })
+        const configured = this.database.guildEntrys.cache.find({ type: { name: configKey } })
             .filter(config => config.discordGuild && config.value && (!guilds || guilds.includes(config.guild_id)))
         
         return Promise.all(configured.map(config => config.discordGuild.channels.fetch(config.value).catch(() => null)))
@@ -203,7 +203,7 @@ class LoggingFeature {
 
         const ticket = new ScrimsTicket(this.database.tickets, ticketData)
         const payload = { 
-            msg: `Created a ${ticket.type.name} ticket at ${ticket.channel ?? `**${ticket.channel_id}`} with an id of \`${ticket.id_ticket}\`.`,
+            msg: `Created a ${ticket.type.name} ticket at ${ticket.channel ?? `**${ticket.channel_id}**`} with an id of \`${ticket.id_ticket}\`.`,
             guild_id: ticket.guild_id, id_executor: ticket.id_user 
         } 
         return this.sendLogMessages(payload, "tickets_log_channel", "Ticket Created", '#00FF44', [ticket.guild_id]);

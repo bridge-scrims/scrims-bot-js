@@ -6,26 +6,6 @@ const TableRow = require("../postgresql/row");
 
 class ScrimsTicketMessagesCache extends DBCache {
 
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsTicketMessage[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
-
-    /**
-     * @param { ScrimsTicketMessage[] } messages 
-     */
-    set(messages) {
-
-        const data = this.getMap('message_id')
-        return messages.map(message => this.push(message, data[message.message_id] ?? false, false));
-
-    }
 
 }
 

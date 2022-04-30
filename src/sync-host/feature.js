@@ -170,7 +170,7 @@ class ScrimsSyncHostFeature {
 
         await Promise.all(members.map(member => this.initializeMember(member, userPositions[member.id])))
 
-        const ghostUsers = this.bot.database.users.cache.data
+        const ghostUsers = this.bot.database.users.cache.values()
             .filter(scrimsUser => userPositions[scrimsUser.discord_id] && userPositions[scrimsUser.discord_id].filter(userPos => userPos?.position?.name === "bridge_scrims_member").length > 0)
             .filter(scrimsUser => !guild.members.cache.has(scrimsUser.discord_id))
 
@@ -225,7 +225,7 @@ class ScrimsSyncHostFeature {
 
     async initializeMember(member, userPositions) {
 
-        if (!userPositions || userPositions.filter(userPos => userPos?.position?.name == "bridge_scrims_member").length === 0)
+        if (!userPositions || userPositions.filter(userPos => userPos?.position?.name === "bridge_scrims_member").length === 0)
             await this.createScrimsPosition({ position: { name: "bridge_scrims_member" }, user: { discord_id: member.id } }, null)
 
         const positions = this.permissions.getPermissionLevelPositions("staff")

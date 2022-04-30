@@ -9,27 +9,6 @@ const TableRow = require("../postgresql/row");
 
 class ScrimsTicketCache extends DBCache {
 
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsTicket[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
-
-    /**
-     * @param { ScrimsTicket[] } tickets 
-     */
-    set(tickets) {
-
-        const data = this.getMap('id_ticket')
-        return tickets.map(ticket => this.push(ticket, data[ticket.id_ticket] ?? false, false));
-
-    }
-
 }
 
 class ScrimsTicketTable extends DBTable {
