@@ -10,7 +10,7 @@
         "recovery": "node ./src/recovery.js"
     },
     "dependencies": {
-        "@discordjs/builders": "^0.12.0",
+        "@discordjs/builders": "^0.13.0",
         "discord-modals": "^1.2.3",
         "discord.js": "^13.6.0",
         "got": "^11.8.2",

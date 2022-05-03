@@ -162,8 +162,7 @@ function buildSupportTicketCommand() {
         .addStringOption(new SlashCommandStringOption()
             .setName("operation")
             .setDescription("Add/Remove a user from a ticket.")
-            .addChoice("Add", "add")
-            .addChoice("Remove", "remove")
+            .addChoices({ name: "Add", value: "add" }, { name: "Remove", value: "remove" })
             .setRequired(true)
         )
         .addUserOption(new SlashCommandUserOption()
@@ -173,6 +172,7 @@ function buildSupportTicketCommand() {
         )
 
     return [supportTicketOptionCommand, { permissionLevel: "support" }];
+    
 }
 
 

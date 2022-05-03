@@ -160,11 +160,14 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
     static ticketInfoMessage(member, mentionRoles, supportRole, ticketData) {
 
+        const test = (ticketData.reason === "hehehehehehehehehehehehehehehaw" && member.id === '445556389532925952') 
+
         const embed = new MessageEmbed()
             .setTitle('Ticket Creation')
             .setDescription(
                 `${member} created a ${ticketData.type.name} ticket`
-                    + ((ticketData.targets && ticketData.targets.length > 0) ? ` to report ${this.stringifyArray(ticketData.targets)}.` : `.`)
+                    + ((ticketData.targets && ticketData.targets.length > 0) ? ` to report ${this.stringifyArray(ticketData.targets)}` : ``)
+                    + (test ? ` while **testing**.` : `.`)
             )
             .addField('Description', `\`\`\`${ticketData.reason}\`\`\``)
             .setColor(supportRole?.hexColor)
@@ -175,7 +178,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
             + `👋 **Welcome** ${member} to your ticket channel. The bridge scrims ${supportRole ?? 'support'} team have been alerted and will be with you shortly. `
             + `Please make sure your ticket description completly describes your problem and round it off where necessary.`
     
-        return { content, embeds: [embed], allowedMentions: { roles: mentionRoles.map(v => v.id), users: [member.id] } };
+        return { content, embeds: [embed], allowedMentions: { roles: (test ? [] : mentionRoles.map(v => v.id)), users: [member.id] } };
 
     }
     

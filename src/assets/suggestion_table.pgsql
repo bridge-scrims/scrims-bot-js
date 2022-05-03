@@ -2,11 +2,12 @@ CREATE TABLE scrims_suggestion (
 
     id_suggestion uuid DEFAULT gen_random_uuid() PRIMARY KEY,
 
-    guild_id text NULL,
+    guild_id text null,
     channel_id text NULL,
     message_id text NULL,
     suggestion text NULL,
 
+    attachment_url text NULL,
     created_at bigint NOT NULL,
     id_creator uuid NOT NULL,
     epic bigint NULL,

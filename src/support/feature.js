@@ -31,7 +31,7 @@ class SupportFeature {
 
     async onReady() {
 
-        this.transcriber = new TicketTranscriber(this.database.ticketMessages)
+        this.transcriber = new TicketTranscriber(this.database)
 
         const channelConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_transcript_channel" } })
         await Promise.all(channelConfigs.map(entry => this.setTranscriptChannel(entry.guild_id, entry.value)))
@@ -167,20 +167,10 @@ class SupportFeature {
         if (!ticket) return false;
 
         if (message.author.id == this.bot.user.id) return false;
-        if (!message.content) return false;
+        if (!message.content) message.content = "";
 
-        const ticketMessage = {
-
-            id_ticket: ticket.id_ticket,
-            author: { discord_id: message.author.id },
-            message_id: message.id,
-            content: message.content,
-            created_at: Math.round(Date.now() / 1000)
-
-        }
-
-        await this.database.ticketMessages.create(ticketMessage)
-            .catch(error => console.error(`Unable to log support ticket message because of ${error}`, ticketMessage))
+        await this.transcriber.transcribe(ticket.id, message)
+            .catch(error => console.error(`Unable to log support ticket message because of ${error}`, message))
 
     }
 

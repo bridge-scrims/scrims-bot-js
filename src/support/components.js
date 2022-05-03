@@ -164,8 +164,11 @@ async function createTicket(interaction) {
 
     const category = interaction.client.support.getTicketCategory(interaction.guild.id, interaction.ticketData.type)
     
+    const ticketIndex = await interaction.client.database.query(`SELECT nextval('support_ticket_index');`)
+        .then(result => result.rows[0]?.nextval ?? `${generateRandomLetter()}${generateRandomLetter()}`.toUpperCase())
+
     const channelParentId = category?.id ?? interaction?.channel?.parentId;
-    const channel = await createTicketChannel(interaction.client, interaction.guild, channelParentId, interaction.user, interaction.ticketData.type.name)
+    const channel = await createTicketChannel(interaction.client, interaction.guild, channelParentId, interaction.user, interaction.ticketData.type.name, ticketIndex)
 
     const allowed = await interaction.client.support.verifyTicketRequest(interaction, interaction.ticketData.type.name)
     if (allowed !== true) {
@@ -194,9 +197,6 @@ async function createTicket(interaction) {
 
     }
 
-    const ticketIndex = await interaction.client.database.query(`SELECT nextval('support_ticket_index');`)
-        .then(result => result.rows[0]?.nextval ?? `${generateRandomLetter()}${generateRandomLetter()}`.toUpperCase())
-
     await interaction.followUp(getCreatedPayload(channel, ticket.type))
 
     const message = await channel.send(await interaction.client.support.getTicketInfoPayload(interaction.member, mentionRoles, interaction.ticketData)).catch(console.error)
@@ -207,14 +207,12 @@ async function createTicket(interaction) {
         id: interaction.id, 
         createdTimestamp: Date.now(),
         author: interaction.user, 
-        content: `Created a ${interaction.ticketData.type.name} ticket. Reason: ${interaction.ticketData.reason}` 
+        content: `Created a ${interaction.ticketData.type.name} ticket.${(interaction?.ticketData?.targets?.length > 0) ? ` Reporting: ${interaction.ticketData.targets.map(target => target?.user?.tag ? `@${target.user.tag}` : target).join(' | ')}`: ``} Reason: ${interaction.ticketData.reason}` 
 
     }
+    
     await interaction.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
     
-    if (interaction.ticketData.type.name === 'report')
-        await channel.setName(`${channel.name}-${ticketIndex}`).catch(console.error)
-
 }
 
 function getSupportLevelRoles(client, guild) {
@@ -223,16 +221,16 @@ function getSupportLevelRoles(client, guild) {
 
 }
 
-function getChannelName(type, user) {
+function getChannelName(type, user, ticketIndex) {
 
     if (type === 'support') return `${type}-${user.username.toLowerCase()}`;
-    return `${type}`;
+    return `${type}-${ticketIndex}`;
 
 }
 
-async function createTicketChannel(client, guild, categoryId, user, type) {
+async function createTicketChannel(client, guild, categoryId, user, type, ticketIndex) {
 
-    const title = getChannelName(type, user);
+    const title = getChannelName(type, user, ticketIndex);
 
     return guild.channels.create(title, {
         parent: categoryId || null,

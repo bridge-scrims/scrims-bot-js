@@ -3,9 +3,11 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 
 const SuggestionsResponseMessageBuilder = require("./responses");
 const ScrimsMessageBuilder = require("../lib/responses");
+const ScrimsSuggestion = require("./suggestion");
 
 const commandHandlers = {
 
+    "attach-to-suggestion": suggestionAttachCommand,
     "remove-suggestion": suggestionRemoveCommand,
     "suggestionRemove": suggestionRemoveComponent
 
@@ -31,7 +33,11 @@ async function getBlacklisted(interaction) {
 
 }
 
-async function suggestionRemoveCommand(interaction) {
+/**
+ * @param { import('../types').ScrimsCommandInteraction } interaction 
+ * @returns { Promise<false | ScrimsSuggestion[]> }
+ */
+async function getSuggestions(interaction) {
 
     if (!interaction.scrimsUser) return interaction.reply( ScrimsMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
 
@@ -45,19 +51,51 @@ async function suggestionRemoveCommand(interaction) {
 
     }
 
-    const suggestions = await interaction.client.database.suggestions.get({ id_creator: interaction.scrimsUser.id_user })
-        .then(suggestions => suggestions.sort((a, b) => b.created_at - a.created_at).filter(suggestion => !suggestion.epic))
+    return interaction.client.database.suggestions.get({ id_creator: interaction.scrimsUser.id_user })
+        .then(suggestions => suggestions.sort((a, b) => b.created_at - a.created_at));
+
+}
+
+/**
+ * @param { import('../types').ScrimsCommandInteraction } interaction 
+ */
+async function suggestionAttachCommand(interaction) {
+
+    const suggestions = await getSuggestions(interaction)
+    if (suggestions === false) return false;
     
     const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
 
     if (suggestions.length === 0) 
+        return interaction.reply( ScrimsMessageBuilder.errorMessage(
+            'No Suggestions', `You currently have no suggestions created. `
+            + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
+        ));
+
+    const attachmentURL = interaction.options.getAttachment('attachment').proxy_url
+    return interaction.reply( SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(interaction.client, suggestions.slice(0, 5), { attachmentURL }) );
+
+}
+
+/**
+ * @param { import('../types').ScrimsCommandInteraction } interaction 
+ */
+async function suggestionRemoveCommand(interaction) {
+
+    const suggestions = await getSuggestions(interaction)
+    if (suggestions === false) return false;
+    
+    const removeableSuggestions = suggestions.filter(suggestion => !suggestion.epic)
+    const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
+
+    if (removeableSuggestions.length === 0) 
         return interaction.reply( ScrimsMessageBuilder.errorMessage(
             'No Removable Suggestions', `You currently have no removable suggestions. `
             + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
             + `If your suggestion has a lot of up-votes it may not show up as removable.`
         ));
 
-    return interaction.reply( SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(suggestions.slice(0, 5)) );
+    return interaction.reply( SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(removeableSuggestions.slice(0, 5)) );
 
 }
 
@@ -114,6 +152,23 @@ function buildRemoveCommand() {
         .setDescription("Use this command to remove a suggestion.")
 
     return [ removeCommand, {} ];
+
+}
+
+function buildAttachCommand() {
+
+    const command = new SlashCommandBuilder()
+        .setName("attach-to-suggestion")
+        .setDescription("Use this command to atach a file to one of your suggestions.")
+        .addAttachmentOption( attachmentOption => (
+                attachmentOption 
+                    .setName('attachment')
+                    .setDescription("The file you would like to attach to a suggestion.")
+                    .setRequired(true)
+            )
+        )
+        
+    return [ command, {} ];
 
 }
 

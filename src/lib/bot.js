@@ -111,7 +111,7 @@ class ScrimsBot extends Client {
         this.addEventListeners()
 
         console.log("Initializing commands...")
-        //await this.commands.initializeCommands()
+        await this.commands.initializeCommands()
         console.log("Commands initialized!")
 
         console.log("Initializing guilds...")

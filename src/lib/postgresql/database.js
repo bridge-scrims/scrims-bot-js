@@ -3,6 +3,7 @@ const pgIPC = require('pg-ipc');
 
 const { v4: uuidv4 } = require("uuid");
 
+const ScrimsTicketMessageAttachment = require("../scrims/ticket_message_attachment");
 const ScrimsGuildEntryType = require("../scrims/guild_entry_type");
 const ScrimsTicketMessage = require("../scrims/ticket_message");
 const ScrimsUserPosition = require("../scrims/user_position");
@@ -97,6 +98,11 @@ class DBClient {
          */
         this.ticketMessages
 
+        /**
+         * @type { ScrimsTicketMessageAttachment.Table }
+         */
+        this.ticketMessageAttachments
+
     }
 
     __addScrimsTables() {
@@ -116,6 +122,7 @@ class DBClient {
         this.addTable("ticketStatuses", new ScrimsTicketStatus.Table(this))
         this.addTable("tickets", new ScrimsTicket.Table(this))
         this.addTable("ticketMessages", new ScrimsTicketMessage.Table(this))
+        this.addTable("ticketMessageAttachments", new ScrimsTicketMessageAttachment.Table(this))
 
     }
 
