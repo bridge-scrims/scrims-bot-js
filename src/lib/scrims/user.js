@@ -157,8 +157,8 @@ class ScrimsUser extends TableRow {
     getMention(effect="") {
 
         if (this.discordUser) return `${this.discordUser}`;
-        if (this.tag) return `${effect}${this.tag}${effect}`;
-        return `${effect}Unknown User${effect}`;
+        if (this.tag) return `${effect}@${this.tag}${effect}`;
+        return `${effect}@unknown-user${effect}`;
 
     }
 

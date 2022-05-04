@@ -64,13 +64,13 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
     
                 new MessageButton()
                     .setCustomId(`support/ticketClose/${ticketId}/ACCEPT`)
-                    .setLabel("✅ Accept & Close")
+                    .setLabel("Accept & Close")
                     .setStyle("PRIMARY"),
     
                 new MessageButton()
                     .setCustomId(`support/ticketClose/${ticketId}/DENY`)
-                    .setLabel("❌ Deny & Keep Open")
-                    .setStyle("PRIMARY"),
+                    .setLabel("Deny & Keep Open")
+                    .setStyle("SECONDARY"),
 
                 new MessageButton()
                     .setCustomId(`support/ticketClose/${ticketId}/FORCE`)
@@ -99,7 +99,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
      */
     static closeRequestMessage(user, reason, ticket) {
 
-        const content = (ticket.user.discordUser) ? `${ticket.user.discordUser}` : null
+        const content = (ticket.user) ? ticket.user.getMention('**') : null
         const embed = this.closeRequestEmbed(user, reason)
         const actions = this.closeRequestActions(ticket.id_ticket)
 

@@ -62,15 +62,22 @@ async function requestTicketClosure(interaction) {
 
     if (!interaction.scrimsUser) return interaction.reply(SupportResponseMessageBuilder.scrimsUserNeededMessage());
 
-    const reason = interaction.options.getString('reason') ?? "No reason provided.";
+    const reason = interaction.options.getString('reason') ?? "no reason provided";
 
     const ticket = await interaction.client.database.tickets.get({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
     if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage()); // This is no support channel (bruh moment)
 
     if (ticket.id_user === interaction.scrimsUser.id_user) {
 
-        // Creator wants to close the ticket so close it
-        return closeTicket(interaction, ticket, `closed this request because of ${reason}`, )
+        // Creator wants to close the ticket, so close it
+        return closeTicket(interaction, ticket, `closed this request because of ${reason}`);
+
+    }
+
+    if (interaction.options.getBoolean('force')) {
+     
+        // Someone is using the force, so we must comply
+        return closeTicket(interaction, ticket, `closed this request with force because of ${reason}`);
 
     }
 
@@ -139,6 +146,13 @@ function buildCloseCommand() {
                 .setDescription('The reason for this request.')
                 .setRequired(false)
         ))
+        .addBooleanOption(option => (
+            option
+                .setName('force')
+                .setDescription('If you would like to use the force or not.')
+                .setRequired(false)
+        ))
+
 
     return [closeCommand, { permissionLevel: "support" }];
 

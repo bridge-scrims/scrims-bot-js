@@ -348,7 +348,7 @@ async function onAccept(interaction, ticket) {
 function getNotAllowedPayload(ticketCreator) {
 
     return SupportResponseMessageBuilder.missingPermissionsMessage(
-        `Only ${ticketCreator?.getMention('**') ?? 'unknown-user'} can close this ticket.`
+        `Only ${ticketCreator?.getMention('**') ?? 'unknown-user'} can make this decision.`
     );
 
 }
