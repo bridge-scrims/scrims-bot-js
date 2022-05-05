@@ -1,8 +1,15 @@
-const EventEmitter = require("events");
+//const EventEmitter = require("events");
 
 /**
  * @typedef { import("./table").Row } TableRow
  */
+
+class EventEmitter extends require('events') {
+    emit(type, ...args) {
+        console.log(this.constructor.name + ": " + type + " emitted")
+        super.emit(type, ...args)
+    }
+}
 
 class DBCache extends EventEmitter {
 
@@ -112,12 +119,14 @@ class DBCache extends EventEmitter {
      */
     setAll(values) {
 
+        const oldKeys = Object.keys(this.data)
+
         values.forEach(value => value.cache())
-        values.forEach(value => this.emit('push', value))
+        values.filter(value => !oldKeys.includes(value.id)).forEach(value => this.emit('push', value))
 
         const newData = Object.fromEntries(values.map(value => [value.id, value]))
         const newKeys = Object.keys(newData)
-        Object.keys(this.data).filter(key => !newKeys.includes(key)).forEach(key => this.remove(key))
+        oldKeys.filter(key => !newKeys.includes(key)).forEach(key => this.remove(key))
         this.data = newData
 
     }
@@ -197,6 +206,7 @@ class DBCache extends EventEmitter {
             this.emit('remove', remove)
             
         }
+        return remove ?? null;
 
     }
 

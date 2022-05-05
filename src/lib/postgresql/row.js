@@ -38,6 +38,7 @@ class TableRow {
 
     get id() {
 
+        if (!this.uniqueKeys.every(key => (key in this))) return null;
         return this.uniqueKeys.map(key => this[key]).join('#');
 
     }
@@ -188,7 +189,7 @@ class TableRow {
 
                 }else {
 
-                    this[key] = null
+                    if (this[key]) this[key] = null
 
                 }
 
@@ -273,11 +274,8 @@ class TableRow {
      */
     equals(obj) {
 
-        if (this.uniqueKeys.length > 0 && (obj instanceof TableRow) && [obj, this].every(obj => this.uniqueKeys.every(key => (key in obj)))) {
-
-            return this.uniqueKeys.every(key => obj[key] === this[key]);
-
-        }
+        if (this.uniqueKeys.length > 0 && (obj instanceof TableRow) && obj.id && this.id)
+            return obj.id == this.id;
 
         return this.exactlyEquals(obj);
 

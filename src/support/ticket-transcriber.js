@@ -17,20 +17,32 @@ class TicketTranscriber {
         if (message instanceof Message) {
 
             message.mentions.users.forEach(mentionedUser => message.content = message.content.replaceAll(`<@${mentionedUser.id}>`, `@${mentionedUser.tag}`))
-            message.attachments = message.attachments.filter(value => this.client.ticketMessageAttachments.cache.find({ discord_id: value.id }).length === 0)
-            await Promise.allSettled(message.attachments.map(value => this.client.ticketMessageAttachments.create({
+            
+            const notAddedAttachments = message.attachments.filter(value => this.client.attachments.cache.find({ attachment_id: value.id }).length === 0)
+            
+            Promise.allSettled(notAddedAttachments.map(value => got(value.url).catch(console.error)))
+            await Promise.allSettled(
+                notAddedAttachments.map(value => this.client.attachments.create({
                 
-                id_ticket: ticketId, 
-                message_id: message.id, 
-                discord_id: value.id,
-                filename: value.name,
-                content_type: value.contentType,
-                url: value.url
+                    attachment_id: value.id,
+                    filename: value.name,
+                    content_type: value.contentType,
+                    url: value.url
+    
+                }).catch(console.error))
+            )
 
-            }).catch(console.error)))
+            await Promise.allSettled(
+                message.attachments.filter(value => this.client.ticketMessageAttachments.cache.find({ attachment_id: value.id }).length === 0)
+                    .map(value => this.client.ticketMessageAttachments.create({
+                
+                    id_ticket: ticketId, 
+                    message_id: message.id, 
+                    attachment_id: value.id
 
-            Promise.allSettled(message.attachments.map(value => got(value.url).catch(console.error)))
-
+                }).catch(console.error))
+            )
+            
         }
 
         await this.client.ticketMessages.create({ 
@@ -51,7 +63,7 @@ class TicketTranscriber {
         const escape = (value) => value.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "\\`");
         
         const getMessageExtra = (message) => message.edits ? `<div class="extra edited">(edited)</div>` : (message.deleted ? `<div class="extra deleted">(deleted)</div>` : ``)
-        const getMessageAttachments = (message) => message.attachments.length > 0 ? `<div class="attachment">\nAttachments: ${message.attachments.map(attachment => `<a href="${attachment.url}">${attachment.filename ?? attachment.discord_id}</a>`).join(' | ')}</div>` : '';
+        const getMessageAttachments = (message) => message.attachments.length > 0 ? `<div class="attachment">\nAttachments: ${message.attachments.map(attachment => `<a href="${attachment.url}" target="_blank" rel="noopener noreferrer">${attachment.filename ?? attachment.discord_id}</a>`).join(' | ')}</div>` : '';
 
         // Will make everything look pretty
         const style = (
@@ -138,7 +150,7 @@ class TicketTranscriber {
                 delete allMessages[idx]
             }
         })
-        allMessages.forEach(msg => msg.attachments = (messageAttachments[msg.message_id] ?? []))
+        allMessages.forEach(msg => msg.attachments = (messageAttachments[msg.message_id] ?? []).map(value => value.attachment))
         return allMessages.sort((a, b) => a.created_at - b.created_at);
 
     }

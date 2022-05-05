@@ -41,7 +41,7 @@ class ScrimsSuggestionsTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('suggestion_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('suggestion_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('suggestion_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('suggestion_create', message => this.cache.push(this.getRow(message.payload)))
 

@@ -72,8 +72,8 @@ async function suggestionAttachCommand(interaction) {
             + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
         ));
 
-    const attachmentURL = interaction.options.getAttachment('attachment').proxy_url
-    return interaction.reply( SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(interaction.client, suggestions.slice(0, 5), { attachmentURL }) );
+    const attachment = interaction.options.getAttachment('attachment')
+    return interaction.reply( SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(interaction.client, suggestions.slice(0, 5), attachment) );
 
 }
 
@@ -121,7 +121,7 @@ async function suggestionRemoveComponent(interaction) {
     );
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
-    const removed = interaction.client.database.suggestions.cache.remove({ id_suggestion })
+    const removed = interaction.client.database.suggestions.cache.remove(id_suggestion)
 
     const message = await suggestion.fetchMessage()
     if (!message) return interaction.update(ScrimsMessageBuilder.failedMessage('remove the suggestion'));
@@ -130,7 +130,7 @@ async function suggestionRemoveComponent(interaction) {
     if (response instanceof Error) {
 
         // Deleting the message failed so add the suggestion back to cache
-        removed.forEach(removed => interaction.client.database.suggestions.cache.push(removed))
+        interaction.client.database.suggestions.cache.push(removed)
 
         throw response;
 

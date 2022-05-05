@@ -6,6 +6,7 @@ const ScrimsUser = require("./user");
 const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
 const TableRow = require("../postgresql/row");
+const { TextChannel } = require("discord.js");
 
 class ScrimsTicketCache extends DBCache {
 
@@ -146,6 +147,9 @@ class ScrimsTicket extends TableRow {
 
     }
 
+    /**
+     * @type { TextChannel }
+     */
     get channel() {
 
         if (!this.channel_id) return null;

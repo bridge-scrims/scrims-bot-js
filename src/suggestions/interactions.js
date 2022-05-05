@@ -135,13 +135,13 @@ async function onRemoveSuggestion(interaction) {
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
-    const removed = interaction.client.database.suggestions.cache.remove({ id_suggestion: suggestion.id_suggestion })
+    const removed = interaction.client.database.suggestions.cache.remove(suggestion.id_suggestion)
 
     const response = await interaction.targetMessage.delete().catch(error => onError(interaction, `remove suggestions message`, error, true))
     if (response === false) {
 
         // Deleting the message failed so add the suggestion back to cache
-        removed.forEach(removed => interaction.client.database.suggestions.cache.push(removed))
+        interaction.client.database.suggestions.cache.push(removed)
 
         return false;
 

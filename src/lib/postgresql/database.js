@@ -11,6 +11,7 @@ const ScrimsPositionRole = require("../scrims/position_role");
 const ScrimsTicketStatus = require("../scrims/ticket_status");
 const ScrimsGuildEntry = require("../scrims/guild_entry");
 const ScrimsTicketType = require("../scrims/ticket_type");
+const ScrimsAttachment = require('../scrims/attachment');
 const ScrimsPosition = require('../scrims/position');
 const ScrimsTicket = require("../scrims/ticket");
 const ScrimsGuild = require('../scrims/guild');
@@ -43,6 +44,11 @@ class DBClient {
         this.tables = []
         this.__addScrimsTables()
         
+        /**
+         * @type { ScrimsAttachment.Table }
+         */
+        this.attachments 
+
         /**
          * @type { ScrimsGuild.Table }
          */
@@ -106,6 +112,8 @@ class DBClient {
     }
 
     __addScrimsTables() {
+
+        this.addTable("attachments", new ScrimsAttachment.Table(this))
 
         this.addTable("guilds", new ScrimsGuild.Table(this))
         this.addTable("users", new ScrimsUser.Table(this))

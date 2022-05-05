@@ -41,7 +41,7 @@ class ScrimsPositionRolesTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('position_role_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('position_role_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('position_role_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('position_role_create', message => this.cache.push(this.getRow(message.payload)))
 

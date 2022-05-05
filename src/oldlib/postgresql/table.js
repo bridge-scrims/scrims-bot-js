@@ -410,7 +410,7 @@ class DBTable {
 
         await this.query(`DELETE FROM ${this.name} ${whereClause}`, values2)
         
-        const removed = this.cache.remove(selector)
+        const removed = this.cache.filterOut(selector)
         return removed;
 
     }

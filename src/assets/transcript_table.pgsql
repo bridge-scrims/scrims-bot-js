@@ -65,24 +65,18 @@ CREATE TABLE scrims_ticket_message_attachment (
 
     id_ticket uuid NOT NULL,
     message_id text NOT NULL,
-    discord_id text NOT NULL,
+    attachment_id text NOT NULL,
 
-    filename text NULL,
-    content_type text NULL,
-    url text NOT NULL,
-
-    UNIQUE(id_ticket, message_id, discord_id),
-    FOREIGN KEY(id_ticket) REFERENCES scrims_ticket(id_ticket)
+    UNIQUE(id_ticket, message_id, attachment_id),
+    FOREIGN KEY(id_ticket) REFERENCES scrims_ticket(id_ticket),
+    FOREIGN KEY(attachment_id) REFERENCES scrims_attachment(attachment_id)
 
 );
 
 CREATE OR REPLACE FUNCTION get_ticket_message_attachments (
     id_ticket uuid default null,
     message_id text default null,
-    discord_id text default null,
-    filename text default null,
-    content_type text default null,
-    url text default null
+    attachment_id text default null
 ) 
 returns json
 AS $$
@@ -96,24 +90,19 @@ EXECUTE '
             ''id_ticket'', scrims_ticket_message_attachment.id_ticket,
             ''ticket'', to_json(ticket),
             ''message_id'', scrims_ticket_message_attachment.message_id,
-            ''discord_id'', scrims_ticket_message_attachment.discord_id,
-            ''filename'', scrims_ticket_message_attachment.filename,
-            ''content_type'', scrims_ticket_message_attachment.content_type,
-            ''url'', scrims_ticket_message_attachment.url
+            ''attachment_id'', scrims_ticket_message_attachment.attachment_id,
+            ''attachment'', to_json(attachment)
         )
     )
     FROM 
     scrims_ticket_message_attachment 
-    LEFT JOIN scrims_ticket ticket ON ticket.id_ticket = scrims_ticket_message_attachment.id_ticket 
-
+    LEFT JOIN LATERAL (SELECT * FROM scrims_ticket WHERE scrims_ticket.id_ticket = scrims_ticket_message_attachment.id_ticket LIMIT 1) ticket ON true
+    LEFT JOIN LATERAL (SELECT * FROM scrims_attachment WHERE scrims_attachment.attachment_id = scrims_ticket_message_attachment.attachment_id LIMIT 1) attachment ON true
     WHERE 
     ($1 is null or scrims_ticket_message_attachment.id_ticket = $1) AND
     ($2 is null or scrims_ticket_message_attachment.message_id = $2) AND
-    ($3 is null or scrims_ticket_message_attachment.discord_id = $3) AND
-    ($4 is null or scrims_ticket_message_attachment.filename = $4) AND
-    ($5 is null or scrims_ticket_message_attachment.content_type = $5) AND
-    ($6 is null or scrims_ticket_message_attachment.url = $6)
-' USING id_ticket, message_id, discord_id, filename, content_type, url
+    ($3 is null or scrims_ticket_message_attachment.attachment_id = $3)
+' USING id_ticket, message_id, attachment_id
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 

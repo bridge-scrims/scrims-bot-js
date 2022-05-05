@@ -44,13 +44,13 @@ async function onUnpopularSuggestion(client, message, suggestion) {
     }
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
-    const removed = client.database.suggestions.cache.remove({ id_suggestion: suggestion.id_suggestion })
+    const removed = client.database.suggestions.cache.remove(suggestion.id_suggestion)
 
     const response = await message.delete().catch(error => error)
     if (response === false) {
 
         // Deleting the message failed so add the suggestion back to cache
-        removed.forEach(removed => client.database.suggestions.cache.push(removed))
+        client.database.suggestions.cache.push(removed)
 
         await client.suggestions.logError(`Failed to remove suggestion after it getting ${suggestion.downVotes} down vote(s).`, { context, error: response })
         return false;

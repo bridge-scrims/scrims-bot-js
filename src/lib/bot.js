@@ -353,7 +353,7 @@ class ScrimsBot extends Client {
 
         }
 
-        if (oldGuild?.name != newGuild.name || oldGuild?.icon != newGuild.icon) {
+        if (existing?.name != newGuild.name || existing?.icon != newGuild.icon) {
 
             await this.database.guilds.update({ guild_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
                 .catch(error => console.error(`Unable to update scrims guild because of ${error}!`))

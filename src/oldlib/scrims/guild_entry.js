@@ -41,7 +41,7 @@ class ScrimsGuildEntrysTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('guild_entry_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('guild_entry_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('guild_entry_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('guild_entry_create', message => this.cache.push(this.getRow(message.payload)))
 

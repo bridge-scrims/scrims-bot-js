@@ -2,6 +2,9 @@ const DBTable = require("../postgresql/table");
 const DBCache = require("../postgresql/cache");
 const TableRow = require("../postgresql/row");
 
+const ScrimsAttachment = require("./attachment");
+const ScrimsTicket = require("./ticket");
+
 class ScrimsTicketMessageAttachmentsCache extends DBCache {
 
 
@@ -12,10 +15,11 @@ class ScrimsTicketMessageAttachmentsTable extends DBTable {
     constructor(client) {
 
         const foreigners = [
-            [ "ticket", "id_ticket", "get_ticket_id" ]
+            [ "ticket", "id_ticket", "get_ticket_id" ],
+            [ "attachment", "attachment_id", "get_attachment_id" ]
         ]
 
-        const uniqueKeys = [ 'id_ticket', 'message_id', 'discord_id' ]
+        const uniqueKeys = [ 'id_ticket', 'message_id', 'attachment_id' ]
 
         super(client, "scrims_ticket_message_attachment", "get_ticket_message_attachments", foreigners, uniqueKeys, ScrimsTicketMessageAttachment, ScrimsTicketMessageAttachmentsCache);
 
@@ -69,11 +73,42 @@ class ScrimsTicketMessageAttachment extends TableRow {
     constructor(table, messageData) {
 
         const references = [
-            ['ticket', ['id_ticket'], ['id_ticket'], table.client.tickets]
+            ['ticket', ['id_ticket'], ['id_ticket'], table.client.tickets],
+            ['attachment', ['attachment_id'], ['attachment_id'], table.client.attachments]
         ]
 
         super(table, messageData, references)
 
+        /**
+         * @type { string }
+         */
+        this.id_ticket
+
+        /**
+         * @type { ScrimsTicket }
+         */
+        this.ticket
+        
+        /**
+         * @type { string }
+         */
+        this.message_id
+
+        /**
+         * @type { string }
+         */
+        this.attachment_id
+
+        /**
+         * @type { ScrimsAttachment }
+         */
+        this.attachment
+
+    }
+
+    get attachmentURL() {
+
+        return this.attachment.url;
 
     }
 

@@ -7,16 +7,15 @@ CREATE TABLE scrims_suggestion (
     message_id text NULL,
     suggestion text NULL,
 
-    attachment_url text NULL,
+    attachment_id text NULL,
     created_at bigint NOT NULL,
     id_creator uuid NOT NULL,
     epic bigint NULL,
 
-    FOREIGN KEY(id_creator) REFERENCES scrims_user(id_user)
+    FOREIGN KEY(id_creator) REFERENCES scrims_user(id_user),
+    FOREIGN KEY(attachment_id) REFERENCES scrims_attachment(attachment_id)
         
 );
-
-CREATE SEQUENCE support_ticket_index;
 
 CREATE OR REPLACE FUNCTION get_suggestions (
 
@@ -25,6 +24,7 @@ CREATE OR REPLACE FUNCTION get_suggestions (
     channel_id text default null,
     message_id text default null,
     suggestion text default null,
+    attachment_id text default null,
     created_at bigint default null,
     id_creator uuid default null,
     epic bigint default null
@@ -44,6 +44,8 @@ EXECUTE '
             ''guild'', to_json(scrims_guild),
             ''channel_id'', scrims_suggestion.channel_id,
             ''message_id'', scrims_suggestion.message_id,
+            ''attachment_id'', scrims_suggestion.attachment_id,
+            ''attachment'', to_json(attachment),
             ''suggestion'', scrims_suggestion.suggestion,
             ''created_at'', scrims_suggestion.created_at,
             ''id_creator'', scrims_suggestion.id_creator,
@@ -55,6 +57,7 @@ EXECUTE '
     scrims_suggestion 
     LEFT JOIN LATERAL (SELECT * FROM scrims_user WHERE scrims_user.id_user = scrims_suggestion.id_creator LIMIT 1) creator ON true
     LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.guild_id = scrims_suggestion.guild_id LIMIT 1) scrims_guild ON true
+    LEFT JOIN LATERAL (SELECT * FROM scrims_attachment WHERE scrims_attachment.attachment_id = scrims_suggestion.attachment_id LIMIT 1) attachment ON true
     WHERE 
     ($1 is null or scrims_suggestion.id_suggestion = $1) AND
     ($2 is null or scrims_suggestion.channel_id = $2) AND
@@ -63,8 +66,9 @@ EXECUTE '
     ($5 is null or scrims_suggestion.created_at = $5) AND
     ($6 is null or scrims_suggestion.id_creator = $6) AND
     ($7 is null or scrims_suggestion.epic = $7) AND
-    ($8 is null or scrims_suggestion.guild_id = $8)
-' USING id_suggestion, channel_id, message_id, suggestion, created_at, id_creator, epic, guild_id
+    ($8 is null or scrims_suggestion.guild_id = $8) AND
+    ($9 is null or scrims_suggestion.attachment_id = $9)
+' USING id_suggestion, channel_id, message_id, suggestion, created_at, id_creator, epic, guild_id, attachment_id
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 

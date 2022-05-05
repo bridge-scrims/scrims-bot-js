@@ -45,7 +45,7 @@ class ScrimsUserTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('scrims_user_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('scrims_user_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('scrims_user_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('scrims_user_create', message => this.cache.push(this.getRow(message.payload)))
 
