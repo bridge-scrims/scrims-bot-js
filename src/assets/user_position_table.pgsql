@@ -1,10 +1,10 @@
 
 CREATE TABLE scrims_user_position (
 
-    id_user INT NOT NULL,
-    id_position INT NOT NULL,
+    id_user uuid NOT NULL,
+    id_position uuid NOT NULL,
 
-    id_executor INT NULL,
+    id_executor uuid NULL,
     given_at BIGINT NOT NULL,
     expires_at BIGINT NULL,
 
@@ -25,11 +25,19 @@ RETURN (select extract(epoch from current_timestamp)) >= expires_at;
 END $$ 
 LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION remove_expired_user_positions() 
+RETURNS VOID
+AS $$ BEGIN
+
+DELETE FROM scrims_user_position WHERE (NOT (scrims_user_position.expires_at is null)) AND is_expired(scrims_user_position.expires_at);
+
+END $$
+LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_user_positions(
-    id_user int default null,
-    id_position int default null,
-    id_executor int default null,
+    id_user uuid default null,
+    id_position uuid default null,
+    id_executor uuid default null,
     given_at bigint default null,
     expires_at bigint default null,
     show_expired boolean default false

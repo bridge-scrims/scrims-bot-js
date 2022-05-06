@@ -37,8 +37,8 @@ async function onGetSubcommand(interaction) {
 
 async function getPosition(interaction) {
 
-    const positionId = interaction.options.getInteger("position")
-    const position = interaction.client.database.positions.cache.get({ id_position: positionId })[0]
+    const positionId = interaction.options.getString("position")
+    const position = interaction.client.database.positions.cache.get(positionId)
     if (!position) {
 
         return interaction.reply(
@@ -102,7 +102,7 @@ async function onTakeSubcommand(interaction) {
     const eventPayload = { guild_id: interaction.guild.id, executor_id: interaction.user.id, userPosition: existing[0] }
     interaction.client.database.ipc.notify('audited_user_position_remove', eventPayload)
 
-    const userPositions = interaction.client.database.userPositions.cache.get({ user: { discord_id: user.id } })
+    const userPositions = interaction.client.database.userPositions.cache.find({ user: { discord_id: user.id } })
     const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(user, sortUserPositions(userPositions))
 
     await interaction.reply({ ...positionsMessage, content: `Removed **${position.name}** from ${user}.`, allowedMentions: { parse: [] }, ephemeral: true })
@@ -194,7 +194,7 @@ async function onGiveSubcommand(interaction) {
     const userPosition = { ...selector, expires_at, given_at: Math.round((Date.now()/1000)), id_executor: interaction.scrimsUser.id_user }
     await interaction.client.database.userPositions.create(userPosition)
     
-    const userPositions = interaction.client.database.userPositions.cache.get({ user: { discord_id: user.id } })
+    const userPositions = interaction.client.database.userPositions.cache.find({ user: { discord_id: user.id } })
     const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(user, sortUserPositions(userPositions))
     const expirationMessage = expires_at ? `until <t:${expires_at}:F>` : "permanently"; 
 

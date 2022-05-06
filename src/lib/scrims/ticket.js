@@ -5,29 +5,10 @@ const ScrimsUser = require("./user");
 
 const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
+const TableRow = require("../postgresql/row");
+const { TextChannel } = require("discord.js");
 
 class ScrimsTicketCache extends DBCache {
-
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsTicket[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
-
-    /**
-     * @param { ScrimsTicket[] } tickets 
-     */
-    set(tickets) {
-
-        const data = this.getMap('id_ticket')
-        return tickets.map(ticket => this.push(ticket, data[ticket.id_ticket] ?? false, false));
-
-    }
 
 }
 
@@ -39,10 +20,11 @@ class ScrimsTicketTable extends DBTable {
             [ "user", "id_user", "get_user_id" ],
             [ "type", "id_type", "get_ticket_type_id" ],
             [ "status", "id_status", "get_ticket_status_id" ],
-            [ "guild", "id_guild", "get_guild_id" ]
+            [ "guild", "id_guild", "get_guild_id" ],
+            [ "closer", "id_closer", "get_user_id" ]
         ]
 
-        super(client, "scrims_ticket", "get_tickets", foreigners, ScrimsTicket, ScrimsTicketCache);
+        super(client, "scrims_ticket", "get_tickets", foreigners, ['id_ticket'], ScrimsTicket, ScrimsTicketCache);
 
         /**
          * @type { ScrimsTicketCache }
@@ -84,31 +66,32 @@ class ScrimsTicketTable extends DBTable {
 
 }
 
-class ScrimsTicket extends DBTable.Row {
+class ScrimsTicket extends TableRow {
 
     /**
      * @type { ScrimsTicketTable }
      */
     static Table = ScrimsTicketTable
 
-    constructor(client, ticketData) {
+    constructor(table, ticketData) {
 
         const references = [
-            ['type', ['id_type'], ['id_type'], client.ticketTypes], 
-            ['user', ['id_user'], ['id_user'], client.users],
-            ['status', ['id_status'], ['id_status'], client.ticketStatuses],
-            ['guild', ['id_guild'], ['id_guild'], client.guilds]
+            ['type', ['id_type'], ['id_type'], table.client.ticketTypes], 
+            ['user', ['id_user'], ['id_user'], table.client.users],
+            ['status', ['id_status'], ['id_status'], table.client.ticketStatuses],
+            ['guild', ['guild_id'], ['guild_id'], table.client.guilds],
+            ['closer', ['id_closer'], ['id_user'], table.client.users]
         ]
 
-        super(client, ticketData, references)
+        super(table, ticketData, references)
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_ticket
         
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_type;
 
@@ -118,7 +101,7 @@ class ScrimsTicket extends DBTable.Row {
         this.type
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_user
 
@@ -128,7 +111,7 @@ class ScrimsTicket extends DBTable.Row {
         this.user
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_status
 
@@ -138,9 +121,9 @@ class ScrimsTicket extends DBTable.Row {
         this.status
 
         /**
-         * @type { number }
+         * @type { string }
          */
-        this.id_guild
+        this.guild_id
 
         /**
          * @type { ScrimsGuild }
@@ -157,6 +140,16 @@ class ScrimsTicket extends DBTable.Row {
          */
         this.created_at
 
+        /**
+         * @type { string }
+         */
+        this.id_closer
+
+        /**
+         * @type { ScrimsUser }
+         */
+        this.closer
+
     }
 
     get discordGuild() {
@@ -166,34 +159,13 @@ class ScrimsTicket extends DBTable.Row {
 
     }
 
-    get guild_id() {
-
-        if (!this.guild) return null;
-        return this.guild.discord_id;
-
-    }
-
+    /**
+     * @type { TextChannel }
+     */
     get channel() {
 
         if (!this.channel_id) return null;
         return this.bot.channels.resolve(this.channel_id);
-
-    }
-
-    /**
-     * @override
-     * @param { Object.<string, any> } obj 
-     * @returns { Boolean }
-     */
-    equals(obj) {
-
-        if (obj instanceof ScrimsTicket) {
-
-            return (obj.id_ticket === this.id_ticket);
-
-        }
-        
-        return this.valuesMatch(obj, this);
 
     }
 

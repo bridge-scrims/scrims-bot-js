@@ -6,10 +6,12 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     static syncViolet = "#673AB7"
 
-    static positionRolesStatusMessage(positionRoles) {
+    static positionRolesStatusMessage(positionRoles, guild_id) {
 
         if (positionRoles.length === 0) 
             return { ephemeral: true, components: [], content: "No position roles configured." };
+
+        const getRoleMention = (role) => (role.guild.id === guild_id) ? `${role}` : `@${role.name}`;
 
         return { 
 
@@ -19,7 +21,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
                 new MessageEmbed()
                     .setTitle("Connected Roles")
                     .setColor(this.syncViolet)
-                    .setDescription(positionRoles.map(posRole => `\`•\`${posRole.role} -> **${posRole.position.name}** (${posRole.id_position})`).join("\n"))
+                    .setDescription(positionRoles.map(posRole => `\`•\`${getRoleMention(posRole.role)} -> **${posRole.position.name}** (${posRole.id_position})`).join("\n"))
                     .setFooter({ text: `Page ${idx+1}/${containers.length}` })
                     .setTimestamp(Date.now())
             ))
@@ -49,7 +51,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    static positionRolesAddConfirmMessage(existing, role, position, id_guild) {
+    static positionRolesAddConfirmMessage(existing, role, position) {
 
         return { 
 
@@ -58,7 +60,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
             components: [ 
                 new MessageActionRow()
                     .addComponents(
-                        this.button(`Overrite`, 4, `PositionRoles/overwrite/${role.id}/${position.id_position}/${id_guild}`),
+                        this.button(`Overrite`, 4, `PositionRoles/overwrite/${role.id}/${position.id_position}`),
                         this.cancelButton(),
                     ) 
             ],

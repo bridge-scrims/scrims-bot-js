@@ -1,8 +1,8 @@
 
 CREATE TABLE scrims_ticket_message (
 
-    id_ticket int NOT NULL,
-    id_author int NOT NULL,
+    id_ticket uuid NOT NULL,
+    id_author uuid NOT NULL,
 
     message_id text NOT NULL,
     content text NOT NULL,
@@ -16,8 +16,8 @@ CREATE TABLE scrims_ticket_message (
 );
 
 CREATE OR REPLACE FUNCTION get_ticket_messages (
-    id_ticket int default null,
-    id_author int default null,
+    id_ticket uuid default null,
+    id_author uuid default null,
     message_id text default null,
     content text default null,
     deleted bigint default null,
@@ -55,6 +55,54 @@ EXECUTE '
     ($5 is null or scrims_ticket_message.deleted = $5) AND
     ($6 is null or scrims_ticket_message.created_at = $6)
 ' USING id_ticket, id_author, message_id, content, deleted, created_at
+INTO retval;
+RETURN COALESCE(retval, '[]'::json);
+END $$ 
+LANGUAGE plpgsql;
+
+
+CREATE TABLE scrims_ticket_message_attachment (
+
+    id_ticket uuid NOT NULL,
+    message_id text NOT NULL,
+    attachment_id text NOT NULL,
+
+    UNIQUE(id_ticket, message_id, attachment_id),
+    FOREIGN KEY(id_ticket) REFERENCES scrims_ticket(id_ticket),
+    FOREIGN KEY(attachment_id) REFERENCES scrims_attachment(attachment_id)
+
+);
+
+CREATE OR REPLACE FUNCTION get_ticket_message_attachments (
+    id_ticket uuid default null,
+    message_id text default null,
+    attachment_id text default null
+) 
+returns json
+AS $$
+DECLARE
+    retval json;
+BEGIN
+EXECUTE '
+    SELECT
+    json_agg(
+        json_build_object(
+            ''id_ticket'', scrims_ticket_message_attachment.id_ticket,
+            ''ticket'', to_json(ticket),
+            ''message_id'', scrims_ticket_message_attachment.message_id,
+            ''attachment_id'', scrims_ticket_message_attachment.attachment_id,
+            ''attachment'', to_json(attachment)
+        )
+    )
+    FROM 
+    scrims_ticket_message_attachment 
+    LEFT JOIN LATERAL (SELECT * FROM scrims_ticket WHERE scrims_ticket.id_ticket = scrims_ticket_message_attachment.id_ticket LIMIT 1) ticket ON true
+    LEFT JOIN LATERAL (SELECT * FROM scrims_attachment WHERE scrims_attachment.attachment_id = scrims_ticket_message_attachment.attachment_id LIMIT 1) attachment ON true
+    WHERE 
+    ($1 is null or scrims_ticket_message_attachment.id_ticket = $1) AND
+    ($2 is null or scrims_ticket_message_attachment.message_id = $2) AND
+    ($3 is null or scrims_ticket_message_attachment.attachment_id = $3)
+' USING id_ticket, message_id, attachment_id
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 

@@ -1,9 +1,5 @@
 const EventEmitter = require("events");
 
-/**
- * @typedef { import("./table").Row } TableRow
- */
-
 class DBCache extends EventEmitter {
 
     constructor() {
@@ -17,20 +13,26 @@ class DBCache extends EventEmitter {
         this.handleIndex = 1
 
         /**
-         * @type { string }
+         * @type { Object.<string, number[]> }
          */
-        this.handlesKey = `_${Date.now()}`
+        this.handles = {}
 
         /**
-         * @type { TableRow[] }
+         * @type { Object.<string, import("./row")> }
          */
-        this.data = []
+        this.data = {}
 
     }
 
-    createHandle(filter) {
+    values() {
 
-        const row = this.get(filter)[0] ?? null
+        return Object.values(this.data);
+
+    }
+
+    createHandle(id) {
+
+        const row = this.get(id)
         if (!row) return [null, null];
 
         return this.addHandle(row);
@@ -42,8 +44,8 @@ class DBCache extends EventEmitter {
         const handleId = this.handleIndex
         this.handleIndex += 1
 
-        if (row[this.handlesKey]) row[this.handlesKey].push(handleId)
-        else row[this.handlesKey] = [handleId]
+        if (this.handles[row.id]) this.handles[row.id].push(handleId)
+        else this.handles[row.id] = [handleId]
 
         return [handleId, row];
 
@@ -51,20 +53,16 @@ class DBCache extends EventEmitter {
 
     releaseHandle(handleId) {
 
-        this.data.forEach(row => {
+        Object.keys(this.handles).forEach(key => {
 
-            if (row[this.handlesKey]) {
-
-                row[this.handlesKey] = row[this.handlesKey].filter(value => value !== handleId)
-            
-            }
+            this.handles[key] = this.handles[key].filter(value => value !== handleId)
 
         })
 
     }
 
     /**
-     * @param { TableRow } value
+     * @param { import("./row") } value
      * @param { Boolean } withHandle
      * @returns { TableRow }
      */
@@ -72,33 +70,53 @@ class DBCache extends EventEmitter {
 
         if (value === null) return null;
 
-        if (existing === null) existing = this.get(value)[0]
+        if (existing === null) existing = this.get(value.id)
     
         if (existing) {
             
-            const index = this.data.indexOf(existing)
-            this.data[index] = existing.updateWith(value)
+            if (!existing.exactlyEquals(value)) {
 
+                existing.updateWith(value)
+                this.emit('update', existing)
+
+            }
+            
         }else {
 
             value.cache()
-            this.data.push(value)
+            this.set(value.id, value)
+            this.emit('push', value)
 
         }
 
-        this.emit('push', value)
-        
         if (withHandle) return this.addHandle(existing ?? value);
-        return value;
+        return existing ?? value;
 
     }
 
     /**
-     * @param { TableRow[] } values 
+     * @param { import("./row") } value 
      */
-    set(values) {
+    set(id, value) {
 
-        return values.map(value => this.push(value));
+        this.data[id] = value
+
+    }
+
+    /**
+     * @param { import("./row")[] } values 
+     */
+    setAll(values) {
+
+        const oldKeys = Object.keys(this.data)
+
+        values.forEach(value => value.cache())
+        values.filter(value => !oldKeys.includes(value.id)).forEach(value => this.emit('push', value))
+
+        const newData = Object.fromEntries(values.map(value => [value.id, value]))
+        const newKeys = Object.keys(newData)
+        oldKeys.filter(key => !newKeys.includes(key)).forEach(key => this.remove(key))
+        this.data = newData
 
     }
 
@@ -108,7 +126,7 @@ class DBCache extends EventEmitter {
      */
     getMap( ...mapKeys ) {
 
-        return Object.fromEntries(this.data.map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value]));
+        return Object.fromEntries(this.values().map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value]));
 
     }
 
@@ -120,7 +138,7 @@ class DBCache extends EventEmitter {
 
         const obj = {}
 
-        this.data.map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value])
+        this.values().map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value])
             .forEach(([key, value]) => (key in obj) ? obj[key].push(value) : obj[key] = [value])
         
         return obj;
@@ -128,45 +146,83 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { TableRow[] }
+     * @param { string[] } ids
+     * @returns { import("./row") }
      */ 
-    get(filter, invert) {
+    get(...ids) {
 
-        if (invert) return this.data.filter(row => !row.equals(filter));
-        else return this.data.filter(row => row.equals(filter));
+        return this.data[ids.join('#')] ?? null;
 
     }
 
     /**
-     * @returns { TableRow[] }
+     * @param { Object.<string, any> } filter
+     * @param { Boolean } invert
+     * @returns { import("./row")[] }
+     */ 
+    find(filter, invert) {
+
+        if (invert) return this.values().filter(row => !row.equals(filter));
+        else return this.values().filter(row => row.equals(filter));
+
+    }
+
+    /**
+     * @param { Object.<string, any> } filter
+     * @returns { import("./row")[] }
      */
-    remove(filter) {
+    filterOut(filter) {
 
-        const remove = this.get(filter)
-        
-        this.data = this.data.filter(value => !remove.includes(value))
-        remove.forEach(value => this.emit('remove', value))
-
+        const remove = this.find(filter)
+        remove.forEach(value => this.remove(value.id))
         return remove;
 
     }
 
     /**
-     * @param { TableRow } newValue 
-     * @param { Object.<string, any> } filter 
+     * @param { string } id
+     * @returns { import("./row") }
      */
-    update(newValue, filter) {
+    remove(id) {
 
-        const matches = this.get(filter)
-        matches.forEach(value => {
+        const remove = this.data[id]
+        if (remove) {
+            
+            if (id in this.handles) delete this.handles[id];
 
-            const index = this.data.indexOf(value)
-            this.data[index] = value.updateWith(newValue)
-            this.emit('update', this.data[index])
+            delete this.data[id]
+            remove.uncache()
+            this.emit('remove', remove)
+            
+        }
+        return remove ?? null;
 
-        })
+    }
+
+    /**
+     * @param { import("./row") } value
+     * @param { string } id
+     */
+    updateWith(value, id) {
+
+        const existing = this.get(id ?? value.id)
+        if (existing && !existing.exactlyEquals(value)) {
+
+            existing.updateWith(value)
+            this.emit('update', existing)
+
+        }
+
+    }
+    
+    /**
+     * @param { import("./row") } data
+     * @param { Object.<string, any> } selector
+     */
+    update(data, selector) {
+
+        const update = this.find(selector)
+        update.forEach(obj => this.updateWith(data, obj.id))
 
     }
 

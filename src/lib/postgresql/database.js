@@ -1,6 +1,9 @@
 const Pool = require('pg-pool');
 const pgIPC = require('pg-ipc');
 
+const { v4: uuidv4 } = require("uuid");
+
+const ScrimsTicketMessageAttachment = require("../scrims/ticket_message_attachment");
 const ScrimsGuildEntryType = require("../scrims/guild_entry_type");
 const ScrimsTicketMessage = require("../scrims/ticket_message");
 const ScrimsUserPosition = require("../scrims/user_position");
@@ -8,6 +11,7 @@ const ScrimsPositionRole = require("../scrims/position_role");
 const ScrimsTicketStatus = require("../scrims/ticket_status");
 const ScrimsGuildEntry = require("../scrims/guild_entry");
 const ScrimsTicketType = require("../scrims/ticket_type");
+const ScrimsAttachment = require('../scrims/attachment');
 const ScrimsPosition = require('../scrims/position');
 const ScrimsTicket = require("../scrims/ticket");
 const ScrimsGuild = require('../scrims/guild');
@@ -40,6 +44,11 @@ class DBClient {
         this.tables = []
         this.__addScrimsTables()
         
+        /**
+         * @type { ScrimsAttachment.Table }
+         */
+        this.attachments 
+
         /**
          * @type { ScrimsGuild.Table }
          */
@@ -95,9 +104,16 @@ class DBClient {
          */
         this.ticketMessages
 
+        /**
+         * @type { ScrimsTicketMessageAttachment.Table }
+         */
+        this.ticketMessageAttachments
+
     }
 
     __addScrimsTables() {
+
+        this.addTable("attachments", new ScrimsAttachment.Table(this))
 
         this.addTable("guilds", new ScrimsGuild.Table(this))
         this.addTable("users", new ScrimsUser.Table(this))
@@ -114,6 +130,13 @@ class DBClient {
         this.addTable("ticketStatuses", new ScrimsTicketStatus.Table(this))
         this.addTable("tickets", new ScrimsTicket.Table(this))
         this.addTable("ticketMessages", new ScrimsTicketMessage.Table(this))
+        this.addTable("ticketMessageAttachments", new ScrimsTicketMessageAttachment.Table(this))
+
+    }
+
+    generateUUID() {
+
+        return uuidv4();
 
     }
 

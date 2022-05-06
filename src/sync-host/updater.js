@@ -46,7 +46,7 @@ class ScrimsPositionUpdater {
 
     async onPositionRoleChange(positionRole) {
 
-        if (positionRole.guild.discord_id === this.hostGuildId) {
+        if (positionRole.guild_id === this.hostGuildId) {
 
             return this.reloadPositionMembers(positionRole.id_position);
 

@@ -65,13 +65,13 @@ class PositionsFeature {
 
     async onRoleDelete(role) {
 
-        await this.database.positionRoles.remove({ guild: { discord_id: role.guild.id }, role_id: role.id }).catch(console.error)
+        await this.database.positionRoles.remove({ guild_id: role.guild.id, role_id: role.id }).catch(console.error)
 
     }
 
     async onMemberAdd(member) {
 
-        const userPositions = this.bot.database.userPositions.cache.get({ id_user: member.scrimsUser.id_user, position: { sticky: true } })
+        const userPositions = this.bot.database.userPositions.cache.find({ id_user: member.scrimsUser.id_user, position: { sticky: true } })
         const discordRoleIds = userPositions.map(p => this.bot.permissions.getPositionRequiredRoles(member.guild.id, p.id_position)).flat()
         const missingRoleIds = [ ...new Set(discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))) ]
         const missingRoles = missingRoleIds.map(id => member.guild.roles.cache.get(id) ?? id)

@@ -1,18 +1,9 @@
 const DBCache = require("../postgresql/cache");
+const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
 class ScrimsGuildEntryTypeCache extends DBCache {
 
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsGuildEntryType[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
 
 }
 
@@ -20,8 +11,7 @@ class ScrimsGuildEntryTypeTable extends DBTable {
 
     constructor(client) {
 
-        const foreigners = [ [ "guild", "id_guild", "get_guild_id" ] ]
-        super(client, "scrims_guild_entry_type", null, foreigners, ScrimsGuildEntryType, ScrimsGuildEntryTypeCache);
+        super(client, "scrims_guild_entry_type", null, [], ['id_type'], ScrimsGuildEntryType, ScrimsGuildEntryTypeCache);
         
         /**
          * @type { ScrimsGuildEntryTypeCache }
@@ -63,7 +53,7 @@ class ScrimsGuildEntryTypeTable extends DBTable {
 
 }
 
-class ScrimsGuildEntryType extends DBTable.Row {
+class ScrimsGuildEntryType extends TableRow {
 
     /**
      * @type { ScrimsGuildEntryTypeTable }
@@ -75,7 +65,7 @@ class ScrimsGuildEntryType extends DBTable.Row {
         super(client, typeData, []);
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_type
 

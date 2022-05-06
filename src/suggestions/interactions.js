@@ -122,26 +122,26 @@ async function onRemoveSuggestion(interaction) {
     if (interaction.targetId == interaction.client.suggestions.suggestionsInfoMessage)
         return interaction.reply({ content: "This should be used on suggestion messages. Not the suggestions channel info message!", ephemeral: true });
 
-    const suggestion = interaction.client.database.suggestions.cache.get({ message_id: interaction.targetId })[0]
+    const suggestion = interaction.client.database.suggestions.cache.find({ message_id: interaction.targetId })[0]
     if (!suggestion) return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Unkown Suggestion", "This can only be used on suggestion messages!"));
     
     interaction.suggestion = suggestion
 
     const interactorIsAuthor = (suggestion.creator.discord_id == interaction.userId);
     if (suggestion.epic && interactorIsAuthor) 
-        return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Not Removable", "Since your suggestion is so liked it can not be removed!"));
+        return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Not Removable", "Since your suggestion is so liked it can not be removed! Have a nice day :)"));
 
     if (!(await interaction.member.hasPermission("staff")) && !interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
-    const removed = interaction.client.database.suggestions.cache.remove({ id_suggestion: suggestion.id_suggestion })
+    const removed = interaction.client.database.suggestions.cache.remove(suggestion.id_suggestion)
 
     const response = await interaction.targetMessage.delete().catch(error => onError(interaction, `remove suggestions message`, error, true))
     if (response === false) {
 
         // Deleting the message failed so add the suggestion back to cache
-        removed.forEach(removed => interaction.client.database.suggestions.cache.push(removed))
+        interaction.client.database.suggestions.cache.push(removed)
 
         return false;
 
@@ -202,10 +202,11 @@ async function onModalSubmit(interaction) {
 
     const newSuggestion = { 
 
-        guild: { discord_id: interaction.guild.id },
+        id_suggestion: interaction.client.database.generateUUID(),
+        guild_id: interaction.guild.id,
         channel_id: message.channel.id, 
         message_id: message.id, 
-        created_at: Math.round(interaction.createdTimestamp/1000),
+        created_at: Math.round(Date.now()/1000),
         suggestion,
         id_creator: interaction.scrimsUser.id_user
 

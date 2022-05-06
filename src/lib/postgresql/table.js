@@ -1,140 +1,9 @@
 const DBCache = require("./cache")
-
-class TableRow {
-
-    constructor(client, data, references=[]) {
-
-        Object.defineProperty(this, 'client', { value: client });
-        Object.defineProperty(this, 'bot', { value: client.bot });
-
-        /**
-         * @type { import('./database') }
-         * @readonly
-         */
-        this.client
-
-        /**
-         * @type { import('../bot') }
-         * @readonly
-         */
-        this.bot
-
-        this._references = references
-        this._handles = null
-
-        this.updateWith(data)
-
-    }
-
-    updateWith(data) {
-
-        this._references.forEach(([objKey, uniqueLocalKeys, uniqueForeignKeys, table]) => {
-
-            if (this._handles) {
-
-                if (uniqueLocalKeys.some(key => data[key] !== undefined && data[key] != this[key])) {
-
-                    if (this._handles[objKey]) table.cache.releaseHandle(this._handles[objKey])
-                    delete this._handles[objKey];
-
-                    const [handle, obj] = table.cache.createHandle(Object.fromEntries(uniqueLocalKeys.map((key, idx) => [uniqueForeignKeys[idx], data[key]])))
-    
-                    if (this._handles) this._handles[objKey] = handle
-                    this[objKey] = obj
-    
-                } 
-
-                if (!this[objKey] && data[objKey]) {
-
-                    const [handle, obj] = table.cache.push(table.getRow(data[objKey]), null, true)
-    
-                    if (this._handles) this._handles[objKey] = handle
-                    this[objKey] = obj
-    
-                }   
-                
-                if (this[objKey] && !this._handles[objKey]) {
-
-                    const [handle, obj] = table.cache.push(this[objKey], null, true)
-    
-                    if (this._handles) this._handles[objKey] = handle
-                    this[objKey] = obj
-
-                }
-
-            }else {
-
-                if (!this[objKey] && data[objKey]) {
-
-                    this[objKey] = table.getRow(data[objKey])
-    
-                } 
-
-            }
-
-        })
-
-        const objKeys = this._references.map(([objKey, _, __]) => objKey)
-        Object.entries(data).forEach(([key, value]) => {
-
-            if (key.startsWith('_')) return;
-            if (!objKeys.includes(key)) this[key] = value
-
-        })
-
-        return this;
-
-    }
-
-    cache() {
-
-        this._handles = {}
-        this.updateWith(this)
-
-    }
-
-    /**
-     * @param { Object.<string, any> } obj1 
-     * @param { Object.<string, any> } obj2 
-     * @returns { Boolean }
-     */
-    valuesMatch(obj1, obj2) {
-
-        if (!obj1 || !obj2) return false;
-
-        if (typeof obj1.toJSON === "function") obj1 = obj1.toJSON();
-        if (typeof obj2.toJSON === "function") obj2 = obj2.toJSON();
-
-        return Object.entries(obj1).every(([key, value]) => 
-            (value instanceof Object && obj2[key] instanceof Object) 
-                ? this.valuesMatch(value, obj2[key]) : (obj2[key] == value)
-        );
-
-    }
-
-    /**
-     * @param { Object.<string, any> } obj 
-     * @returns { Boolean }
-     */
-    equals(obj) {
-
-        return this.valuesMatch(obj, this);
-
-    }
-
-    toJSON() {
-
-        return Object.fromEntries(Object.entries(this).filter(([key, _]) => !key.startsWith('_')));
-
-    }
-
-}
+const TableRow = require("./row")
 
 class DBTable {
 
-    static Row = TableRow;
-
-    constructor(client, name, getFunction=null, foreigners=[], RowClass=TableRow, CacheClass=DBCache) {
+    constructor(client, name, getFunction=null, foreigners=[], uniqueKeys=[], RowClass=TableRow, CacheClass=DBCache) {
 
         Object.defineProperty(this, 'client', { value: client });
 
@@ -154,6 +23,16 @@ class DBTable {
          */
         this.cache = new CacheClass()
 
+        /**
+         * @type { string[] }
+         */
+        this.columns = []
+
+        /**
+         * @type { string[] }
+         */
+        this.uniqueKeys = uniqueKeys
+
     }
 
     get ipc() {
@@ -169,6 +48,9 @@ class DBTable {
     }
 
     async connect() {
+
+        const schema = await this.query(`SELECT * FROM information_schema.columns WHERE table_name='${this.name}'`)
+        this.columns = schema.rows.map(row => row['column_name'])
 
         this.initializeListeners()
         await this.initializeCache()
@@ -310,7 +192,7 @@ class DBTable {
      */
     getRow(rowData) {
 
-        return new this.RowClass(this.client, rowData);
+        return new this.RowClass(this, rowData);
 
     }
 
@@ -319,7 +201,7 @@ class DBTable {
      */
     async get(selectCondition, useCache=true) { 
 
-        const cached = this.cache.get(selectCondition)
+        const cached = this.cache.find(this.getRow(selectCondition))
         if (cached.length > 0 && useCache) return cached;
 
         const [ formated, values1 ] = this.format({ ...selectCondition })
@@ -329,12 +211,8 @@ class DBTable {
         const items = (this.getFunction === null) ? result.rows : result.rows[0][this.getFunction]
         const rows = this.getRows(items)
         
-        if (JSON.stringify(selectCondition) === "{}") {
-            
-            this.cache.set(rows)
-
-        }else rows.forEach(row => this.cache.push(row))
-
+        if (JSON.stringify(selectCondition) === "{}") this.cache.setAll(rows)
+        else rows.forEach(row => this.cache.push(row))
         return rows;
 
     }
@@ -375,13 +253,16 @@ class DBTable {
      */
     async create(data) {
 
+        const inserted = this.cache.push(this.getRow(data))
+        const filter = inserted.getSelector()
+
         const [ formated, formatValues ] = this.format({ ...data })
 
         await this.query( ...this.createInsertQuery(formated, formatValues) )
         
         // Fetch what was just inserted to add it to cache
-        const result = await this.get({ ...data }).then(rows => rows[0])
-        return result;
+        if (filter) return this.get(filter, false).then(rows => rows[0]);
+        return null; 
 
     }
 
@@ -394,7 +275,7 @@ class DBTable {
         const [ whereClause, values4 ] = this.createWhereClause(formatedSelector, values3)
 
         const result = await this.query(`UPDATE ${this.name} ${setClause} ${whereClause}`, values4)
-        this.cache.update(data, selector)
+        this.cache.update(data, this.getRow(selector))
 
         return result;
 
@@ -410,7 +291,7 @@ class DBTable {
 
         await this.query(`DELETE FROM ${this.name} ${whereClause}`, values2)
         
-        const removed = this.cache.remove(selector)
+        const removed = this.cache.filterOut(selector)
         return removed;
 
     }

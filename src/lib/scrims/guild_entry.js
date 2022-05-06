@@ -1,20 +1,11 @@
 const DBCache = require("../postgresql/cache");
+const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 const ScrimsGuild = require("./guild");
 const ScrimsGuildEntryType = require("./guild_entry_type");
 
 class ScrimsGuildEntrysCache extends DBCache {
 
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsGuildEntry[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
 
 }
 
@@ -23,11 +14,10 @@ class ScrimsGuildEntrysTable extends DBTable {
     constructor(client) {
 
         const foreigners = [
-            [ "type", "id_type", "get_guild_entry_type_id" ],
-            [ "guild", "id_guild", "get_guild_id" ]
+            [ "type", "id_type", "get_guild_entry_type_id" ]
         ]
 
-        super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, ScrimsGuildEntry, ScrimsGuildEntrysCache);
+        super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, ['guild_id', 'id_type'], ScrimsGuildEntry, ScrimsGuildEntrysCache);
 
         /**
          * @type { ScrimsGuildEntrysCache }
@@ -41,7 +31,7 @@ class ScrimsGuildEntrysTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('guild_entry_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('guild_entry_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('guild_entry_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('guild_entry_create', message => this.cache.push(this.getRow(message.payload)))
 
@@ -80,26 +70,26 @@ class ScrimsGuildEntrysTable extends DBTable {
 
 }
 
-class ScrimsGuildEntry extends DBTable.Row {
+class ScrimsGuildEntry extends TableRow {
 
     /**
      * @type { ScrimsGuildEntrysTable }
      */
     static Table = ScrimsGuildEntrysTable
     
-    constructor(client, entryData) {
+    constructor(table, entryData) {
 
         const references = [
-            ['guild', ['id_guild'], ['id_guild'], client.guilds], 
-            ['type', ['id_type'], ['id_type'], client.guildEntryTypes]
+            ['guild', ['guild_id'], ['guild_id'], table.client.guilds], 
+            ['type', ['id_type'], ['id_type'], table.client.guildEntryTypes]
         ]
 
-        super(client, entryData, references);
+        super(table, entryData, references);
 
         /**
-         * @type { number }
+         * @type { string }
          */
-        this.id_guild
+        this.guild_id
 
         /**
          * @type { ScrimsGuild }
@@ -107,7 +97,7 @@ class ScrimsGuildEntry extends DBTable.Row {
         this.guild
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_type
 
@@ -127,13 +117,6 @@ class ScrimsGuildEntry extends DBTable.Row {
 
         if (!this.guild) return null;
         return this.guild.discordGuild;
-
-    }
-
-    get guild_id() {
-
-        if (!this.guild) return null;
-        return this.guild.discord_id;
 
     }
 

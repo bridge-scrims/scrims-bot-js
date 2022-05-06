@@ -1,29 +1,10 @@
 const { Constants } = require("discord.js");
 const DBCache = require("../postgresql/cache");
+const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
 class ScrimsUserCache extends DBCache {
 
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsUser[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
-
-    /**
-     * @param { ScrimsUser[] } users 
-     */
-    set(users) {
-
-        const data = this.getMap('id_user')
-        return users.map(user => this.push(user, data[user.id_user] ?? false, false));
-
-    }
 
 }
 
@@ -31,7 +12,7 @@ class ScrimsUserTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_user", "get_users", [], ScrimsUser, ScrimsUserCache);
+        super(client, "scrims_user", "get_users", [], ['id_user'], ScrimsUser, ScrimsUserCache);
 
         /**
          * @type { ScrimsUserCache }
@@ -45,7 +26,7 @@ class ScrimsUserTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('scrims_user_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('scrims_user_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('scrims_user_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('scrims_user_create', message => this.cache.push(this.getRow(message.payload)))
 
@@ -84,7 +65,7 @@ class ScrimsUserTable extends DBTable {
 
 }
 
-class ScrimsUser extends DBTable.Row {
+class ScrimsUser extends TableRow {
 
     /**
      * @type { ScrimsUserTable }
@@ -96,7 +77,7 @@ class ScrimsUser extends DBTable.Row {
         super(client, userData, [])
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_user
 
@@ -118,7 +99,9 @@ class ScrimsUser extends DBTable.Row {
         /**
          * @type { string }
          */
-        this.discord_discriminator = `${userData.discord_discriminator}`.padStart(4, '0')
+        this.discord_discriminator
+
+        if (typeof this.discord_discriminator === 'number') this.discord_discriminator = `${this.discord_discriminator}`.padStart(4, '0')
 
         /**
          * @type { number }
@@ -174,8 +157,8 @@ class ScrimsUser extends DBTable.Row {
     getMention(effect="") {
 
         if (this.discordUser) return `${this.discordUser}`;
-        if (this.tag) return `${effect}${this.tag}${effect}`;
-        return `${effect}Unknown User${effect}`;
+        if (this.tag) return `${effect}@${this.tag}${effect}`;
+        return `${effect}@unknown-user${effect}`;
 
     }
 
@@ -201,23 +184,6 @@ class ScrimsUser extends DBTable.Row {
         const avatar = cdn.Avatar(this.discord_id, this.discord_avatar, undefined, undefined, true)
         
         return avatar ?? defaultAvatar;
-
-    }
-
-    /**
-     * @override
-     * @param { Object.<string, any> } obj 
-     * @returns { Boolean }
-     */
-    equals(obj) {
-
-        if (obj instanceof ScrimsUser) {
-
-            return (obj.id_user === this.id_user);
-
-        }
-        
-        return this.valuesMatch(obj, this);
 
     }
 

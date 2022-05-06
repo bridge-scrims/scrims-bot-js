@@ -1,4 +1,5 @@
 const DBCache = require("../postgresql/cache");
+const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 const ScrimsPosition = require("./position");
 const ScrimsUser = require("./user");
@@ -7,28 +8,17 @@ class ScrimsUserPositionCache extends DBCache {
 
     /**
      * @override
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsUserPosition[] }
+     * @param { string[] } ids
+     * @returns { ScrimsUserPosition }
      */
-    get(filter, invert) {
+    get( ...ids ) {
 
-        const expired = this.data.filter(userPos => userPos.expires_at !== null && userPos.expires_at <= (Date.now()/1000))
+        const expired = this.values().filter(userPos => userPos.expires_at !== null && userPos.expires_at <= (Date.now()/1000))
         
-        this.data = this.data.filter(value => !expired.includes(value))
+        expired.forEach(value => this.remove(value.id))
         expired.forEach(value => this.emit('remove', value))
 
-        return super.get(filter, invert);
-
-    }
-
-    /**
-     * @param { ScrimsUserPosition[] } userPosition 
-     */
-    set(userPositions) {
-
-        const data = this.getArrayMap('id_user')
-        return userPositions.map(userPos => this.push(userPos, (data[userPos.id_user] ?? []).filter(v => v.id_position === userPos.id_position)[0] ?? false, false));
+        return super.get(...ids);
 
     }
 
@@ -44,7 +34,9 @@ class ScrimsUserPositionsTable extends DBTable {
             [ "position", "id_position", "get_position_id" ] 
         ]
 
-        super(client, "scrims_user_position", "get_user_positions", foreigners, ScrimsUserPosition, ScrimsUserPositionCache);
+        const uniqueKeys = [ 'id_user', 'id_position' ]
+
+        super(client, "scrims_user_position", "get_user_positions", foreigners, uniqueKeys, ScrimsUserPosition, ScrimsUserPositionCache);
         
         /**
          * @type { ScrimsUserPositionCache }
@@ -58,30 +50,9 @@ class ScrimsUserPositionsTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('user_position_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('user_position_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('user_position_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('user_position_create', message => this.cache.push(this.getRow(message.payload)))
-
-    }
-
-    /**
-     * @param { Object.<string, any>[] } userPositionDatas 
-     * @returns { ScrimsUserPosition[] }
-     */
-    getRows(userPositionDatas) {
-
-        const scrimsUsers = this.client.users.cache.getMap("id_user")
-        const scrimsPositions = this.client.positions.cache.getMap("id_position")
-
-        userPositionDatas.forEach(userPositionData => {
-
-            userPositionData.user = scrimsUsers[userPositionData.id_user] ?? null
-            userPositionData.position = scrimsPositions[userPositionData.id_position] ?? null
-            userPositionData.executor = scrimsUsers[userPositionData.id_executor] ?? null
-
-        })
-
-        return super.getRows(userPositionDatas);
 
     }
     
@@ -125,25 +96,25 @@ class ScrimsUserPositionsTable extends DBTable {
 
 }
 
-class ScrimsUserPosition extends DBTable.Row {
+class ScrimsUserPosition extends TableRow {
 
     /**
      * @type { ScrimsUserPositionsTable }
      */
     static Table = ScrimsUserPositionsTable
 
-    constructor(client, userPositionData) {
+    constructor(table, userPositionData) {
 
         const references = [
-            ['user', ['id_user'], ['id_user'], client.users],
-            ['position', ['id_position'], ['id_position'], client.positions],
-            ['executor', ['id_executor'], ['id_user'], client.users]
+            ['user', ['id_user'], ['id_user'], table.client.users],
+            ['position', ['id_position'], ['id_position'], table.client.positions],
+            ['executor', ['id_executor'], ['id_user'], table.client.users]
         ]
 
-        super(client, userPositionData, references)
+        super(table, userPositionData, references)
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_user
         
@@ -153,7 +124,7 @@ class ScrimsUserPosition extends DBTable.Row {
         this.user
 
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_position
 
@@ -163,7 +134,7 @@ class ScrimsUserPosition extends DBTable.Row {
         this.position
         
         /**
-         * @type { number }
+         * @type { string }
          */
         this.id_executor
 
@@ -194,23 +165,6 @@ class ScrimsUserPosition extends DBTable.Row {
 
         return (this.expires_at === null) ? `\`permanently\`` 
             : ((!this.expires_at) ? '\`for an unknown time period\`' : `until <t:${this.expires_at}:F>`);
-
-    }
-
-    /**
-     * @override
-     * @param { Object.<string, any> } obj 
-     * @returns { Boolean }
-     */
-    equals(obj) {
-
-        if (obj instanceof ScrimsUserPosition) {
-
-            return (obj.id_user === this.id_user && obj.id_position === this.id_position);
-
-        }
-        
-        return this.valuesMatch(obj, this);
 
     }
 
