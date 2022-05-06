@@ -126,7 +126,7 @@ async function onConfigAutocomplete(interaction) {
 
     const focused = interaction.options.getFocused().toLowerCase()
 
-    const entryTypes = interaction.client.database.guildEntryTypes.cache.values()
+    const entryTypes = interaction.client.database.guildEntryTypes.cache.data
     const relevant = entryTypes.filter(type => type.name.toLowerCase().includes(focused))
     
     await interaction.respond([ { name: "All", value: -1 }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])

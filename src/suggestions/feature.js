@@ -57,7 +57,7 @@ class SuggestionsFeature {
 
     async onStartup() {
 
-        const channelConfigs = this.database.guildEntrys.cache.find({ type: { name: "suggestions_channel" } })
+        const channelConfigs = this.database.guildEntrys.cache.get({ type: { name: "suggestions_channel" } })
         const configured = channelConfigs.filter(entry => this.getVoteConst(entry.guild_id))
 
         await Promise.all(configured.map(entry => this.startupGuild(entry.guild_id, entry.value)))
@@ -234,7 +234,7 @@ class SuggestionsFeature {
 
     async onMessageDelete(message) {
 
-        const suggestion = this.database.suggestions.cache.find({ message_id: message.id })[0]
+        const suggestion = this.database.suggestions.cache.get({ message_id: message.id })[0]
 
         // If a suggestion message was delted it should also be deleted in the database
         await this.database.suggestions.remove({ message_id: message.id }).catch(console.error);

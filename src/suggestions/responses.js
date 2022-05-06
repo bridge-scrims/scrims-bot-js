@@ -1,5 +1,4 @@
 const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent } = require("discord.js");
-const MemoryMessageButton = require("../lib/memory_button");
 const ScrimsMessageBuilder = require("../lib/responses");
 
 function hsv2rgb(h, s, v) {                              
@@ -91,7 +90,7 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    static getSuggestionRemoveButtons(suggestions) {
+    static getSuggestionButtons(suggestions) {
 
         return suggestions.map((suggestion, idx) => (
 
@@ -120,7 +119,7 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
             components: [
 
-                new MessageActionRow().addComponents(this.getSuggestionRemoveButtons(suggestions)),
+                new MessageActionRow().addComponents(this.getSuggestionButtons(suggestions)),
                 new MessageActionRow().addComponents(this.cancelButton())
 
             ],
@@ -131,61 +130,6 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    static getSuggestionRemoveButtons(suggestions) {
-
-        return suggestions.map((suggestion, idx) => (
-
-            new MessageButton()
-                .setLabel(`Remove ${idx+1}.`)
-                .setCustomId(`suggestionRemove/${suggestion.id_suggestion}`)
-                .setStyle('DANGER')
-
-        ))
-
-    }
-
-    static getSuggestionAttachButtons(client, suggestions, data) {
-
-        return suggestions.map((suggestion, idx) => (
-
-            new MemoryMessageButton(client, data)
-                .setLabel(`Attach to ${idx+1}.`)
-                .setCustomId(`suggestionAttach/${suggestion.id_suggestion}`)
-                .setStyle('PRIMARY')
-
-        ))
-
-    }
-
-    static attachSuggestionConfirmMessage(client, suggestions, data) {
-
-        return {
-
-            embeds: [
-
-                new MessageEmbed()
-                    .setColor('#3fcefe')
-                    .setTitle("Add Attachment to Suggestion")
-                    .setDescription(
-                        `Please confirm which suggestion you would like to add this attachment to. `
-                        + `This attachment will override any attachments previously added to the chosen suggestion.`
-                    )
-                    .addFields(this.getSuggestionFields(suggestions))
-
-            ],
-
-            components: [
-
-                new MessageActionRow().addComponents(this.getSuggestionAttachButtons(client, suggestions, data)),
-                new MessageActionRow().addComponents(this.cancelButton())
-
-            ],
-
-            ephemeral: true
-
-        }
-
-    }
 
     static suggestionEmbed(hue, suggestion, created_at, creator) {
         return new MessageEmbed()

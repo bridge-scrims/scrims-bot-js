@@ -122,7 +122,7 @@ async function onRemoveSuggestion(interaction) {
     if (interaction.targetId == interaction.client.suggestions.suggestionsInfoMessage)
         return interaction.reply({ content: "This should be used on suggestion messages. Not the suggestions channel info message!", ephemeral: true });
 
-    const suggestion = interaction.client.database.suggestions.cache.find({ message_id: interaction.targetId })[0]
+    const suggestion = interaction.client.database.suggestions.cache.get({ message_id: interaction.targetId })[0]
     if (!suggestion) return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Unkown Suggestion", "This can only be used on suggestion messages!"));
     
     interaction.suggestion = suggestion
@@ -135,13 +135,13 @@ async function onRemoveSuggestion(interaction) {
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
-    const removed = interaction.client.database.suggestions.cache.remove(suggestion.id_suggestion)
+    const removed = interaction.client.database.suggestions.cache.remove({ id_suggestion: suggestion.id_suggestion })
 
     const response = await interaction.targetMessage.delete().catch(error => onError(interaction, `remove suggestions message`, error, true))
     if (response === false) {
 
         // Deleting the message failed so add the suggestion back to cache
-        interaction.client.database.suggestions.cache.push(removed)
+        removed.forEach(removed => interaction.client.database.suggestions.cache.push(removed))
 
         return false;
 

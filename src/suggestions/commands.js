@@ -3,11 +3,9 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 
 const SuggestionsResponseMessageBuilder = require("./responses");
 const ScrimsMessageBuilder = require("../lib/responses");
-const ScrimsSuggestion = require("./suggestion");
 
 const commandHandlers = {
 
-    "attach-to-suggestion": suggestionAttachCommand,
     "remove-suggestion": suggestionRemoveCommand,
     "suggestionRemove": suggestionRemoveComponent
 
@@ -33,11 +31,7 @@ async function getBlacklisted(interaction) {
 
 }
 
-/**
- * @param { import('../types').ScrimsCommandInteraction } interaction 
- * @returns { Promise<false | ScrimsSuggestion[]> }
- */
-async function getSuggestions(interaction) {
+async function suggestionRemoveCommand(interaction) {
 
     if (!interaction.scrimsUser) return interaction.reply( ScrimsMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
 
@@ -51,51 +45,19 @@ async function getSuggestions(interaction) {
 
     }
 
-    return interaction.client.database.suggestions.get({ id_creator: interaction.scrimsUser.id_user })
-        .then(suggestions => suggestions.sort((a, b) => b.created_at - a.created_at));
-
-}
-
-/**
- * @param { import('../types').ScrimsCommandInteraction } interaction 
- */
-async function suggestionAttachCommand(interaction) {
-
-    const suggestions = await getSuggestions(interaction)
-    if (suggestions === false) return false;
+    const suggestions = await interaction.client.database.suggestions.get({ id_creator: interaction.scrimsUser.id_user })
+        .then(suggestions => suggestions.sort((a, b) => b.created_at - a.created_at).filter(suggestion => !suggestion.epic))
     
     const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
 
     if (suggestions.length === 0) 
-        return interaction.reply( ScrimsMessageBuilder.errorMessage(
-            'No Suggestions', `You currently have no suggestions created. `
-            + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
-        ));
-
-    const attachment = interaction.options.getAttachment('attachment')
-    return interaction.reply( SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(interaction.client, suggestions.slice(0, 5), attachment) );
-
-}
-
-/**
- * @param { import('../types').ScrimsCommandInteraction } interaction 
- */
-async function suggestionRemoveCommand(interaction) {
-
-    const suggestions = await getSuggestions(interaction)
-    if (suggestions === false) return false;
-    
-    const removeableSuggestions = suggestions.filter(suggestion => !suggestion.epic)
-    const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
-
-    if (removeableSuggestions.length === 0) 
         return interaction.reply( ScrimsMessageBuilder.errorMessage(
             'No Removable Suggestions', `You currently have no removable suggestions. `
             + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
             + `If your suggestion has a lot of up-votes it may not show up as removable.`
         ));
 
-    return interaction.reply( SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(removeableSuggestions.slice(0, 5)) );
+    return interaction.reply( SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(suggestions.slice(0, 5)) );
 
 }
 
@@ -121,7 +83,7 @@ async function suggestionRemoveComponent(interaction) {
     );
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
-    const removed = interaction.client.database.suggestions.cache.remove(id_suggestion)
+    const removed = interaction.client.database.suggestions.cache.remove({ id_suggestion })
 
     const message = await suggestion.fetchMessage()
     if (!message) return interaction.update(ScrimsMessageBuilder.failedMessage('remove the suggestion'));
@@ -130,7 +92,7 @@ async function suggestionRemoveComponent(interaction) {
     if (response instanceof Error) {
 
         // Deleting the message failed so add the suggestion back to cache
-        interaction.client.database.suggestions.cache.push(removed)
+        removed.forEach(removed => interaction.client.database.suggestions.cache.push(removed))
 
         throw response;
 
@@ -152,23 +114,6 @@ function buildRemoveCommand() {
         .setDescription("Use this command to remove a suggestion.")
 
     return [ removeCommand, {} ];
-
-}
-
-function buildAttachCommand() {
-
-    const command = new SlashCommandBuilder()
-        .setName("attach-to-suggestion")
-        .setDescription("Use this command to atach a file to one of your suggestions.")
-        .addAttachmentOption( attachmentOption => (
-                attachmentOption 
-                    .setName('attachment')
-                    .setDescription("The file you would like to attach to a suggestion.")
-                    .setRequired(true)
-            )
-        )
-        
-    return [ command, {} ];
 
 }
 

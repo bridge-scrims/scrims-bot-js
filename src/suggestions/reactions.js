@@ -9,12 +9,12 @@ async function onReactionUpdate(reaction) {
 
     const [suggestionUpVote, suggestionDownVote] = reaction.client.suggestions.getVoteEmojis(reaction.message.guild)
     
-    const suggestionData = reaction.client.database.suggestions.cache.find({ message_id: reaction.message.id })[0]
+    const suggestionData = reaction.client.database.suggestions.cache.get({ message_id: reaction.message.id })[0]
     if (!suggestionData) return false;
 
     const upVotes = reaction.message.reactions.cache.get(suggestionUpVote.id ?? suggestionUpVote)?.count || 1;
     const downVotes = reaction.message.reactions.cache.get(suggestionDownVote.id ?? suggestionDownVote)?.count || 1;
-    const suggestion = { ...suggestionData.toJSON(), upVotes, downVotes }
+    const suggestion = { ...suggestionData, upVotes, downVotes }
 
     if ((downVotes/upVotes) > voteConst) return onUnpopularSuggestion(reaction.client, reaction.message, suggestion);
 
@@ -44,13 +44,13 @@ async function onUnpopularSuggestion(client, message, suggestion) {
     }
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
-    const removed = client.database.suggestions.cache.remove(suggestion.id_suggestion)
+    const removed = client.database.suggestions.cache.remove({ id_suggestion: suggestion.id_suggestion })
 
     const response = await message.delete().catch(error => error)
     if (response === false) {
 
         // Deleting the message failed so add the suggestion back to cache
-        client.database.suggestions.cache.push(removed)
+        removed.forEach(removed => client.database.suggestions.cache.push(removed))
 
         await client.suggestions.logError(`Failed to remove suggestion after it getting ${suggestion.downVotes} down vote(s).`, { context, error: response })
         return false;

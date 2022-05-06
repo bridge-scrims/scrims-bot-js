@@ -1,4 +1,3 @@
-const { validate: validateUUID } = require('uuid');
 
 /**
  * **Definitions:**
@@ -23,7 +22,7 @@ class ScrimsPermissionsClient {
 
     get hierarchy() {
 
-        return this.database.positions.cache.values().filter(v => typeof v?.level === "number").sort((a, b) => a.level - b.level).map(v => v.name);
+        return this.database.positions.cache.data.filter(v => typeof v?.level === "number").sort((a, b) => a.level - b.level).map(v => v.name);
     
     }
 
@@ -35,11 +34,7 @@ class ScrimsPermissionsClient {
      */
     getGuildPositionRoles(guildId) {
 
-<<<<<<< HEAD
-        return this.database.positionRoles.cache.find({ guild_id });
-=======
         return this.database.positionRoles.cache.get({ guild: { discord_id: guildId } });
->>>>>>> main
         
     }
 
@@ -52,7 +47,7 @@ class ScrimsPermissionsClient {
      */
     getPositionRequiredRoles(guildId, positionResolvable) {
 
-        return this.getGuildPositionRoles(guildId).filter(p => (p.position.name === positionResolvable || p.id_position === positionResolvable)).map(p => p.role_id);
+        return this.getGuildPositionRoles(guildId).filter(p => (p.position.name == positionResolvable || p.id_position == positionResolvable)).map(p => p.role_id);
     
     }
 
@@ -97,8 +92,8 @@ class ScrimsPermissionsClient {
      */
     async hasRequiredPosition(permissible, positionResolvable) {
 
-        const positionSelector = (validateUUID(positionResolvable)) ? { id_position: positionResolvable } : { position: { name: positionResolvable } };
-        const userPositions = this.database.userPositions.cache.find({ user: { discord_id: permissible.id }, ...positionSelector })
+        const positionSelector = (typeof positionResolvable === "number") ? { id_position: positionResolvable } : { position: { name: positionResolvable } };
+        const userPositions = this.database.userPositions.cache.get({ user: { discord_id: permissible.id }, ...positionSelector })
         
         return (userPositions.length > 0 && this.hasRequiredPositionRoles(permissible, positionResolvable));
 
@@ -116,7 +111,7 @@ class ScrimsPermissionsClient {
 
         // If the user has the required discord roles for the position
         const requiredRoles = this.getPositionRequiredRoles(permissible.guild.id, positionResolvable) 
-        if (requiredRoles.length === 0) return allowNone;
+        if (requiredRoles.length === 0 && !allowNone) return false;
 
         return (requiredRoles.some(roleId => permissible?.roles?.cache?.has(roleId)));
 

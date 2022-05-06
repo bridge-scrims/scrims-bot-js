@@ -3,6 +3,16 @@ const DBTable = require("../postgresql/table");
 
 class ScrimsTicketStatusCache extends DBCache {
 
+    /** 
+     * @param { Object.<string, any> } filter
+     * @param { Boolean } invert
+     * @returns { ScrimsTicketStatus[] }
+     */
+    get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
 
 }
 

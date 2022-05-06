@@ -3,6 +3,17 @@ const DBTable = require("../postgresql/table");
 
 class ScrimsPositionCache extends DBCache {
 
+    /** 
+     * @param { Object.<string, any> } filter
+     * @param { Boolean } invert
+     * @returns { ScrimsPosition[] }
+     */
+    get(filter, invert) {
+
+        return super.get(filter, invert);
+
+    }
+
 }
 
 class ScrimsPositionTable extends DBTable {

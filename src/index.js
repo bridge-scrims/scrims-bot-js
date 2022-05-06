@@ -6,9 +6,11 @@ const setupLog = require("./logging.js");
 
 function terminate(bot) {
 
-    console.log('shutdown signal received');
+    console.log('SIGTERM signal received.');
     
+    console.log('Closing Discord connection.');
     bot.destroy();
+    console.log('Discord connection closed.');
 
     console.log('------- Log End -------');
     process.exit(0);
@@ -17,7 +19,6 @@ function terminate(bot) {
 
 async function main() {
 
-    // Will also effect the normal console output, so this should not be used during development.
     await setupLog()
 
     const bot = new ScrimsJSBot(Config)

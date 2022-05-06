@@ -71,46 +71,6 @@ CREATE TABLE scrims_ticket (
     channel_id text NOT NULL,
     created_at bigint NOT NULL,
 
-<<<<<<< HEAD
-    id_closer uuid NULL,
-
-    FOREIGN KEY (id_user) REFERENCES scrims_user(id_user),
-    FOREIGN KEY (id_type) REFERENCES scrims_ticket_type(id_type),
-    FOREIGN KEY (id_status) REFERENCES scrims_ticket_status(id_status),
-    FOREIGN KEY (id_closer) REFERENCES scrims_user(id_user)
-
-);
-
-CREATE SEQUENCE support_ticket_index;
-
-CREATE OR REPLACE FUNCTION is_expired( expires_at bigint ) 
-RETURNS boolean
-AS $$ BEGIN
-
-RETURN (select extract(epoch from current_timestamp)) >= expires_at;
-
-END $$ 
-LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION remove_expired_tickets() 
-RETURNS VOID
-AS $$ 
-declare
-    expired_ticket scrims_ticket[];
-BEGIN
-
-FOR expired_ticket IN
-    SELECT * FROM scrims_ticket WHERE is_expired(scrims_ticket.created_at+2629800)
-LOOP
-    DELETE FROM scrims_ticket_message_attachment WHERE id_ticket=expired_ticket.id_ticket;
-    DELETE FROM scrims_ticket_message WHERE id_ticket=expired_ticket.id_ticket;
-    DELETE FROM scrims_ticket WHERE id_ticket=expired_ticket.id_ticket;
-END LOOP;
-
-END $$
-LANGUAGE plpgsql;
-
-=======
     FOREIGN KEY(id_user) REFERENCES scrims_user(id_user),
     FOREIGN KEY(id_type) REFERENCES scrims_ticket_type(id_type),
     FOREIGN KEY(id_status) REFERENCES scrims_ticket_status(id_status),
@@ -118,7 +78,6 @@ LANGUAGE plpgsql;
 
 );
 
->>>>>>> main
 CREATE OR REPLACE FUNCTION get_ticket_id (
 
     id_ticket int default null,
@@ -127,8 +86,7 @@ CREATE OR REPLACE FUNCTION get_ticket_id (
     id_status int default NULL,
     id_guild int default null,
     channel_id text default null,
-    created_at bigint default null,
-    id_closer uuid default null
+    created_at bigint default null
 
 ) 
 RETURNS int 
@@ -145,14 +103,8 @@ EXECUTE '
     ($4 is null or scrims_ticket.id_guild = $4) AND
     ($5 is null or scrims_ticket.created_at = $5) AND 
     ($6 is null or scrims_ticket.id_type = $6) AND
-<<<<<<< HEAD
-    ($7 is null or scrims_ticket.id_status = $7) AND
-    ($8 is null or scrims_ticket.id_closer = $8)
-' USING id_ticket, id_user, channel_id, guild_id, created_at, id_type, id_status, id_closer
-=======
     ($7 is null or scrims_ticket.id_status = $7)
 ' USING id_ticket, id_user, channel_id, id_guild, created_at, id_type, id_status
->>>>>>> main
 INTO retval;
 RETURN retval;
 END $$ 
@@ -168,8 +120,7 @@ CREATE OR REPLACE FUNCTION get_tickets (
     id_status int default NULL,
     id_guild int default null,
     channel_id text default null,
-    created_at bigint default null,
-    id_closer uuid default null
+    created_at bigint default null
 
 ) 
 returns json
@@ -196,10 +147,7 @@ EXECUTE '
             ''guild'', to_json(scrims_guild),
 
             ''channel_id'', scrims_ticket.channel_id,
-            ''created_at'', scrims_ticket.created_at,
-
-            ''id_closer'', scrims_ticket.id_closer,
-            ''closer'', to_json(closer_user)
+            ''created_at'', scrims_ticket.created_at
         )
     )
     FROM 
@@ -207,12 +155,7 @@ EXECUTE '
     LEFT JOIN LATERAL (SELECT * FROM scrims_ticket_type WHERE scrims_ticket_type.id_type = scrims_ticket.id_type LIMIT 1) scrims_ticket_type ON true
     LEFT JOIN LATERAL (SELECT * FROM scrims_user WHERE scrims_user.id_user = scrims_ticket.id_user LIMIT 1) scrims_user ON true
     LEFT JOIN LATERAL (SELECT * FROM scrims_ticket_status WHERE scrims_ticket_status.id_status = scrims_ticket.id_status LIMIT 1) scrims_ticket_status ON true 
-<<<<<<< HEAD
-    LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.guild_id = scrims_ticket.guild_id LIMIT 1) scrims_guild ON true
-    LEFT JOIN LATERAL (SELECT * FROM scrims_user WHERE scrims_user.id_user = scrims_ticket.id_closer LIMIT 1) closer_user ON true
-=======
     LEFT JOIN LATERAL (SELECT * FROM scrims_guild WHERE scrims_guild.id_guild = scrims_ticket.id_guild LIMIT 1) scrims_guild ON true
->>>>>>> main
     WHERE 
     ($1 is null or scrims_ticket.id_ticket = $1) AND
     ($2 is null or scrims_ticket.id_user = $2) AND
@@ -220,14 +163,8 @@ EXECUTE '
     ($4 is null or scrims_ticket.id_guild = $4) AND
     ($5 is null or scrims_ticket.created_at = $5) AND
     ($6 is null or scrims_ticket.id_type = $6) AND
-<<<<<<< HEAD
-    ($7 is null or scrims_ticket.id_status = $7) AND
-    ($8 is null or scrims_ticket.id_closer = $8)
-' USING id_ticket, id_user, channel_id, guild_id, created_at, id_type, id_status, id_closer
-=======
     ($7 is null or scrims_ticket.id_status = $7)
 ' USING id_ticket, id_user, channel_id, id_guild, created_at, id_type, id_status
->>>>>>> main
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 

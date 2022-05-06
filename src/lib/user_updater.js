@@ -64,11 +64,10 @@ class ScrimsUserUpdater {
         if (guild instanceof OAuth2Guild) guild = await guild.fetch()
 
         const members = await guild.members.fetch()
-        const scrimsUsers = await this.bot.database.users.getMap({}, ["discord_id"], false)
+        const scrimsUsers = this.bot.database.users.cache.getMap("discord_id")
         await Promise.all(members.map(member => this.createMember(member, scrimsUsers)))
 
-        const allScrimsUsers = await this.bot.database.users.getMap({}, ["discord_id"], false)
-        Promise.all(members.map(member => this.updateMember(member, allScrimsUsers))).catch(console.error)
+        Promise.all(members.map(member => this.updateMember(member, scrimsUsers))).catch(console.error)
 
     }
 
