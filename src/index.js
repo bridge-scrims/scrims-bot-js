@@ -18,7 +18,7 @@ function terminate(bot) {
 async function main() {
 
     // Will also effect the normal console output, so this should not be used during development.
-    await setupLog()
+    //await setupLog()
 
     const bot = new ScrimsJSBot(Config)
     await bot.login()

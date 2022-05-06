@@ -162,7 +162,7 @@ async function createTicket(interaction) {
 
     const mentionRoles = await getMentionRoles(interaction.guild)
 
-    const category = interaction.client.support.getTicketCategory(interaction.guild.id, interaction.ticketData.type)
+    const category = interaction.client.support.getTicketCategory(interaction.guild.id, interaction.ticketData.type.name)
     
     const ticketIndex = await interaction.client.database.query(`SELECT nextval('support_ticket_index');`)
         .then(result => result.rows[0]?.nextval ?? `${generateRandomLetter()}${generateRandomLetter()}`.toUpperCase())

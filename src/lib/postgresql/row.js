@@ -130,13 +130,19 @@ class TableRow {
      * @param { import('./table') } table 
      * @param { string } objKey
      * @param { Object.<string, any> } data
-     * @param { string[] } uniqueLocalKeys 
      * @param { string[] } uniqueForeignKeys 
      */
-    setObjectFromUniqueKeys(table, objKey, data, uniqueLocalKeys, uniqueForeignKeys) {
+    setObjectFromUniqueKeys(table, objKey, data, uniqueForeignKeys) {
+
+        if (uniqueForeignKeys.every(key => data[key] === null)) {
+
+            this[objKey] = null
+            return;
+            
+        }
 
         //Building a partial row to use as a filter below
-        const filter = table.getRow(Object.fromEntries(uniqueLocalKeys.map((local, idx) => [local, data[uniqueForeignKeys[idx]]])))
+        const filter = table.getRow(Object.fromEntries(uniqueForeignKeys.map(key => [key, data[key]])))
 
         if (this._handles) {
 
@@ -174,7 +180,7 @@ class TableRow {
 
                 //We have to find the object using unique keys
                 if (!this[objKey] || !uniqueLocalKeys.every(key => this[objKey][key] === data[key]))
-                    this.setObjectFromUniqueKeys(table, objKey, data, uniqueLocalKeys, uniqueForeignKeys)
+                    this.setObjectFromUniqueKeys(table, objKey, data, uniqueForeignKeys)
 
             }
 

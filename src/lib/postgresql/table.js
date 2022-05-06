@@ -207,12 +207,13 @@ class DBTable {
         const [ formated, values1 ] = this.format({ ...selectCondition })
         const query = (this.getFunction === null) ? this.createSelectQuery(formated, values1) : this.createFunctionSelectQuery(formated, values1)
         const result = await this.query( ...query )
-        
+
         const items = (this.getFunction === null) ? result.rows : result.rows[0][this.getFunction]
         const rows = this.getRows(items)
-        
+ 
         if (JSON.stringify(selectCondition) === "{}") this.cache.setAll(rows)
         else rows.forEach(row => this.cache.push(row))
+        
         return rows;
 
     }
