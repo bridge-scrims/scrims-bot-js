@@ -160,7 +160,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
     static ticketInfoMessage(member, mentionRoles, supportRole, ticketData) {
 
-        const test = (ticketData.reason === "hehehehehehehehehehehehehehehaw" && member.id === '445556389532925952') 
+        const test = (ticketData.reason === "testing the ticket system without pinging the bridge scrims support team") 
 
         const embed = new MessageEmbed()
             .setTitle('Ticket Creation')
