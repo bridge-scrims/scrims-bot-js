@@ -45,7 +45,7 @@ class ScrimsSyncHostFeature {
 
     async onGuildJoin(guild) {
 
-        if (guild.id === this.hostGuildId) await this.intitializeGuild(guild)
+        if (guild.id == this.hostGuildId) await this.intitializeGuild(guild)
 
     }
 

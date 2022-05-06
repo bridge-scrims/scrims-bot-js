@@ -2,7 +2,6 @@ const DBTable = require("../postgresql/table");
 const DBCache = require("../postgresql/cache");
 const ScrimsTicket = require("./ticket");
 const ScrimsUser = require("./user");
-const TableRow = require("../postgresql/row");
 
 class ScrimsTicketMessagesCache extends DBCache {
 
@@ -18,9 +17,7 @@ class ScrimsTicketMessagesTable extends DBTable {
             [ "author", "id_author", "get_user_id" ]
         ]
 
-        const uniqueKeys = [ 'id_ticket', 'message_id', 'created_at' ]
-
-        super(client, "scrims_ticket_message", "get_ticket_messages", foreigners, uniqueKeys, ScrimsTicketMessage, ScrimsTicketMessagesCache);
+        super(client, "scrims_ticket_message", "get_ticket_messages", foreigners, ScrimsTicketMessage, ScrimsTicketMessagesCache);
 
         /**
          * @type { ScrimsTicketMessagesCache }
@@ -62,24 +59,24 @@ class ScrimsTicketMessagesTable extends DBTable {
 
 }
 
-class ScrimsTicketMessage extends TableRow {
+class ScrimsTicketMessage extends DBTable.Row {
 
     /**
      * @type { ScrimsTicketMessagesTable }
      */
     static Table = ScrimsTicketMessagesTable
 
-    constructor(table, messageData) {
+    constructor(client, messageData) {
 
         const references = [
-            ['ticket', ['id_ticket'], ['id_ticket'], table.client.tickets], 
-            ['author', ['id_author'], ['id_user'], table.client.users]
+            ['ticket', ['id_ticket'], ['id_ticket'], client.tickets], 
+            ['author', ['id_author'], ['id_user'], client.users]
         ]
 
-        super(table, messageData, references)
+        super(client, messageData, references)
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_ticket
 
@@ -89,7 +86,7 @@ class ScrimsTicketMessage extends TableRow {
         this.ticket
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_author
 
@@ -145,6 +142,23 @@ class ScrimsTicketMessage extends TableRow {
 
         if (!this.channel || !this.message_id) return null;
         return this.channel.messages.resolve(this.message_id);
+
+    }
+
+    /**
+     * @override
+     * @param { Object.<string, any> } obj 
+     * @returns { Boolean }
+     */
+    equals(obj) {
+
+        if (obj instanceof ScrimsTicketMessage) {
+
+            return (obj.id_ticket === this.id_ticket && obj.message_id === this.message_id && obj.created_at === this.created_at);
+
+        }
+        
+        return this.valuesMatch(obj, this);
 
     }
 

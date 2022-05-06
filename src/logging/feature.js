@@ -56,21 +56,28 @@ class LoggingFeature {
 
         if (payload.guild_id) {
 
-            const guild = await this.database.guilds.get({ guild_id: payload.guild_id }).then(results => results[0])
+            const guild = await this.database.guilds.get({ discord_id: payload.guild_id }).then(results => results[0])
             if (guild) return { text: guild.name, iconURL: guild.iconURL() };
 
         }
 
-        if (payload.suggestion?.guild_id) {
+        if (payload.id_guild) {
 
-            const guild = await this.database.guilds.get({ guild_id: payload.suggestion.guild_id }).then(results => results[0])
+            const guild = await this.database.guilds.get({ id_guild: payload.id_guild }).then(results => results[0])
             if (guild) return { text: guild.name, iconURL: guild.iconURL() };
 
         }
 
-        if (payload.positionRole?.guild_id) {
+        if (payload.suggestion?.id_guild) {
 
-            const guild = await this.database.guilds.get({ guild_id: payload.positionRole.guild_id }).then(results => results[0])
+            const guild = await this.database.guilds.get({ id_guild: payload.suggestion.id_guild }).then(results => results[0])
+            if (guild) return { text: guild.name, iconURL: guild.iconURL() };
+
+        }
+
+        if (payload.positionRole?.id_guild) {
+
+            const guild = await this.database.guilds.get({ id_guild: payload.positionRole.id_guild }).then(results => results[0])
             if (guild) return { text: guild.name, iconURL: guild.iconURL() };
 
         }
@@ -108,8 +115,13 @@ class LoggingFeature {
      */
     async getChannels(configKey, guilds) {
 
+<<<<<<< HEAD
         const configured = this.database.guildEntrys.cache.find({ type: { name: configKey } })
             .filter(config => config.discordGuild && config.value && (!guilds || guilds.includes(config.guild_id)))
+=======
+        const configured = this.database.guildEntrys.cache.get({ type: { name: configKey } })
+            .filter(config => config.discordGuild && config.value && (!guilds || guilds.includes(config.discordGuild.id)))
+>>>>>>> main
         
         return Promise.all(configured.map(config => config.discordGuild.channels.fetch(config.value).catch(() => null)))
             .then(channels => channels.filter(channel => channel && channel.type === "GUILD_TEXT"));
@@ -133,7 +145,7 @@ class LoggingFeature {
 
         if (payload.suggestion && payload.suggestion?.creator && payload.suggestion?.created_at) {
 
-            const creator = new ScrimsUser(this.database.users, payload.suggestion.creator)
+            const creator = new ScrimsUser(this.database, payload.suggestion.creator)
             const suggestionInfo = `**Created by ${creator.getMention()} on <t:${payload.suggestion.created_at}:F>**`
             const suggestionText = payload.suggestion?.suggestion?.substring(0, 1024 - suggestionInfo.length - 25) ?? `Unknown Suggestion.`
 
@@ -176,14 +188,14 @@ class LoggingFeature {
 
         const executorIsCreator = (payload?.executor_id === payload?.suggestion?.creator?.discord_id)
         const msg = (executorIsCreator ? `Removed their own suggestion.` : `Removed a suggestion.`)
-        return this.sendLogMessages({ msg, ...payload }, "suggestions_log_channel", "Suggestions Remove", '#fc2344', [payload?.suggestion?.guild_id]);
+        return this.sendLogMessages({ msg, ...payload }, "suggestions_log_channel", "Suggestions Remove", '#fc2344', [payload?.suggestion?.guild?.discord_id]);
 
     }
 
     async onSuggestionCreate(suggestion) {
 
         const payload = { msg: "Created a suggestion.", executor_id: suggestion?.creator?.discord_id, suggestion }
-        return this.sendLogMessages(payload, "suggestions_log_channel", "Suggestions Create", '#23cf6e', [suggestion?.guild_id]);
+        return this.sendLogMessages(payload, "suggestions_log_channel", "Suggestions Create", '#23cf6e', [suggestion?.guild?.discord_id]);
         
     }
 
@@ -201,7 +213,7 @@ class LoggingFeature {
 
     async onTicketCreate(ticketData) {
 
-        const ticket = new ScrimsTicket(this.database.tickets, ticketData)
+        const ticket = new ScrimsTicket(this.database, ticketData)
         const payload = { 
             msg: `Created a ${ticket.type.name} ticket at ${ticket.channel ?? `**${ticket.channel_id}**`} with an id of \`${ticket.id_ticket}\`.`,
             guild_id: ticket.guild_id, id_executor: ticket.id_user 
@@ -212,7 +224,7 @@ class LoggingFeature {
     
     async onTicketClose(payload) {
 
-        const creator = new ScrimsUser(this.database.users, payload?.ticket?.user)
+        const creator = new ScrimsUser(this.database, payload?.ticket?.user)
         const msg = `Closed a ${payload?.ticket?.type?.name} ticket from ${creator?.getMention('**') ?? 'an **unknown user**'} with an id of \`${payload?.ticket?.id_ticket}\`.`
         return this.sendLogMessages({ msg, mentions: [creator?.discordUser], ...payload }, "tickets_log_channel", "Ticket Closed", '#CF1117', [payload.guild_id]);
 

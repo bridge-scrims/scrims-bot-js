@@ -1,5 +1,4 @@
 const DBCache = require("../postgresql/cache");
-const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
 class ScrimsTicketTypeCache extends DBCache {
@@ -10,7 +9,7 @@ class ScrimsTicketTypeTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_ticket_type", null, [], ['id_type'], ScrimsTicketType, ScrimsTicketTypeCache);
+        super(client, "scrims_ticket_type", null, [], ScrimsTicketType, ScrimsTicketTypeCache);
 
         /**
          * @type { ScrimsTicketTypeCache }
@@ -52,7 +51,7 @@ class ScrimsTicketTypeTable extends DBTable {
 
 }
 
-class ScrimsTicketType extends TableRow {
+class ScrimsTicketType extends DBTable.Row {
 
     /**
      * @type { ScrimsTicketTypeTable }
@@ -64,7 +63,7 @@ class ScrimsTicketType extends TableRow {
         super(client, typeData, []);
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_type
 

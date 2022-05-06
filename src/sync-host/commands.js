@@ -101,12 +101,11 @@ async function onCreatePositionCommand(interaction) {
 
     if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
-    const id_position = interaction.client.database.generateUUID()
-    const name = interaction.options.getString("name") ?? 'unnamed_position'
+    const name = interaction.options.getString("name") ?? 'unamed_position'
     const sticky = interaction.options.getBoolean("sticky") ?? false
     const level = interaction.options.getInteger("level") ?? null
 
-    const position = await interaction.client.database.positions.create({ id_position, name, sticky, level })
+    const position = await interaction.client.database.positions.create({ name, sticky, level })
     if (!position) return interaction.reply(ScrimsMessageBuilder.failedMessage(`create this position`));
 
     interaction.client.database.ipc.send('audited_position_create', { position, id_executor: interaction.scrimsUser.id_user })
@@ -130,8 +129,13 @@ async function onRemovePositionCommand(interaction) {
 
     if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
+<<<<<<< HEAD
     const positionId = interaction.options.getString("position")
     const position = interaction.client.database.positions.cache.get(positionId)
+=======
+    const positionId = interaction.options.getInteger("position")
+    const position = interaction.client.database.positions.cache.get({ id_position: positionId })[0]
+>>>>>>> main
     if (!position) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
 
     const result = await interaction.client.database.positions.remove({ id_position: position.id_position }).catch(error => error)

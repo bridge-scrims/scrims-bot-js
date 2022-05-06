@@ -1,10 +1,10 @@
 
 CREATE TABLE scrims_user_position (
 
-    id_user uuid NOT NULL,
-    id_position uuid NOT NULL,
+    id_user INT NOT NULL,
+    id_position INT NOT NULL,
 
-    id_executor uuid NULL,
+    id_executor INT NULL,
     given_at BIGINT NOT NULL,
     expires_at BIGINT NULL,
 
@@ -35,9 +35,9 @@ END $$
 LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_user_positions(
-    id_user uuid default null,
-    id_position uuid default null,
-    id_executor uuid default null,
+    id_user int default null,
+    id_position int default null,
+    id_executor int default null,
     given_at bigint default null,
     expires_at bigint default null,
     show_expired boolean default false

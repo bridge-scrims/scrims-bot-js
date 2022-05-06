@@ -77,9 +77,13 @@ class ScrimsBot extends Client {
         
     }
 
-    getConfig(guild_id, key) {
+    getConfig(guildId, key) {
 
+<<<<<<< HEAD
         return this.database.guildEntrys.cache.find({ guild_id, type: { name: key } })[0]?.value;
+=======
+        return this.database.guildEntrys.cache.get({ guild: { discord_id: guildId }, type: { name: key } })[0]?.value;
+>>>>>>> main
 
     }
 
@@ -100,7 +104,7 @@ class ScrimsBot extends Client {
         await super.login(this.token);
         console.log("Connected to discord!")
 
-        this.user.setPresence({ activities: [{ type: 'LISTENING', name: 'why cats are best' }] })
+        this.user.setPresence({ activities: [{ type: 'WATCHING', name: 'cat memes' }] })
 
         const guilds = await this.guilds.fetch()
         
@@ -180,9 +184,6 @@ class ScrimsBot extends Client {
             if (interactEvent instanceof Interaction || interactEvent instanceof discordModals.ModalSubmitInteraction) {
                 
                 if (!(interactEvent instanceof Interaction && interactEvent.isAutocomplete())) {
-
-                    if (interactEvent instanceof discordModals.ModalSubmitInteraction)
-                        if (!interactEvent.replied && !interactEvent.deferred) await interactEvent.deferReply({ ephemeral: true })
 
                     const payload = this.getErrorPayload(error)
 
@@ -340,12 +341,16 @@ class ScrimsBot extends Client {
 
     async updateScrimsGuild(oldGuild, newGuild) {
 
+<<<<<<< HEAD
         const existing = this.database.guilds.cache.get(newGuild.id)
+=======
+        const existing = this.database.guilds.cache.get({ discord_id: newGuild.id })[0]
+>>>>>>> main
         if (!existing) {
 
             return this.database.guilds.create({
 
-                guild_id: newGuild.id,
+                discord_id: newGuild.id,
                 name: newGuild.name,
                 icon: (newGuild?.icon ?? null)
 
@@ -355,7 +360,7 @@ class ScrimsBot extends Client {
 
         if (existing?.name != newGuild.name || existing?.icon != newGuild.icon) {
 
-            await this.database.guilds.update({ guild_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
+            await this.database.guilds.update({ discord_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
                 .catch(error => console.error(`Unable to update scrims guild because of ${error}!`))
 
         }

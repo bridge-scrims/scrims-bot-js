@@ -1,9 +1,12 @@
 const Pool = require('pg-pool');
 const pgIPC = require('pg-ipc');
 
+<<<<<<< HEAD
 const { v4: uuidv4 } = require("uuid");
 
 const ScrimsTicketMessageAttachment = require("../scrims/ticket_message_attachment");
+=======
+>>>>>>> main
 const ScrimsGuildEntryType = require("../scrims/guild_entry_type");
 const ScrimsTicketMessage = require("../scrims/ticket_message");
 const ScrimsUserPosition = require("../scrims/user_position");
@@ -131,12 +134,6 @@ class DBClient {
         this.addTable("tickets", new ScrimsTicket.Table(this))
         this.addTable("ticketMessages", new ScrimsTicketMessage.Table(this))
         this.addTable("ticketMessageAttachments", new ScrimsTicketMessageAttachment.Table(this))
-
-    }
-
-    generateUUID() {
-
-        return uuidv4();
 
     }
 

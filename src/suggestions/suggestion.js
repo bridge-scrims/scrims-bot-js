@@ -5,7 +5,6 @@ const { Message } = require("discord.js");
 const ScrimsAttachment = require("../lib/scrims/attachment");
 const ScrimsGuild = require("../lib/scrims/guild");
 const ScrimsUser = require("../lib/scrims/user");
-const TableRow = require("../lib/postgresql/row");
 
 class SuggestionsTableCache extends DBCache {
 
@@ -26,10 +25,14 @@ class ScrimsSuggestionsTable extends DBTable {
 
         const foreigners = [
             [ "creator", "id_creator", "get_user_id" ],
+<<<<<<< HEAD
             [ "attachment", "attachment_id", "get_attachment_id" ]
+=======
+            [ "guild", "id_guild", "get_guild_id" ]
+>>>>>>> main
         ]
 
-        super(client, "scrims_suggestion", "get_suggestions", foreigners, ['id_suggestion'], ScrimsSuggestion, SuggestionsTableCache);
+        super(client, "scrims_suggestion", "get_suggestions", foreigners, ScrimsSuggestion, SuggestionsTableCache);
 
         /**
          * @type { SuggestionsTableCache }
@@ -82,32 +85,37 @@ class ScrimsSuggestionsTable extends DBTable {
     
 }
 
-class ScrimsSuggestion extends TableRow {
+class ScrimsSuggestion extends DBTable.Row {
 
     /**
      * @type { ScrimsSuggestionsTable }
      */
     static Table = ScrimsSuggestionsTable
 
-    constructor(table, suggestionData) {
+    constructor(client, suggestionData) {
 
         const references = [
+<<<<<<< HEAD
             ['guild', ['guild_id'], ['guild_id'], table.client.guilds],
             ['creator', ['id_creator'], ['id_user'], table.client.users],
             ["attachment", ["attachment_id"], ["attachment_id"], table.client.attachments]
+=======
+            ['guild', ['id_guild'], ['id_guild'], client.guilds],
+            ['creator', ['id_creator'], ['id_user'], client.users]
+>>>>>>> main
         ]
 
-        super(table, suggestionData, references)
+        super(client, suggestionData, references)
 
         /**
-         * @type { string } 
+         * @type { number } 
          */
         this.id_suggestion
         
         /**
-         * @type { string }
+         * @type { number }
          */
-        this.guild_id
+        this.id_guild
 
         /**
          * @type { ScrimsGuild }
@@ -135,7 +143,7 @@ class ScrimsSuggestion extends TableRow {
         this.created_at
 
         /**
-         * @type { string } 
+         * @type { number } 
          */
         this.id_creator
 
@@ -171,6 +179,13 @@ class ScrimsSuggestion extends TableRow {
 
         if (!this.guild) return null;
         return this.guild.discordGuild;
+
+    }
+
+    get guild_id() {
+
+        if (!this.guild) return null;
+        return this.guild.discord_id;
 
     }
 

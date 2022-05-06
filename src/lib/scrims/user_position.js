@@ -1,5 +1,4 @@
 const DBCache = require("../postgresql/cache");
-const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 const ScrimsPosition = require("./position");
 const ScrimsUser = require("./user");
@@ -34,9 +33,7 @@ class ScrimsUserPositionsTable extends DBTable {
             [ "position", "id_position", "get_position_id" ] 
         ]
 
-        const uniqueKeys = [ 'id_user', 'id_position' ]
-
-        super(client, "scrims_user_position", "get_user_positions", foreigners, uniqueKeys, ScrimsUserPosition, ScrimsUserPositionCache);
+        super(client, "scrims_user_position", "get_user_positions", foreigners, ScrimsUserPosition, ScrimsUserPositionCache);
         
         /**
          * @type { ScrimsUserPositionCache }
@@ -96,25 +93,25 @@ class ScrimsUserPositionsTable extends DBTable {
 
 }
 
-class ScrimsUserPosition extends TableRow {
+class ScrimsUserPosition extends DBTable.Row {
 
     /**
      * @type { ScrimsUserPositionsTable }
      */
     static Table = ScrimsUserPositionsTable
 
-    constructor(table, userPositionData) {
+    constructor(client, userPositionData) {
 
         const references = [
-            ['user', ['id_user'], ['id_user'], table.client.users],
-            ['position', ['id_position'], ['id_position'], table.client.positions],
-            ['executor', ['id_executor'], ['id_user'], table.client.users]
+            ['user', ['id_user'], ['id_user'], client.users],
+            ['position', ['id_position'], ['id_position'], client.positions],
+            ['executor', ['id_executor'], ['id_user'], client.users]
         ]
 
-        super(table, userPositionData, references)
+        super(client, userPositionData, references)
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_user
         
@@ -124,7 +121,7 @@ class ScrimsUserPosition extends TableRow {
         this.user
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_position
 
@@ -134,7 +131,7 @@ class ScrimsUserPosition extends TableRow {
         this.position
         
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_executor
 
@@ -165,6 +162,23 @@ class ScrimsUserPosition extends TableRow {
 
         return (this.expires_at === null) ? `\`permanently\`` 
             : ((!this.expires_at) ? '\`for an unknown time period\`' : `until <t:${this.expires_at}:F>`);
+
+    }
+
+    /**
+     * @override
+     * @param { Object.<string, any> } obj 
+     * @returns { Boolean }
+     */
+    equals(obj) {
+
+        if (obj instanceof ScrimsUserPosition) {
+
+            return (obj.id_user === this.id_user && obj.id_position === this.id_position);
+
+        }
+        
+        return this.valuesMatch(obj, this);
 
     }
 

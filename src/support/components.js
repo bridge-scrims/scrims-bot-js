@@ -1,26 +1,15 @@
-const { MessageEmbed, GuildMember, MessageActionRow, Guild } = require("discord.js");
-const MemoryMessageButton = require('../lib/memory_button');
-const ScrimsTicket = require('../lib/scrims/ticket');
-const SupportResponseMessageBuilder = require('./responses');
+const { Modal, TextInputComponent, showModal } = require('discord-modals');
+const { MessageEmbed } = require("discord.js");
+const ScrimsMessageBuilder = require('../lib/responses');
 
-const componentHandlers = {
 
-    "ticketModalSubmit": onTicketModalSubmit,
-    "ticketCreate": onTicketCreateRequest,
-    "ticketClose": onTicketCloseRequest, 
-    "sendTicket": onTicketSendRequest 
-
-}
-
-/**
- * @param { import('../types').ScrimsComponentInteraction | import('../types').ScrimsModalSubmitInteraction } interaction 
- */
+const componentHandlers = { "support": onSupportComponent, "report": onReportComponent, "TicketCloseRequest": onCloseRequest }
 async function onComponent(interaction) {
 
-    const handler = componentHandlers[interaction.args.shift()]
+    const handler = componentHandlers[interaction.commandName]
     if (handler) {
 
-        if (!interaction.guild) return interaction.reply(SupportResponseMessageBuilder.guildOnlyMessage());
+        if (!interaction.guild) return interaction.reply(ScrimsMessageBuilder.guildOnlyMessage());
 
         return handler(interaction);
 
@@ -28,42 +17,45 @@ async function onComponent(interaction) {
 
 }
 
-/**
- * @param { import('../types').ScrimsModalSubmitInteraction } interaction 
- */
-function getTicketTypeFromId(interaction) {
+async function onSupportComponent(interaction) {
 
-    const id_type = interaction.args.shift()
-    if (!id_type) return null;
+    const allowed = await interaction.client.support.verifyTicketRequest(interaction, "support")
+    if (!allowed) return false;
 
+<<<<<<< HEAD
     return interaction.client.database.ticketTypes.cache.get(id_type);
+=======
+    await createModal(interaction, "support")
+>>>>>>> main
 
 }
 
-/**
- * @param { import('../types').ScrimsModalSubmitInteraction } interaction 
- */
-async function onTicketModalSubmit(interaction) {
+async function onReportComponent(interaction) {
 
-    const ticketData = {}
+    const allowed = await interaction.client.support.verifyTicketRequest(interaction, "report")
+    if (!allowed) return false;
 
-    ticketData.type = getTicketTypeFromId(interaction)
-    if (!ticketData.type) return interaction.reply(SupportResponseMessageBuilder.failedMessage('create a support ticket'));
+    await createModal(interaction, "report")
 
-    const inputValue = interaction.getTextInputValue('request-reason')
-    if (typeof inputValue !== 'string') return interaction.reply(SupportResponseMessageBuilder.errorMessage('Invalid Reason', "You reason must contain at least 15 letters to be valid."));
-    
-    ticketData.reason = SupportResponseMessageBuilder.stripText(inputValue)
+}
 
-    ticketData.targets = await SupportResponseMessageBuilder.parseDiscordUsers(interaction.guild, interaction.getTextInputValue('targets'))
+async function createModal(interaction, typeName) {
 
-    const actions = new MessageActionRow()
+    const modal = new Modal()
+        .setCustomId(`support-modal/${typeName}`)
+        .setTitle(`${typeName.charAt(0).toUpperCase() + typeName.slice(1)} Ticket`)
         .addComponents(
-            new MemoryMessageButton(interaction.client, ticketData).setCustomId('support/sendTicket/CREATE').setLabel('Create').setStyle('SUCCESS'),
-            new MemoryMessageButton(interaction.client, ticketData).setCustomId('support/sendTicket/REOPEN').setLabel('Edit').setStyle('PRIMARY'),
-            SupportResponseMessageBuilder.cancelButton()
+            new TextInputComponent()
+                .setCustomId('request-reason')
+                .setLabel('Reason for opening a ticket')
+                .setStyle('LONG')
+                .setMinLength(5)
+                .setMaxLength(1000)
+                .setPlaceholder('Write here')
+                .setRequired(true)
         )
 
+<<<<<<< HEAD
     const payload = { 
         ...(await interaction.client.support.getTicketInfoPayload(interaction.member, [], { ...ticketData })), content: `**This is just a preview of what the support team will see.**`, 
         components: [ actions ], ephemeral: true 
@@ -92,78 +84,23 @@ function getTicketTypeFromName(interaction) {
     if (!ticketTypeName) return null;
 
     return interaction.client.database.ticketTypes.cache.find({ name: ticketTypeName })[0] ?? null;
+=======
+    return showModal(modal, { client: interaction.client, interaction });
+>>>>>>> main
 
 }
 
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- */
-async function onTicketCreateRequest(interaction) {
 
-    const ticketType = getTicketTypeFromName(interaction)
-    if (!ticketType) return interaction.reply(SupportResponseMessageBuilder.failedMessage('create a support ticket'));
 
-    const allowed = await interaction.client.support.verifyTicketRequest(interaction, ticketType.name)
-    if (allowed !== true) return interaction.reply(allowed);
+const closeRequestHandlers = { "ACCEPT": onAccept, "DENY": onDeny }
+async function onCloseRequest(interaction) {
 
-    await interaction.sendModal(SupportResponseMessageBuilder.ticketCreateModal(ticketType, false))
-
-}
-
-const ticketSendRequestHandlers = { "CREATE": createTicket, "REOPEN": reopenModal }
-
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- */
-async function onTicketSendRequest(interaction) {
-
-    const handler = ticketSendRequestHandlers[interaction.args.shift()];
+    const handler = closeRequestHandlers[interaction.args.shift()];
     if (!handler) return interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
 
-    if (!interaction.memoryData) return interaction.update({ content: `This message can not be served.`, embeds: [], components: [] });
-    interaction.ticketData = interaction.memoryData
-
-    const allowed = await interaction.client.support.verifyTicketRequest(interaction, interaction.ticketData.type.name)
-    if (allowed !== true) return interaction.update(allowed);
-
-    return handler(interaction);
-
-}
-
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- */
-async function reopenModal(interaction) {
-
-    const fields = []
-    if (interaction.ticketData?.reason) fields.push({ customId: 'request-reason', value: interaction.ticketData.reason })
-    if (interaction.ticketData?.targets) 
-        fields.push({ customId: 'targets', value: interaction.ticketData.targets.map(value => (value instanceof GuildMember) ? value.user.tag : value.slice(2, -2)).join(' ').split('').slice(0, 100).join('') })
-
-    return interaction.sendModal(SupportResponseMessageBuilder.ticketCreateModal(interaction.ticketData.type, true), fields);
-
-} 
-
-function generateRandomLetter() {
-
-    const alphabet = "abcdefghijklmnopqrstuvwxyz"
-    return alphabet[Math.floor(Math.random() * alphabet.length)];
-
-}
-
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- */
-async function createTicket(interaction) {
-
-    if (!interaction.scrimsUser) return interaction.reply(SupportResponseMessageBuilder.scrimsUserNeededMessage());
-
-    await interaction.update({ content: `Ticket is being created...`, components: [], embeds: [] });
-
-    const mentionRoles = await getMentionRoles(interaction.guild)
-
-    const category = interaction.client.support.getTicketCategory(interaction.guild.id, interaction.ticketData.type)
+    interaction.ticket = interaction.client.database.tickets.cache.get({ id_ticket: interaction.args.shift() })[0]
     
+<<<<<<< HEAD
     const ticketIndex = await interaction.client.database.query(`SELECT nextval('support_ticket_index');`)
         .then(result => result.rows[0]?.nextval ?? `${generateRandomLetter()}${generateRandomLetter()}`.toUpperCase())
 
@@ -286,71 +223,75 @@ async function onTicketCloseRequest(interaction) {
     const handler = closeRequestHandlers[interaction.args.shift()];
     if (!handler) return interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
     
+=======
+    // The ticket no longer exists :/
+    if (!interaction.ticket) return interaction.message.delete().catch(() => { /* Message could already be deleted */ }) 
+
+>>>>>>> main
     await interaction.deferReply({ ephemeral: true }); // Inform the user that the bot needs to do some thinking
-    return handler(interaction, interaction.ticket);
+    return handler(interaction);
 
 }
 
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- * @param { ScrimsTicket } ticket
- */
-async function onDeny(interaction, ticket) {
+async function onDeny(interaction) {
 
-    const ticketCreatorId = ticket.user.discord_id;
-    if (ticketCreatorId !== interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticket.user));
+    const ticketCreatorId = interaction.ticket.user.discord_id;
+    if (ticketCreatorId != interaction.userId)
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, await interaction.member.hasPermission("staff")));
 
     const transcriber = interaction.client.support.transcriber;
     const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "denied the close request" }
-    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
+    await transcriber.transcribe(interaction.ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
 
     await interaction.editReply("Close request denied.");
-    await interaction.message.edit(SupportResponseMessageBuilder.errorMessage(`Close Request Denied`, `${interaction.user} has denied the close request.`));
+    await interaction.message.edit(getRequestDeniedPayload(interaction.user));
 
 }
 
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- * @param { ScrimsTicket } ticket
- */
-async function onAccept(interaction, ticket) {
+async function onAccept(interaction) {
 
-    const ticketCreatorId = ticket.user.discord_id;
-    if (ticketCreatorId !== interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticket.user));
+    const ticketCreatorId = interaction.ticket.user.discord_id;
+    if (ticketCreatorId != interaction.userId)
+        return interaction.editReply(getNotAllowedPayload(ticketCreatorId, await interaction.member.hasPermission("staff")));
 
     const transcriber = interaction.client.support.transcriber;
     const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "accepted the close request" }
-    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
+    await transcriber.transcribe(interaction.ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
     
     await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.user)
 
 }
 
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- * @param { ScrimsTicket } ticket
- */
- async function onForce(interaction, ticket) {
+function getNotAllowedPayload(ticketCreatorId, isStaffMember) {
 
-    const hasPermission = await interaction.member.hasPermission('support')
-    if (!hasPermission) return interaction.editReply(SupportResponseMessageBuilder.missingPermissionsMessage('You must be bridge scrims support or higher to do this.'))
+    const embed = new MessageEmbed()
+        .setColor("#2F3136")
+        .setTitle(`Error`)
+        .setDescription(
+            `Only <@${ticketCreatorId}> can close this ticket.` 
+            + (isStaffMember ? ` Since you are part of the staff team you could force close this ticket with the **/forceclose** command.` : ``)
+        ).setTimestamp();
 
-    const transcriber = interaction.client.support.transcriber;
-    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "forcibly closed this request" }
-    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
-    
-    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.user)
+    return { embeds: [embed] };
 
 }
 
-function getNotAllowedPayload(ticketCreator) {
+function getRequestDeniedPayload(user) {
 
+<<<<<<< HEAD
     return SupportResponseMessageBuilder.missingPermissionsMessage(
         `Only ${ticketCreator?.getMention('**') ?? 'unknown-user'} can make this decision.`
     );
+=======
+    const embed = new MessageEmbed()
+        .setColor("#ff2445")
+        .setTitle(`Close Request Denied`)
+        .setDescription(`${user} has denied the close request.`)
+        .setTimestamp();
+>>>>>>> main
 
+    return { content: null, embeds: [embed], components: [] };
+    
 }
 
 module.exports = onComponent;

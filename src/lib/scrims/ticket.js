@@ -5,8 +5,11 @@ const ScrimsUser = require("./user");
 
 const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
+<<<<<<< HEAD
 const TableRow = require("../postgresql/row");
 const { TextChannel } = require("discord.js");
+=======
+>>>>>>> main
 
 class ScrimsTicketCache extends DBCache {
 
@@ -24,7 +27,7 @@ class ScrimsTicketTable extends DBTable {
             [ "closer", "id_closer", "get_user_id" ]
         ]
 
-        super(client, "scrims_ticket", "get_tickets", foreigners, ['id_ticket'], ScrimsTicket, ScrimsTicketCache);
+        super(client, "scrims_ticket", "get_tickets", foreigners, ScrimsTicket, ScrimsTicketCache);
 
         /**
          * @type { ScrimsTicketCache }
@@ -66,32 +69,39 @@ class ScrimsTicketTable extends DBTable {
 
 }
 
-class ScrimsTicket extends TableRow {
+class ScrimsTicket extends DBTable.Row {
 
     /**
      * @type { ScrimsTicketTable }
      */
     static Table = ScrimsTicketTable
 
-    constructor(table, ticketData) {
+    constructor(client, ticketData) {
 
         const references = [
+<<<<<<< HEAD
             ['type', ['id_type'], ['id_type'], table.client.ticketTypes], 
             ['user', ['id_user'], ['id_user'], table.client.users],
             ['status', ['id_status'], ['id_status'], table.client.ticketStatuses],
             ['guild', ['guild_id'], ['guild_id'], table.client.guilds],
             ['closer', ['id_closer'], ['id_user'], table.client.users]
+=======
+            ['type', ['id_type'], ['id_type'], client.ticketTypes], 
+            ['user', ['id_user'], ['id_user'], client.users],
+            ['status', ['id_status'], ['id_status'], client.ticketStatuses],
+            ['guild', ['id_guild'], ['id_guild'], client.guilds]
+>>>>>>> main
         ]
 
-        super(table, ticketData, references)
+        super(client, ticketData, references)
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_ticket
         
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_type;
 
@@ -101,7 +111,7 @@ class ScrimsTicket extends TableRow {
         this.type
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_user
 
@@ -111,7 +121,7 @@ class ScrimsTicket extends TableRow {
         this.user
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_status
 
@@ -121,9 +131,9 @@ class ScrimsTicket extends TableRow {
         this.status
 
         /**
-         * @type { string }
+         * @type { number }
          */
-        this.guild_id
+        this.id_guild
 
         /**
          * @type { ScrimsGuild }
@@ -159,13 +169,40 @@ class ScrimsTicket extends TableRow {
 
     }
 
+<<<<<<< HEAD
     /**
      * @type { TextChannel }
      */
+=======
+    get guild_id() {
+
+        if (!this.guild) return null;
+        return this.guild.discord_id;
+
+    }
+
+>>>>>>> main
     get channel() {
 
         if (!this.channel_id) return null;
         return this.bot.channels.resolve(this.channel_id);
+
+    }
+
+    /**
+     * @override
+     * @param { Object.<string, any> } obj 
+     * @returns { Boolean }
+     */
+    equals(obj) {
+
+        if (obj instanceof ScrimsTicket) {
+
+            return (obj.id_ticket === this.id_ticket);
+
+        }
+        
+        return this.valuesMatch(obj, this);
 
     }
 

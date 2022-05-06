@@ -37,8 +37,13 @@ async function onGetSubcommand(interaction) {
 
 async function getPosition(interaction) {
 
+<<<<<<< HEAD
     const positionId = interaction.options.getString("position")
     const position = interaction.client.database.positions.cache.get(positionId)
+=======
+    const positionId = interaction.options.getInteger("position")
+    const position = interaction.client.database.positions.cache.get({ id_position: positionId })[0]
+>>>>>>> main
     if (!position) {
 
         return interaction.reply(
