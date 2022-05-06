@@ -79,7 +79,11 @@ class ScrimsBot extends Client {
 
     getConfig(guildId, key) {
 
+<<<<<<< HEAD
+        return this.database.guildEntrys.cache.find({ guild_id, type: { name: key } })[0]?.value;
+=======
         return this.database.guildEntrys.cache.get({ guild: { discord_id: guildId }, type: { name: key } })[0]?.value;
+>>>>>>> main
 
     }
 
@@ -314,7 +318,7 @@ class ScrimsBot extends Client {
 
         if (interactEvent instanceof Message || interactEvent instanceof MessageReaction) {
 
-            interactEvent.scrimsUser = this.database.users.cache.get({ discord_id: interactEvent?.user?.id })[0] ?? null;
+            interactEvent.scrimsUser = this.database.users.cache.find({ discord_id: interactEvent?.user?.id })[0] ?? null;
 
         }else if (interactEvent.user) await this.ensureScrimsUser(interactEvent)
 
@@ -337,7 +341,11 @@ class ScrimsBot extends Client {
 
     async updateScrimsGuild(oldGuild, newGuild) {
 
+<<<<<<< HEAD
+        const existing = this.database.guilds.cache.get(newGuild.id)
+=======
         const existing = this.database.guilds.cache.get({ discord_id: newGuild.id })[0]
+>>>>>>> main
         if (!existing) {
 
             return this.database.guilds.create({
@@ -350,7 +358,7 @@ class ScrimsBot extends Client {
 
         }
 
-        if (oldGuild?.name != newGuild.name || oldGuild?.icon != newGuild.icon) {
+        if (existing?.name != newGuild.name || existing?.icon != newGuild.icon) {
 
             await this.database.guilds.update({ discord_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
                 .catch(error => console.error(`Unable to update scrims guild because of ${error}!`))

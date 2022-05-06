@@ -39,10 +39,14 @@ async function getGuild(interaction) {
 
     const guildId = interaction?.options?.getString("guild") || interaction?.args?.shift() || interaction.guild.id
     
+<<<<<<< HEAD
+    const guild = interaction.client.database.guilds.cache.get(guild_id)
+=======
     const existing = interaction.client.database.guilds.cache.get({ id_guild: guildId })[0]
     if (existing) return guildId.id_guild;
 
     const guild = interaction.client.database.guilds.cache.get({ discord_id: guildId })[0]
+>>>>>>> main
     if (!guild) {
 
         return interaction.reply(
@@ -54,12 +58,9 @@ async function getGuild(interaction) {
     
 }
 
-function sortPositionRoles(interaction, positionRoles) {
+function sortPositionRoles(positionRoles) {
 
-    return positionRoles
-        .sort((a, b) => a.id_position - b.id_position)
-        .map(posRole => ({ ...posRole, role: interaction.guild.roles.resolve(posRole.role_id) }))
-        .filter(posRole => posRole.role);
+    return positionRoles.sort((a, b) => a.level - b.level);
 
 }
 
@@ -84,12 +85,20 @@ async function hasPositionPermissions(interaction, position, action) {
 
 async function onStatusSubcommand(interaction) {
 
+<<<<<<< HEAD
+    const guild_id = interaction.options.getString("guild") ?? interaction.guild.id
+
+    const positionRoles = interaction.client.database.positionRoles.cache.find({ guild_id })
+    const sortedPositionRoles = sortPositionRoles(positionRoles)
+    await interaction.reply(PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id))
+=======
     const id_guild = await getGuild(interaction)
     if (!id_guild) return false;
 
     const positionRoles = interaction.client.database.positionRoles.cache.get({ id_guild })
     const sortedPositionRoles = sortPositionRoles(interaction, positionRoles)
     await interaction.reply(PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles))
+>>>>>>> main
 
 }
 
@@ -108,8 +117,8 @@ async function onReloadSubcommand(interaction) {
 
     }
 
-    const sortedPositionRoles = sortPositionRoles(interaction, positionRoles)
-    const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles)
+    const sortedPositionRoles = sortPositionRoles(positionRoles)
+    const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id)
     await interaction.editReply({ ...payload, content: `Bridge scrims positions reloaded.`, ephemeral: true })
 
 }
@@ -129,9 +138,15 @@ async function addPositionRole(interaction, role, position, id_guild) {
 
     interaction.client.database.ipc.notify('audited_position_role_create', { executor_id: interaction.user.id, positionRole: result })
 
+<<<<<<< HEAD
+    const positionRoles = await interaction.client.database.positionRoles.get({ guild_id })
+    const sortedPositionRoles = sortPositionRoles(positionRoles)
+    const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id)
+=======
     const positionRoles = await interaction.client.database.positionRoles.get({ id_guild })
     const sortedPositionRoles = sortPositionRoles(interaction, positionRoles)
     const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles)
+>>>>>>> main
 
     const warning = (
         interaction.client.positions.botHasRolePermissions(role) ? `` 
@@ -159,7 +174,11 @@ async function onAddSubcommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
+<<<<<<< HEAD
+    const existing = interaction.client.database.positionRoles.cache.find({ guild_id, role_id: role.id })
+=======
     const existing = interaction.client.database.positionRoles.cache.get({ id_guild, role_id: role.id })
+>>>>>>> main
     if (existing instanceof Error) {
 
         console.error(`Unable to get existing position roles ${existing}!`)
@@ -169,9 +188,15 @@ async function onAddSubcommand(interaction) {
 
     if (existing.filter(posRole => posRole.id_position == position.id_position).length > 0) {
 
+<<<<<<< HEAD
+        const positionRoles = await interaction.client.database.positionRoles.get({ guild_id })
+        const sortedPositionRoles = sortPositionRoles(positionRoles)
+        const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id)
+=======
         const positionRoles = await interaction.client.database.positionRoles.get({ id_guild })
         const sortedPositionRoles = sortPositionRoles(interaction, positionRoles)
         const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles)
+>>>>>>> main
         return interaction.editReply({ 
             ...payload, content: `${role} is already connected to bridge scrims **${position.name}**!`, 
             allowedMentions: { parse: [] },
@@ -263,9 +288,15 @@ async function onRemoveSubcommand(interaction) {
     const success = await removePositionRoles(interaction, existing[0].position, selector)
     if (!success) return false;
 
+<<<<<<< HEAD
+    const positionRoles = await interaction.client.database.positionRoles.get({ guild_id })
+    const sortedPositionRoles = sortPositionRoles(positionRoles)
+    const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id)
+=======
     const positionRoles = await interaction.client.database.positionRoles.get({ id_guild })
     const sortedPositionRoles = sortPositionRoles(interaction, positionRoles)
     const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles)
+>>>>>>> main
     const message = `${role} was unconnected from ${position ? `bridge scrims **${position.name}**.` : `any bridge scrims positions.`}`
     await interaction.editReply({ ...payload, content: message, allowedMentions: { parse: [] }, ephemeral: true });
 

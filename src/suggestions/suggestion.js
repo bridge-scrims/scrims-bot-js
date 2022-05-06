@@ -2,6 +2,7 @@ const DBCache = require("../lib/postgresql/cache");
 const DBTable = require("../lib/postgresql/table");
 
 const { Message } = require("discord.js");
+const ScrimsAttachment = require("../lib/scrims/attachment");
 const ScrimsGuild = require("../lib/scrims/guild");
 const ScrimsUser = require("../lib/scrims/user");
 
@@ -24,7 +25,11 @@ class ScrimsSuggestionsTable extends DBTable {
 
         const foreigners = [
             [ "creator", "id_creator", "get_user_id" ],
+<<<<<<< HEAD
+            [ "attachment", "attachment_id", "get_attachment_id" ]
+=======
             [ "guild", "id_guild", "get_guild_id" ]
+>>>>>>> main
         ]
 
         super(client, "scrims_suggestion", "get_suggestions", foreigners, ScrimsSuggestion, SuggestionsTableCache);
@@ -41,7 +46,7 @@ class ScrimsSuggestionsTable extends DBTable {
      */
     initializeListeners() {
 
-        this.ipc.on('suggestion_remove', message => this.cache.remove(message.payload))
+        this.ipc.on('suggestion_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('suggestion_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('suggestion_create', message => this.cache.push(this.getRow(message.payload)))
 
@@ -90,8 +95,14 @@ class ScrimsSuggestion extends DBTable.Row {
     constructor(client, suggestionData) {
 
         const references = [
+<<<<<<< HEAD
+            ['guild', ['guild_id'], ['guild_id'], table.client.guilds],
+            ['creator', ['id_creator'], ['id_user'], table.client.users],
+            ["attachment", ["attachment_id"], ["attachment_id"], table.client.attachments]
+=======
             ['guild', ['id_guild'], ['id_guild'], client.guilds],
             ['creator', ['id_creator'], ['id_user'], client.users]
+>>>>>>> main
         ]
 
         super(client, suggestionData, references)
@@ -146,6 +157,22 @@ class ScrimsSuggestion extends DBTable.Row {
          */
         this.epic
 
+        /**
+         * @type { string }
+         */
+        this.attachment_id
+
+        /**
+         * @type { ScrimsAttachment }
+         */
+        this.attachment
+
+    }
+
+    get attachmentURL() {
+
+        return this.attachment.url;
+        
     }
 
     get discordGuild() {

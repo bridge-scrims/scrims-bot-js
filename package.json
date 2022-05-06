@@ -6,10 +6,16 @@
     "scripts": {
         "start": "node ./src/index.js",
         "dbtest": "node ./tests/db_test.js",
+<<<<<<< HEAD
+        "test": "node ./tests/index.js",
+        "recovery": "node ./src/recovery.js",
+        "create": "node ./src/create-db.js"
+=======
         "test": "node ./tests/index.js"
+>>>>>>> main
     },
     "dependencies": {
-        "@discordjs/builders": "^0.12.0",
+        "@discordjs/builders": "^0.13.0",
         "discord-modals": "^1.2.3",
         "discord.js": "^13.6.0",
         "got": "^11.8.2",

@@ -3,17 +3,6 @@ const DBTable = require("../postgresql/table");
 
 class ScrimsTicketTypeCache extends DBCache {
 
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsTicketType[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
-
 }
 
 class ScrimsTicketTypeTable extends DBTable {

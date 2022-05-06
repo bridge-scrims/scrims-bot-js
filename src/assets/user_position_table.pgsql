@@ -25,6 +25,14 @@ RETURN (select extract(epoch from current_timestamp)) >= expires_at;
 END $$ 
 LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION remove_expired_user_positions() 
+RETURNS VOID
+AS $$ BEGIN
+
+DELETE FROM scrims_user_position WHERE (NOT (scrims_user_position.expires_at is null)) AND is_expired(scrims_user_position.expires_at);
+
+END $$
+LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_user_positions(
     id_user int default null,

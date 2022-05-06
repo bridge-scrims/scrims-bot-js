@@ -5,29 +5,13 @@ const ScrimsUser = require("./user");
 
 const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
+<<<<<<< HEAD
+const TableRow = require("../postgresql/row");
+const { TextChannel } = require("discord.js");
+=======
+>>>>>>> main
 
 class ScrimsTicketCache extends DBCache {
-
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { ScrimsTicket[] }
-     */
-    get(filter, invert) {
-
-        return super.get(filter, invert);
-
-    }
-
-    /**
-     * @param { ScrimsTicket[] } tickets 
-     */
-    set(tickets) {
-
-        const data = this.getMap('id_ticket')
-        return tickets.map(ticket => this.push(ticket, data[ticket.id_ticket] ?? false, false));
-
-    }
 
 }
 
@@ -39,7 +23,8 @@ class ScrimsTicketTable extends DBTable {
             [ "user", "id_user", "get_user_id" ],
             [ "type", "id_type", "get_ticket_type_id" ],
             [ "status", "id_status", "get_ticket_status_id" ],
-            [ "guild", "id_guild", "get_guild_id" ]
+            [ "guild", "id_guild", "get_guild_id" ],
+            [ "closer", "id_closer", "get_user_id" ]
         ]
 
         super(client, "scrims_ticket", "get_tickets", foreigners, ScrimsTicket, ScrimsTicketCache);
@@ -94,10 +79,18 @@ class ScrimsTicket extends DBTable.Row {
     constructor(client, ticketData) {
 
         const references = [
+<<<<<<< HEAD
+            ['type', ['id_type'], ['id_type'], table.client.ticketTypes], 
+            ['user', ['id_user'], ['id_user'], table.client.users],
+            ['status', ['id_status'], ['id_status'], table.client.ticketStatuses],
+            ['guild', ['guild_id'], ['guild_id'], table.client.guilds],
+            ['closer', ['id_closer'], ['id_user'], table.client.users]
+=======
             ['type', ['id_type'], ['id_type'], client.ticketTypes], 
             ['user', ['id_user'], ['id_user'], client.users],
             ['status', ['id_status'], ['id_status'], client.ticketStatuses],
             ['guild', ['id_guild'], ['id_guild'], client.guilds]
+>>>>>>> main
         ]
 
         super(client, ticketData, references)
@@ -157,6 +150,16 @@ class ScrimsTicket extends DBTable.Row {
          */
         this.created_at
 
+        /**
+         * @type { string }
+         */
+        this.id_closer
+
+        /**
+         * @type { ScrimsUser }
+         */
+        this.closer
+
     }
 
     get discordGuild() {
@@ -166,6 +169,11 @@ class ScrimsTicket extends DBTable.Row {
 
     }
 
+<<<<<<< HEAD
+    /**
+     * @type { TextChannel }
+     */
+=======
     get guild_id() {
 
         if (!this.guild) return null;
@@ -173,6 +181,7 @@ class ScrimsTicket extends DBTable.Row {
 
     }
 
+>>>>>>> main
     get channel() {
 
         if (!this.channel_id) return null;
