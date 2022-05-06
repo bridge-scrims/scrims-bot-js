@@ -19,6 +19,8 @@ class SupportFeature {
         this.transcriptChannels = {}
         this.ticketCategorys = {}
 
+        this.statusChannel = null
+
         bot.on('databaseConnected', () => this.onReady())
 
     }
@@ -42,9 +44,16 @@ class SupportFeature {
         const supportCategoryConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_support_category" } })
         await Promise.all(supportCategoryConfigs.map(entry => this.setTicketsCategory(entry.guild_id, entry.value, 'support')))
 
+        const statusChannelConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_status_channel" } })
+        await Promise.all(statusChannelConfigs.map(entry => this.setTicketStatusChannel(entry.guild_id, entry.value)))
+
         this.database.guildEntrys.cache.on('push', config => this.onConfigCreate(config))
         this.database.guildEntrys.cache.on('update', config => this.onConfigCreate(config))
         this.database.guildEntrys.cache.on('remove', config => this.onConfigRemove(config))
+
+        this.database.tickets.cache.on('push', ticket => this.onTicketStatusUpdate(ticket))
+        this.database.tickets.cache.on('update', ticket => this.onTicketStatusUpdate(ticket))
+        this.database.tickets.cache.on('remove', ticket => this.onTicketStatusUpdate(ticket))
 
         this.addEventHandlers()
 
@@ -54,6 +63,28 @@ class SupportFeature {
         this.bot.on('messageUpdate', (oldMessage, newMessage) => this.onMessageUpdate(oldMessage, newMessage))
 
         this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel))
+
+    }
+
+    async onTicketStatusUpdate(ticket) {
+
+        if (['support', 'report'].includes(ticket.type.name) && this.statusChannel) {
+
+            await this.updateTicketStatusChannel()
+
+        }
+
+    }
+
+    async updateTicketStatusChannel() {
+
+        const tickets = this.database.tickets.cache.values()
+        const status = `${tickets.filter(t => t.status.name !== 'open').length}/${tickets.length} Tickets`
+        if (this.statusChannel.name !== status) {
+
+            await this.statusChannel.setName(status).catch(console.error)
+
+        }
 
     }
 
@@ -77,28 +108,40 @@ class SupportFeature {
 
         }
 
+        if (config.type.name == "tickets_status_channel") {
+
+            await this.setTicketStatusChannel(config.guild_id, config.value)
+
+        }
     }
 
     async onConfigRemove(config) {
 
         if (config.type.name == "tickets_transcript_channel") {
 
+            if (this.transcriptChannels[config.guild_id]) this.logError(`Transcript channel unconfigured!`, { guild_id: config.guild_id })
             delete this.transcriptChannels[config.guild_id]
-            this.logError(`Transcript channel unconfigured!`, { guild_id: config.guild_id })
 
         }
 
         if (config.type.name == "tickets_report_category") {
 
+            if (this.ticketCategorys[config.guild_id]?.report) this.logError(`Ticket report category unconfigured!`, { guild_id: config.guild_id })
             delete this.ticketCategorys[config.guild_id]?.report
-            this.logError(`Ticket report category unconfigured!`, { guild_id: config.guild_id })
 
         }
 
         if (config.type.name == "tickets_support_category") {
 
+            if (this.ticketCategorys[config.guild_id]?.support) this.logError(`Ticket support category unconfigured!`, { guild_id: config.guild_id })
             delete this.ticketCategorys[config.guild_id]?.support
-            this.logError(`Ticket support category unconfigured!`, { guild_id: config.guild_id })
+
+        }
+
+        if (config.type.name == "tickets_status_channel") {
+
+            if (this.statusChannel) this.logError(`Ticket status channel unconfigured!`, { guild_id: config.guild_id })
+            this.statusChannel = null
 
         }
 
@@ -143,6 +186,21 @@ class SupportFeature {
             
             if (!(guildId in this.ticketCategorys)) this.ticketCategorys[guildId] = {}
             this.ticketCategorys[guildId][typeName] = channel
+
+        }
+
+    }
+
+    async setTicketStatusChannel(guild_id, channelId) {
+
+        const channel = await this.bot.channels.fetch(channelId)
+            .catch(error => this.logError(`Fetching ticket status channel failed!`, { guild_id, error }))
+
+        if (channel) {
+
+            this.logSuccess(`The ticket status channel set as **${channel}**.`, { guild_id })
+            this.statusChannel = channel
+            await this.updateTicketStatusChannel()
 
         }
 
@@ -273,6 +331,14 @@ class SupportFeature {
         const types = [ 'tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category' ]
         await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name }, value: channel.id }))).catch(console.error)
 
+        if (this.statusChannel?.id === channel.id) {
+
+            this.statusChannel = null
+            this.logError(`Deleted the tickets status channel!`, { guild_id: channel.guild.id, executor_id: channel?.executor?.id })
+            this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name: "tickets_status_channel" }, value: channel.id })
+
+        }
+
         const tickets = await this.database.tickets.get({ channel_id: channel.id }).catch(console.error)
         if (tickets) {
             
@@ -285,7 +351,8 @@ class SupportFeature {
 
     async closeTicket(channel, ticket, executor) {
 
-        await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" } })
+        const closer = (executor.id) ? { closer: { discord_id: executor.id } } : { id_closer: null }
+        await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" }, ...closer })
 
         this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })
         await this.transcriber.send(channel.guild, ticket)

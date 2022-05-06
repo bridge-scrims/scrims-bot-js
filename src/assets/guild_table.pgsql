@@ -1,4 +1,3 @@
-CREATE EXTENSION pgcrypto;
 
 CREATE TABLE scrims_guild_entry_type (
 
@@ -14,6 +13,7 @@ INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_log_channel');
 INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_transcript_channel');
 INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_support_category');
 INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_report_category');
+INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_status_channel');
 
 INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_channel');
 INSERT INTO scrims_guild_entry_type (name) VALUES ('epic_suggestions_channel');

@@ -7,7 +7,8 @@
         "start": "node ./src/index.js",
         "dbtest": "node ./tests/db_test.js",
         "test": "node ./tests/index.js",
-        "recovery": "node ./src/recovery.js"
+        "recovery": "node ./src/recovery.js",
+        "create": "node ./src/create-db.js"
     },
     "dependencies": {
         "@discordjs/builders": "^0.13.0",

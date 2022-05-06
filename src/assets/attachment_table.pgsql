@@ -1,3 +1,5 @@
+CREATE EXTENSION pgcrypto;
+
 CREATE TABLE scrims_attachment (
 
     attachment_id text NOT NULL,

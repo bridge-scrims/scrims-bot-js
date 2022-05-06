@@ -20,7 +20,8 @@ class ScrimsTicketTable extends DBTable {
             [ "user", "id_user", "get_user_id" ],
             [ "type", "id_type", "get_ticket_type_id" ],
             [ "status", "id_status", "get_ticket_status_id" ],
-            [ "guild", "id_guild", "get_guild_id" ]
+            [ "guild", "id_guild", "get_guild_id" ],
+            [ "closer", "id_closer", "get_user_id" ]
         ]
 
         super(client, "scrims_ticket", "get_tickets", foreigners, ['id_ticket'], ScrimsTicket, ScrimsTicketCache);
@@ -78,7 +79,8 @@ class ScrimsTicket extends TableRow {
             ['type', ['id_type'], ['id_type'], table.client.ticketTypes], 
             ['user', ['id_user'], ['id_user'], table.client.users],
             ['status', ['id_status'], ['id_status'], table.client.ticketStatuses],
-            ['guild', ['guild_id'], ['guild_id'], table.client.guilds]
+            ['guild', ['guild_id'], ['guild_id'], table.client.guilds],
+            ['closer', ['id_closer'], ['id_user'], table.client.users]
         ]
 
         super(table, ticketData, references)
@@ -137,6 +139,16 @@ class ScrimsTicket extends TableRow {
          * @type { number }
          */
         this.created_at
+
+        /**
+         * @type { string }
+         */
+        this.id_closer
+
+        /**
+         * @type { ScrimsUser }
+         */
+        this.closer
 
     }
 

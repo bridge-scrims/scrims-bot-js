@@ -1,15 +1,4 @@
-//const EventEmitter = require("events");
-
-/**
- * @typedef { import("./table").Row } TableRow
- */
-
-class EventEmitter extends require('events') {
-    emit(type, ...args) {
-        console.log(this.constructor.name + ": " + type + " emitted")
-        super.emit(type, ...args)
-    }
-}
+const EventEmitter = require("events");
 
 class DBCache extends EventEmitter {
 
