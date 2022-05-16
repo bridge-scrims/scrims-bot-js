@@ -1,14 +1,14 @@
 
-CREATE TABLE scrims_user_position (
+CREATE TABLE IF NOT EXISTS scrims_user_position (
 
     id_user uuid NOT NULL,
-    id_position uuid NOT NULL,
+    id_position bigint NOT NULL,
 
     id_executor uuid NULL,
     given_at BIGINT NOT NULL,
     expires_at BIGINT NULL,
 
-    UNIQUE(id_user, id_position),
+    PRIMARY KEY (id_user, id_position),
     FOREIGN KEY(id_user) REFERENCES scrims_user(id_user),
     FOREIGN KEY(id_executor) REFERENCES scrims_user(id_user),
     FOREIGN KEY(id_position) REFERENCES scrims_position(id_position)
@@ -36,7 +36,7 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_user_positions(
     id_user uuid default null,
-    id_position uuid default null,
+    id_position bigint default null,
     id_executor uuid default null,
     given_at bigint default null,
     expires_at bigint default null,
@@ -111,9 +111,14 @@ BEGIN
 END $$
 LANGUAGE plpgsql;
 
-
-CREATE TRIGGER user_position_trigger
-    AFTER INSERT OR UPDATE OR DELETE
-    ON scrims_user_position
-    FOR EACH ROW
-    EXECUTE PROCEDURE process_user_position_change();
+DO
+$do$
+BEGIN
+    CREATE TRIGGER user_position_trigger
+        AFTER INSERT OR UPDATE OR DELETE
+        ON scrims_user_position
+        FOR EACH ROW
+        EXECUTE PROCEDURE process_user_position_change();
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;

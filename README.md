@@ -56,8 +56,7 @@ All suggestions are saved in the table **suggestion** and are removed if the mes
 
 Following packages are required for the bot to run:
  - [@discordjs/builders](https://discord.js.org/#/docs/builders/stable/general/welcome) Used to create application commands
- - [discord.js](https://discord.js.org/#/docs/discord.js/stable/general/welcome) Used to interact with the [Discord API](https://discord.com/developers/docs/intro) 
- - [discord-modals](https://github.com/Mateo-tem/discord-modals#readme) At least until discord.js supports modals
+ - [discord.js](https://discord.js.org/#/docs/discord.js/stable/general/welcome) Used to interact with the [Discord API](https://discord.com/developers/docs/intro)
  - [moment-timezone](https://momentjs.com/timezone/) Parse and display dates in any timezone
  - [got](https://github.com/sindresorhus/got#readme) Used to make async HTTP requests
  - [pg](https://github.com/brianc/node-postgres#readme) Used to communicate with the bridge scrims PostgreSQL server

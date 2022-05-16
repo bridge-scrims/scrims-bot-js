@@ -162,7 +162,7 @@ class PositionLoggingFeature {
 
     async onJoinedRolesReceived(payload) {
 
-        const roles = payload.roles.map(role => `**${((role?.name) ? `@${role.name}` : `${role}`)}**`)
+        const roles = payload.roles.map(roleName => `**${roleName}**`)
         const msg = `Received ${roles.join(", ")} discord role(s) after joining the server.`
         return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Roles Received", '#FFE633');
 
@@ -171,7 +171,7 @@ class PositionLoggingFeature {
     async onPositionRolesReceived(payload) {
 
         const position = this.database.positions.cache.get(payload.id_position)?.name ?? "unknown-position"
-        const roles = payload.roles.map(role => `**${((role?.name) ? `@${role.name}` : `${role}`)}**`)
+        const roles = payload.roles.map(role => `**${role}**`)
         const msg = `Received ${roles.join(", ")} discord role(s) because of their **${position}** bridge scrims position.`
         return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Roles Received", '#7800E0');
 
@@ -180,7 +180,7 @@ class PositionLoggingFeature {
     async onPositionRolesLost(payload) {
 
         const position = this.database.positions.cache.get(payload.id_position)?.name ?? "unknown-position"
-        const roles = payload.roles.map(role => `**${((role?.name) ? `@${role.name}` : `${role}`)}**`)
+        const roles = payload.roles.map(role => `**${role}**`)
         const msg = `Lost ${roles.join(", ")} discord role(s) because of losing their **${position}** bridge scrims position.`
         return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Roles Lost", '#EB00A4');
 

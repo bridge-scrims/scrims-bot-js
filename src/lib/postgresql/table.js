@@ -1,6 +1,7 @@
 const DBCache = require("./cache")
 const TableRow = require("./row")
 
+/** @template [T=TableRow] */
 class DBTable {
 
     constructor(client, name, getFunction=null, foreigners=[], uniqueKeys=[], RowClass=TableRow, CacheClass=DBCache) {
@@ -159,16 +160,16 @@ class DBTable {
         this.foreigners.forEach(([ commonKey, localKey, translater ]) => {
 
             const foreigner = data[commonKey]
-            if (foreigner) {
+            if (foreigner && data[localKey] === undefined) {
 
                 const [ parameters, values ] = this.createFunctionParameters(foreigner, prevValues)
             
                 prevValues = values
                 data[localKey] = [ `${translater}(${parameters})` ]
-                
-                delete data[commonKey];
 
             }
+
+            if (data[commonKey] !== undefined) delete data[commonKey];
 
         })
 
@@ -178,7 +179,7 @@ class DBTable {
 
     /**
      * @param { Object.<string, any>[] } rowDatas 
-     * @returns { TableRow[] }
+     * @returns { T[] }
      */
     getRows(rowDatas) {
 
@@ -188,16 +189,16 @@ class DBTable {
 
     /**
      * @param { Object.<string, any> } rowData
-     * @returns { TableRow }
      */
     getRow(rowData) {
 
+        if (rowData instanceof this.RowClass) return rowData;
         return new this.RowClass(this, rowData);
 
     }
 
     /** 
-     * @returns { Promise<TableRow[]> }
+     * @returns { Promise<T[]> }
      */
     async get(selectCondition, useCache=true) { 
 
@@ -222,7 +223,7 @@ class DBTable {
      * @param { Object.<string, any> } selectCondition
      * @param { string[] } mapKeys
      * @param { Boolean } useCache
-     * @returns { Promise<Object.<string, TableRow>> }
+     * @returns { Promise<{ [x: string]: T }> }
      */
     async getMap(selectCondition, mapKeys, useCache=false) {
 
@@ -235,7 +236,7 @@ class DBTable {
      * @param { Object.<string, any> } selectCondition
      * @param { string[] } mapKeys
      * @param { Boolean } useCache
-     * @returns { Promise<Object.<string, TableRow[]>> }
+     * @returns { Promise<{ [x: string]: T[] }> }
      */
     async getArrayMap(selectCondition, mapKeys, useCache=false) {
 
@@ -250,16 +251,19 @@ class DBTable {
     }
 
     /** 
-     * @returns { Promise<TableRow> }
+     * @returns { Promise<T> }
      */
     async create(data) {
 
-        const inserted = this.cache.push(this.getRow(data))
-        const filter = inserted.getSelector()
+        const obj = this.getRow(data)
+        const inserted = obj.id ? this.cache.push(obj) : null
+        const filter = inserted?.getSelector()
 
+        if (data instanceof TableRow) data = data.toMinimalForm()
         const [ formated, formatValues ] = this.format({ ...data })
 
-        await this.query( ...this.createInsertQuery(formated, formatValues) )
+        const query = this.createInsertQuery(formated, formatValues)
+        await this.query( ...query )
         
         // Fetch what was just inserted to add it to cache
         if (filter) return this.get(filter, false).then(rows => rows[0]);
@@ -276,14 +280,14 @@ class DBTable {
         const [ whereClause, values4 ] = this.createWhereClause(formatedSelector, values3)
 
         const result = await this.query(`UPDATE ${this.name} ${setClause} ${whereClause}`, values4)
-        this.cache.update(data, this.getRow(selector))
+        this.cache.update(this.getRow(data), this.getRow(selector))
 
         return result;
 
     }
 
     /** 
-     * @returns { Promise<TableRow[]> }
+     * @returns { Promise<T[]> }
      */
     async remove(selector) {
 

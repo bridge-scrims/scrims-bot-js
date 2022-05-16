@@ -4,15 +4,18 @@ const pgIPC = require('pg-ipc');
 const { v4: uuidv4 } = require("uuid");
 
 const ScrimsTicketMessageAttachment = require("../scrims/ticket_message_attachment");
+const ScrimsSessionParticipant = require('../scrims/session_participant');
 const ScrimsGuildEntryType = require("../scrims/guild_entry_type");
 const ScrimsTicketMessage = require("../scrims/ticket_message");
 const ScrimsUserPosition = require("../scrims/user_position");
 const ScrimsPositionRole = require("../scrims/position_role");
 const ScrimsTicketStatus = require("../scrims/ticket_status");
+const ScrimsSessionType = require('../scrims/session_type');
 const ScrimsGuildEntry = require("../scrims/guild_entry");
 const ScrimsTicketType = require("../scrims/ticket_type");
 const ScrimsAttachment = require('../scrims/attachment');
 const ScrimsPosition = require('../scrims/position');
+const ScrimsSession = require('../scrims/session');
 const ScrimsTicket = require("../scrims/ticket");
 const ScrimsGuild = require('../scrims/guild');
 const ScrimsUser = require("../scrims/user");
@@ -109,6 +112,21 @@ class DBClient {
          */
         this.ticketMessageAttachments
 
+        /**
+         * @type { ScrimsSession.Table }
+         */
+        this.sessions
+
+        /**
+         * @type { ScrimsSessionType.Table }
+         */
+        this.sessionTypes
+
+        /**
+         * @type { ScrimsSessionParticipant.Table }
+         */
+        this.sessionParticipants
+
     }
 
     __addScrimsTables() {
@@ -131,6 +149,10 @@ class DBClient {
         this.addTable("tickets", new ScrimsTicket.Table(this))
         this.addTable("ticketMessages", new ScrimsTicketMessage.Table(this))
         this.addTable("ticketMessageAttachments", new ScrimsTicketMessageAttachment.Table(this))
+
+        this.addTable("sessions", new ScrimsSession.Table(this))
+        this.addTable("sessionTypes", new ScrimsSessionType.Table(this))
+        this.addTable("sessionParticipants", new ScrimsSessionParticipant.Table(this))
 
     }
 

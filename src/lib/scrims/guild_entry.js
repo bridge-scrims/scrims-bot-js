@@ -97,7 +97,7 @@ class ScrimsGuildEntry extends TableRow {
         this.guild
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_type
 

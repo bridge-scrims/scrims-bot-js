@@ -20,7 +20,7 @@ async function onComponent(interaction) {
     const handler = componentHandlers[interaction.args.shift()]
     if (handler) {
 
-        if (!interaction.guild) return interaction.reply(SupportResponseMessageBuilder.guildOnlyMessage());
+        if (!interaction.guild) return interaction.reply(SupportResponseMessageBuilder.guildOnlyMessage(interaction.i18n));
 
         return handler(interaction);
 
@@ -50,18 +50,18 @@ async function onTicketModalSubmit(interaction) {
     ticketData.type = getTicketTypeFromId(interaction)
     if (!ticketData.type) return interaction.reply(SupportResponseMessageBuilder.failedMessage('create a support ticket'));
 
-    const inputValue = interaction.getTextInputValue('request-reason')
+    const inputValue = interaction.fields.getTextInputValue('request-reason')
     if (typeof inputValue !== 'string') return interaction.reply(SupportResponseMessageBuilder.errorMessage('Invalid Reason', "You reason must contain at least 15 letters to be valid."));
     
     ticketData.reason = SupportResponseMessageBuilder.stripText(inputValue)
 
-    ticketData.targets = await SupportResponseMessageBuilder.parseDiscordUsers(interaction.guild, interaction.getTextInputValue('targets'))
+    ticketData.targets = await SupportResponseMessageBuilder.parseDiscordUsers(interaction.guild, interaction.fields._fields.find(f => f.customId === 'targets')?.value)
 
     const actions = new MessageActionRow()
         .addComponents(
             new MemoryMessageButton(interaction.client, ticketData).setCustomId('support/sendTicket/CREATE').setLabel('Create').setStyle('SUCCESS'),
             new MemoryMessageButton(interaction.client, ticketData).setCustomId('support/sendTicket/REOPEN').setLabel('Edit').setStyle('PRIMARY'),
-            SupportResponseMessageBuilder.cancelButton()
+            SupportResponseMessageBuilder.cancelButton(interaction.i18n)
         )
 
     const payload = { 
@@ -274,7 +274,10 @@ async function onTicketCloseRequest(interaction) {
     const ticketId = interaction.args.shift()
     if (ticketId) interaction.ticket = await interaction.client.database.tickets.get({ id_ticket: ticketId }).then(v => v[0])
 
-    if (!ticketId || !interaction.ticket) {
+    const executorId = interaction.args.shift()
+    if (executorId) interaction.executor = await interaction.client.users.fetch(executorId)
+
+    if (!interaction.ticket || !interaction.executor) {
 
         if (interaction.message.deletable) await interaction.message.delete().catch(() => null)
         else await interaction.editReply({ content: 'This message is invalid.', components: [], embeds: [] }).catch(() => null)
@@ -321,10 +324,10 @@ async function onAccept(interaction, ticket) {
         return interaction.editReply(getNotAllowedPayload(ticket.user));
 
     const transcriber = interaction.client.support.transcriber;
-    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "accepted the close request" }
+    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: `accepted the close request from ${interaction.executor.tag}` }
     await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
     
-    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.user)
+    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.executor)
 
 }
 

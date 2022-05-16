@@ -1,5 +1,6 @@
 const EventEmitter = require("events");
 
+/** @template [T=import("./row")] */
 class DBCache extends EventEmitter {
 
     constructor() {
@@ -18,15 +19,25 @@ class DBCache extends EventEmitter {
         this.handles = {}
 
         /**
-         * @type { Object.<string, import("./row")> }
+         * @type { Object.<string, T> }
          */
         this.data = {}
+
+        this.on('push', value => this.emit('change', value))
+        this.on('update', value => this.emit('change', value))
+        this.on('remove', value => this.emit('change', value))
 
     }
 
     values() {
 
         return Object.values(this.data);
+
+    }
+
+    keys() {
+
+        return Object.keys(this.data);
 
     }
 
@@ -64,7 +75,7 @@ class DBCache extends EventEmitter {
     /**
      * @param { import("./row") } value
      * @param { Boolean } withHandle
-     * @returns { TableRow }
+     * @returns { T }
      */
     push(value, existing=null, withHandle=false) {
 
@@ -95,7 +106,7 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { import("./row") } value 
+     * @param { T } value 
      */
     set(id, value) {
 
@@ -104,7 +115,7 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { import("./row")[] } values 
+     * @param { T[] } values 
      */
     setAll(values) {
 
@@ -122,7 +133,7 @@ class DBCache extends EventEmitter {
 
     /**
      * @param { string[] } mapKeys
-     * @returns { Object.<string, TableRow> }
+     * @returns { { [x: string]: T } }
      */
     getMap( ...mapKeys ) {
 
@@ -132,7 +143,7 @@ class DBCache extends EventEmitter {
 
     /**
      * @param { string[] } mapKeys
-     * @returns { Object.<string, TableRow[]> }
+     * @returns { { [x: string]: T[] } }
      */
     getArrayMap( ...mapKeys ) {
 
@@ -147,7 +158,7 @@ class DBCache extends EventEmitter {
 
     /**
      * @param { string[] } ids
-     * @returns { import("./row") }
+     * @returns { T }
      */ 
     get(...ids) {
 
@@ -158,7 +169,7 @@ class DBCache extends EventEmitter {
     /**
      * @param { Object.<string, any> } filter
      * @param { Boolean } invert
-     * @returns { import("./row")[] }
+     * @returns { T[] }
      */ 
     find(filter, invert) {
 
@@ -169,7 +180,7 @@ class DBCache extends EventEmitter {
 
     /**
      * @param { Object.<string, any> } filter
-     * @returns { import("./row")[] }
+     * @returns { T[] }
      */
     filterOut(filter) {
 
@@ -181,7 +192,7 @@ class DBCache extends EventEmitter {
 
     /**
      * @param { string } id
-     * @returns { import("./row") }
+     * @returns { T }
      */
     remove(id) {
 
@@ -200,7 +211,7 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { import("./row") } value
+     * @param { T } value
      * @param { string } id
      */
     updateWith(value, id) {
@@ -216,7 +227,7 @@ class DBCache extends EventEmitter {
     }
     
     /**
-     * @param { import("./row") } data
+     * @param { T } data
      * @param { Object.<string, any> } selector
      */
     update(data, selector) {

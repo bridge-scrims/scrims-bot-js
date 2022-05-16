@@ -130,11 +130,12 @@ class TableRow {
      * @param { import('./table') } table 
      * @param { string } objKey
      * @param { Object.<string, any> } data
+     * @param { string[] } uniqueLocalKeys 
      * @param { string[] } uniqueForeignKeys 
      */
-    setObjectFromUniqueKeys(table, objKey, data, uniqueForeignKeys) {
+    setObjectFromUniqueKeys(table, objKey, data, uniqueLocalKeys, uniqueForeignKeys) {
 
-        if (uniqueForeignKeys.every(key => data[key] === null)) {
+        if (uniqueLocalKeys.every(key => data[key] === null)) {
 
             this[objKey] = null
             return;
@@ -142,7 +143,7 @@ class TableRow {
         }
 
         //Building a partial row to use as a filter below
-        const filter = table.getRow(Object.fromEntries(uniqueForeignKeys.map(key => [key, data[key]])))
+        const filter = table.getRow(Object.fromEntries(uniqueLocalKeys.map((localKey, idx) => [uniqueForeignKeys[idx], data[localKey]])))
 
         if (this._handles) {
 
@@ -180,7 +181,7 @@ class TableRow {
 
                 //We have to find the object using unique keys
                 if (!this[objKey] || !uniqueLocalKeys.every(key => this[objKey][key] === data[key]))
-                    this.setObjectFromUniqueKeys(table, objKey, data, uniqueForeignKeys)
+                    this.setObjectFromUniqueKeys(table, objKey, data, uniqueLocalKeys, uniqueForeignKeys)
 
             }
 
@@ -280,7 +281,7 @@ class TableRow {
      */
     equals(obj) {
 
-        if (this.uniqueKeys.length > 0 && (obj instanceof TableRow) && obj.id && this.id)
+        if ((obj instanceof TableRow) && obj.id && this.id)
             return obj.id == this.id;
 
         return this.exactlyEquals(obj);
@@ -295,6 +296,36 @@ class TableRow {
 
         const objKeys = this._references.map(([objKey, _, __, ___]) => objKey)
         return this.valuesMatch(Object.fromEntries(Object.entries(obj).filter(([key, _]) => this.columns.includes(key) || objKeys.includes(key))), this);
+
+    }
+
+    toMinimalForm() {
+
+        const columns = Object.fromEntries(Object.entries(this).filter(([key, _]) => this.columns.includes(key)))
+        Object.keys(this).forEach((key) => {
+
+            const reference = this._references.filter(([objKey,  _, __, ___]) => objKey === key)[0]
+            if (reference && this[key] !== undefined) {
+
+                const [objKey, uniqueLocalKeys, uniqueForeignKeys, table] = reference
+                if (uniqueLocalKeys.some(key => this[key] === undefined)) {
+                    
+                    uniqueLocalKeys.forEach(key => delete columns[key])
+                    columns[objKey] = this[objKey].toMinimalForm() 
+
+                }
+
+            }
+
+        })
+
+        return columns;
+
+    }
+
+    async create() {
+
+        return this.table.create(this);
 
     }
 

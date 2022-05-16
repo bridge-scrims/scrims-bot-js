@@ -1,5 +1,5 @@
 
-CREATE TABLE scrims_ticket_message (
+CREATE TABLE IF NOT EXISTS scrims_ticket_message (
 
     id_ticket uuid NOT NULL,
     id_author uuid NOT NULL,
@@ -9,9 +9,9 @@ CREATE TABLE scrims_ticket_message (
     deleted bigint NULL,
     created_at bigint NOT NULL,
 
-    UNIQUE(id_ticket, message_id, created_at),
-    FOREIGN KEY(id_ticket) REFERENCES scrims_ticket(id_ticket),
-    FOREIGN KEY(id_author) REFERENCES scrims_user(id_user)
+    PRIMARY KEY (id_ticket, message_id, created_at),
+    FOREIGN KEY (id_ticket) REFERENCES scrims_ticket(id_ticket),
+    FOREIGN KEY (id_author) REFERENCES scrims_user(id_user)
 
 );
 
@@ -61,13 +61,13 @@ END $$
 LANGUAGE plpgsql;
 
 
-CREATE TABLE scrims_ticket_message_attachment (
+CREATE TABLE IF NOT EXISTS scrims_ticket_message_attachment (
 
     id_ticket uuid NOT NULL,
     message_id text NOT NULL,
     attachment_id text NOT NULL,
 
-    UNIQUE(id_ticket, message_id, attachment_id),
+    PRIMARY KEY (id_ticket, message_id, attachment_id),
     FOREIGN KEY(id_ticket) REFERENCES scrims_ticket(id_ticket),
     FOREIGN KEY(attachment_id) REFERENCES scrims_attachment(attachment_id)
 

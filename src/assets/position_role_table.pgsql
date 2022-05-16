@@ -1,35 +1,17 @@
 
-CREATE TABLE scrims_position_role (
+CREATE TABLE IF NOT EXISTS scrims_position_role (
 
-    id_position uuid NOT NULL,
-    role_id text NOT NULL,
-    guild_id text NOT NULL,
+    id_position bigint,
+    role_id text,
+    guild_id text,
 
-    UNIQUE(id_position, role_id, guild_id),
+    PRIMARY KEY (id_position, role_id, guild_id),
     FOREIGN KEY(id_position) REFERENCES scrims_position(id_position)
 
 );
 
--- Bridge Scrims Server 
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'developer'), '904492690043990046', '759894401957888031');
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'support'), '834247683484024893', '759894401957888031');
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '913083965215227925', '759894401957888031');
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'owner'), '760148398857912380', '759894401957888031');
-
--- Bridge Scrims Test Server
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'owner'), '961638984050692126', '911760601926217819');
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'support'), '913084031191633920', '911760601926217819');
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '913083965215227925', '911760601926217819');
-
--- Other Test Server 
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'bridge_scrims_member'), '936942269423038556', '936349840223371305');
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'developer'), '954375653493465129', '936349840223371305');
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'support'), '954375761119285298', '936349840223371305');
---INSERT INTO scrims_position_role VALUES (get_position_id( name => 'staff'), '954375559314567272', '936349840223371305');
-
-
 CREATE OR REPLACE FUNCTION get_position_roles (
-    id_position uuid default null,
+    id_position bigint default null,
     role_id text default null,
     guild_id text default null
 ) 
@@ -64,8 +46,6 @@ RETURN COALESCE(retval, '[]'::json);
 END $$ 
 LANGUAGE plpgsql;
 
-
-
 CREATE OR REPLACE FUNCTION process_position_role_change()
 RETURNS trigger 
 AS $$
@@ -96,9 +76,14 @@ BEGIN
 END $$
 LANGUAGE plpgsql;
 
-
-CREATE TRIGGER position_role_trigger
-    AFTER INSERT OR UPDATE OR DELETE
-    ON scrims_position_role
-    FOR EACH ROW
-    EXECUTE PROCEDURE process_position_role_change();
+DO
+$do$
+BEGIN
+    CREATE TRIGGER position_role_trigger
+        AFTER INSERT OR UPDATE OR DELETE
+        ON scrims_position_role
+        FOR EACH ROW
+        EXECUTE PROCEDURE process_position_role_change();
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;

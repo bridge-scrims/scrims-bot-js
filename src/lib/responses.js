@@ -1,4 +1,5 @@
 const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent, GuildMember, Guild } = require("discord.js");
+const I18n = require("./Internationalization");
 
 class ScrimsMessageBuilder {
 
@@ -24,6 +25,26 @@ class ScrimsMessageBuilder {
 
     }
 
+    static hsv2rgb(h, s, v) {
+        
+        const i = Math.floor( (h/360)*6 )
+        const a = v * ( 1 - s )
+        const b = v * ( 1 - s * ( (h/360)*6 - i ) )
+        const c = v * ( 1 - s * ( 1 - ( (h/360)*6 - i ) ) )
+    
+        const values = (() => {
+            if ( i === 0 ) return [ v, c, a ];
+            if ( i === 1 ) return [ b, v, a ];
+            if ( i === 2 ) return [ a, v, c ];
+            if ( i === 3 ) return [ a, b, v ];
+            if ( i === 4 ) return [ c, a, v ];
+            if ( i === 5 ) return [ v, a, b ];
+        })()
+    
+        return values.map(v => v*255);
+    
+    }
+    
     /**
      * @param { Guild } guild 
      * @param { string } text
@@ -109,9 +130,9 @@ class ScrimsMessageBuilder {
 
     }
 
-    static cancelButton() {
+    static cancelButton(i18n=I18n.getInstance()) {
 
-        return this.button("Cancel", 2, `CANCEL`);
+        return new MessageButton().setLabel(i18n.get('cancel')).setStyle(2).setCustomId(`CANCEL`); 
 
     }
 
@@ -126,25 +147,21 @@ class ScrimsMessageBuilder {
 
     }
 
-    static guildOnlyMessage() {
+    static guildOnlyMessage(i18n=I18n.getInstance()) {
 
-        return this.errorMessage(
-            "Guild Only", "This command can only be used in discord servers!"
-        );
+        return this.errorMessage(i18n.get("guild_only_title"), i18n.get("guild_only"));
     
     }
 
-    static scrimsUserNeededMessage() {
+    static scrimsUserNeededMessage(i18n=I18n.getInstance()) {
 
-        return this.errorMessage(
-            "Unkown Scrims User", `You have not yet been properly identified by the bridge scrims server. Please try again in a moment.`
-        );
+        return this.errorMessage(i18n.get("missing_scrims_user_title"), i18n.get("missing_scrims_user"));
     
     }
 
-    static missingPermissionsMessage(message) {
+    static missingPermissionsMessage(i18n, message) {
 
-        return this.errorMessage("Insufficient Permissions", message);
+        return this.errorMessage(i18n.get("missing_permissions"), message);
     
     }
 
@@ -167,11 +184,16 @@ class ScrimsMessageBuilder {
 
     }
 
+    /**
+     * @template T
+     * @param { T[] } items 
+     * @param { (items: T[], index: number, containers: T[][]) => MessageEmbed } getEmbed
+     */
     static createMultipleEmbeds(items, getEmbed) {
         
         const max = 25
         
-        const containers = Array.from(Array(Math.ceil(items.length / max)).keys())
+        const containers = Array.from((new Array(Math.ceil(items.length / max))).keys())
         const containerSize = Math.floor(items.length / containers.length)
         const overflow = items.length % containerSize
 
@@ -181,12 +203,6 @@ class ScrimsMessageBuilder {
         if (overflow > 0) embedData[lastIdx] = embedData[lastIdx].concat(items.slice(-overflow))
 
         return embedData.map((items, idx, containers) => getEmbed(items, idx, containers))
-
-    }
-    
-    static cancelButton() {
-
-        return new MessageButton().setLabel("Cancel").setStyle(2).setCustomId(`CANCEL`); 
 
     }
     

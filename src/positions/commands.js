@@ -18,7 +18,7 @@ const positionsCommandHandler = require("./positions_command");
 
 const commandHandlers = { 
 
-    positions: positionsCommandHandler, 
+    "positions": positionsCommandHandler, 
     "position-roles": positionRolesCommandHandler,
     "PositionRoles": positionRolesCommandHandler,
     "scrims-sync-members": syncMembersCommandHandler
@@ -134,7 +134,7 @@ async function syncMembersCommandHandler(interaction) {
     const actions = new MessageActionRow()
         .addComponents( 
             new MessageButton().setLabel("Confirm").setStyle(3).setCustomId(`SyncMembers/CONFIRM`),
-            PositionsResponseMessageBuilder.cancelButton()
+            PositionsResponseMessageBuilder.cancelButton(interaction.i18n)
         )
 
     await interaction.editReply({ content: message, components: [ actions ], ephemeral: true })
@@ -152,7 +152,7 @@ function getUserOption(description) {
 
 function getPositionOption(description) {
 
-    return new SlashCommandStringOption()
+    return new SlashCommandIntegerOption()
         .setName("position")
         .setDescription(description)
         .setAutocomplete(true)
@@ -193,7 +193,7 @@ function getPositionsGiveSubcommand() {
         .setName("give")
         .setDescription("Gives a user a bridge scrims position.")
         .addUserOption( getUserOption("The user to give the birdge scrims positions to.") )
-        .addStringOption( getPositionOption("The birdge scrims positions to give the user.") )
+        .addIntegerOption( getPositionOption("The birdge scrims positions to give the user.") )
         .addIntegerOption(option => (
             option
                 .setName("expiration")
@@ -209,7 +209,16 @@ function getPositionsTakeSubcommand() {
         .setName("take")
         .setDescription("Takes away a bridge scrims position from a user.")
         .addUserOption( getUserOption("The user to take the birdge scrims positions from.") )
-        .addStringOption( getPositionOption("The birdge scrims positions to remove from the user.") )
+        .addIntegerOption( getPositionOption("The birdge scrims positions to remove from the user.") )
+
+}
+
+function getPositionsInfoSubcommand() {
+
+    return new SlashCommandSubcommandBuilder()
+        .setName("info")
+        .setDescription("Get information about bridge scrims positions.")
+        .addIntegerOption( getPositionOption("The birdge scrims positions to get information about.").setRequired(false) )
 
 }
 
@@ -237,7 +246,7 @@ function getPositionRolesAddSubcommand() {
         .setName("add")
         .setDescription("Adds a role that is connected to a bridge scrims position.")
         .addRoleOption( getRoleOption("The role that should be connected to the position.") )
-        .addStringOption( getPositionOption("The position that should be connected to the role.") )
+        .addIntegerOption( getPositionOption("The position that should be connected to the role.") )
 
 }
 
@@ -248,7 +257,7 @@ function getPositionRolesRemoveSubcommand() {
         .setName("remove")
         .setDescription("Removes a role that is currently connected to a bridge scrims position.")
         .addRoleOption( getRoleOption("The role that should be disconnected from any scrims position roles.") )
-        .addStringOption( getPositionOption("The position that should be disconnected from the role.").setRequired(false) )
+        .addIntegerOption( getPositionOption("The position that should be disconnected from the role.").setRequired(false) )
 
 }
 
@@ -274,6 +283,7 @@ function getPositionsCommandGroup() {
         .addSubcommand( getPositionsGetSubcommand() )
         .addSubcommand( getPositionsGiveSubcommand() )
         .addSubcommand( getPositionsTakeSubcommand() )
+        .addSubcommand( getPositionsInfoSubcommand() )
 
     return [ positionsCommandGroup, { permissionLevel: "support" } ];
 

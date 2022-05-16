@@ -22,7 +22,7 @@ async function onCommand(interaction) {
 
 async function getPosition(interaction) {
 
-    const positionId = interaction?.options?.getString("position") || interaction?.args?.shift()
+    const positionId = interaction?.options?.getInteger("position") || interaction?.args?.shift()
     const position = await interaction.client.database.positions.get({ id_position: positionId }).then(positions => positions[0])
     if (!position) {
 
@@ -222,7 +222,7 @@ async function removePositionRoles(interaction, position, selector) {
 
 async function getOptionalPosition(interaction) {
 
-    if (interaction.options.getString("position") !== null) 
+    if (interaction.options.getInteger("position") !== null) 
         return getPosition(interaction);
     return null;
 

@@ -65,7 +65,7 @@ class ScrimsTicketStatus extends TableRow {
         super(client, statusData, []);
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_status
 

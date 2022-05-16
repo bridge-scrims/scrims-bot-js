@@ -90,7 +90,7 @@ class ScrimsPositionRole extends TableRow {
         super(table, positionRoleData, references)
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_position
 

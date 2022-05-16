@@ -1,4 +1,4 @@
-CREATE TABLE scrims_suggestion (
+CREATE TABLE IF NOT EXISTS scrims_suggestion (
 
     id_suggestion uuid DEFAULT gen_random_uuid() PRIMARY KEY,
 
@@ -102,9 +102,14 @@ BEGIN
 END $$
 LANGUAGE plpgsql;
 
-
-CREATE TRIGGER suggestion_trigger
-    AFTER INSERT OR UPDATE OR DELETE
-    ON scrims_suggestion
-    FOR EACH ROW
-    EXECUTE PROCEDURE process_suggestions_change();
+DO
+$do$
+BEGIN
+    CREATE TRIGGER suggestion_trigger
+        AFTER INSERT OR UPDATE OR DELETE
+        ON scrims_suggestion
+        FOR EACH ROW
+        EXECUTE PROCEDURE process_suggestions_change();
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;

@@ -126,7 +126,8 @@ class ScrimsCommandInstaller {
     async updateCommandsPermissions() {
 
         const guilds = await this.bot.guilds.fetch()
-        await Promise.all(guilds.map(guild => this.updateGuildCommandsPermissions(guild)))
+        for (let guild of guilds.values()) 
+            await this.updateGuildCommandsPermissions(guild)
 
     }
 
@@ -138,6 +139,8 @@ class ScrimsCommandInstaller {
 
     getCommandPermissionsGuildCommandPermissions(guild, perms) {
 
+        return []; //Until we have adapted to stupid command permissions v2
+        
         const positions = this.bot.permissions.getCommandAllowedPositions(perms)
         if (positions.length === 0) return [];
 
@@ -163,8 +166,10 @@ class ScrimsCommandInstaller {
         // Can not block the command client side, since discord only allows up to 10 permissions
         if (appCmd.defaultPermission || permissions.length === 0 || permissions.length > 10) {
 
+            return false; //Until we have adapted to stupid command permissions v2
+            
             await appCmd.permissions.set({ command: appCmd.id, guild: guild.id, permissions: [] })
-                .catch(error => console.error(`Unable to set permissions for command ${appCmd.name}/${appCmd.id} to none!`, error))
+                .catch(error => console.error(`Unable to set permissions for command ${appCmd.name}/${appCmd.id}/${guild.id} to none!`, error))
             
             return false; 
 
@@ -172,7 +177,7 @@ class ScrimsCommandInstaller {
 
         // Set command permissions
         await appCmd.permissions.set({ command: appCmd.id, guild: guild.id, permissions })
-            .catch(error => console.error(`Unable to set permissions for command ${appCmd.name}/${appCmd.id}!`, permissions, error))
+            .catch(error => console.error(`Unable to set permissions for command ${appCmd.name}/${appCmd.id}/${guild.id}!`, permissions, error))
 
     }
 

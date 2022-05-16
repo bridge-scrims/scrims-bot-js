@@ -2,52 +2,21 @@ const DBCache = require("../postgresql/cache");
 const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
-class ScrimsPositionCache extends DBCache {
-
-}
-
+/**
+ * @class
+ * @extends DBTable<ScrimsPosition>
+ */
 class ScrimsPositionTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_position", "get_positions", [], ['id_position'], ScrimsPosition, ScrimsPositionCache);
+        super(client, "scrims_position", "get_positions", [], ['id_position'], ScrimsPosition);
 
         /**
-         * @type { ScrimsPositionCache }
+         * @type { DBCache<ScrimsPosition> }
          */
         this.cache
         
-    }
-
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsPosition[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsPosition> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsPosition[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
-
     }
 
 }
@@ -59,12 +28,14 @@ class ScrimsPosition extends TableRow {
      */
     static Table = ScrimsPositionTable
 
+    static ranks = ['prime', 'private', 'premium']
+
     constructor(client, positionData) {
 
         super(client, positionData, []);
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_position
 
@@ -82,6 +53,18 @@ class ScrimsPosition extends TableRow {
          * @type { number }
          */
         this.level
+
+    }
+
+    isRank() {
+
+        return ScrimsPosition.ranks.includes(this.name);
+
+    }
+
+    get capitalizedName() {
+
+        return this.name && this.name[0].toUpperCase() + this.name.slice(1);
 
     }
 

@@ -16,14 +16,17 @@ class ScrimsPermissionsClient {
      */
     constructor(database) {
 
+        /**
+         * @type { import('./postgresql/database') }
+         */
         this.database = database
 
     }
 
 
-    get hierarchy() {
+    get positions() {
 
-        return this.database.positions.cache.values().filter(v => typeof v?.level === "number").sort((a, b) => a.level - b.level).map(v => v.name);
+        return this.database.positions.cache.values();
     
     }
 
@@ -150,10 +153,10 @@ class ScrimsPermissionsClient {
      */
     getPermissionLevelPositions(permissionLevel) {
 
-        const requiredIndex = this.hierarchy.indexOf(permissionLevel)
-        if (requiredIndex === -1) return [ permissionLevel ]; // Not in hierarchy so only that position gives you permission
+        const requiredLevel = this.positions.filter(pos => pos.name === permissionLevel)[0]?.level
+        if (!requiredLevel) return [ permissionLevel ]; // Not in hierarchy so only that position gives you permission
 
-        return this.hierarchy.slice(0, requiredIndex+1); // Removed all levels of the hierarchy below the required one
+        return this.positions.filter(pos => pos.level <= requiredLevel).map(pos => pos.name); // Remove all levels of the hierarchy below the required one
 
     }
 

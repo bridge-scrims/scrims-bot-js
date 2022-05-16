@@ -13,7 +13,7 @@ class PositionsFeature {
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
         
         bot.on('ready', () => this.onReady())
-        bot.on('startupComplete', () => this.onStartup())
+        bot.on('databaseConnected', () => this.onStartup())
 
     }
 
@@ -74,14 +74,18 @@ class PositionsFeature {
         const userPositions = this.bot.database.userPositions.cache.find({ id_user: member.scrimsUser.id_user, position: { sticky: true } })
         const discordRoleIds = userPositions.map(p => this.bot.permissions.getPositionRequiredRoles(member.guild.id, p.id_position)).flat()
         const missingRoleIds = [ ...new Set(discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))) ]
-        const missingRoles = missingRoleIds.map(id => member.guild.roles.cache.get(id) ?? id)
 
         if (missingRoleIds.length > 0) {
 
-            this.database.ipc.notify(`joined_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, roles: missingRoles })
+            await Promise.all(
+                missingRoleIds.map(
+                    roleId => member.roles.add(roleId)
+                        .catch(error => console.error(`Unable to add position roles to ${member.user.tag} because of ${error}!`, userPositions, roleId))
+                )
+            )
 
-            await member.roles.add(missingRoleIds) 
-                .catch(error => console.error(`Unable to add position roles to ${member.user.tag} because of ${error}!`, userPositions, missingRoleIds))
+            const addedRoles = missingRoleIds.filter(id => member.roles.cache.has(id)).map(id => `@${member.roles.cache.get(id).name}`)
+            this.database.ipc.notify(`joined_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, roles: addedRoles })
         
         }
 
@@ -103,14 +107,18 @@ class PositionsFeature {
     async givePositionRoles(member, id_position) {
 
         const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position).filter(roleId => !member.roles.cache.has(roleId))
-        const roles = roleIds.map(id => member.guild.roles.cache.get(id) ?? id)
 
         if (roleIds.length > 0) {
 
-            const success = await member.roles.add(roleIds).then(() => true)
-                .catch(error => console.error(`Adding roles failed because of ${error}!`, member.guild.id, id_position. roleIds))
+            await Promise.all(
+                roleIds.map(
+                    roleId => member.roles.add(roleId)
+                        .catch(error => console.error(`Adding roles failed because of ${error}!`, member.guild.id, id_position. roleId))
+                )
+            )
 
-            if (success === true) this.database.ipc.notify(`position_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, id_position, roles })
+            const addedRoles = roleIds.filter(id => member.roles.cache.has(id)).map(id => `@${member.roles.cache.get(id).name}`)
+            this.database.ipc.notify(`position_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, id_position, roles: addedRoles })
 
         }
 
@@ -134,7 +142,7 @@ class PositionsFeature {
     async removePositionRoles(member, id_position) {
 
         const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position).filter(roleId => member.roles.cache.has(roleId))
-        const roles = roleIds.map(id => member.guild.roles.cache.get(id) ?? id)
+        const roles = roleIds.map(id => member.guild.roles.cache.get(id) ?? id).map(role => `@${(role?.name) ? role.name : role}`)
 
         if (roleIds.length > 0) {
 

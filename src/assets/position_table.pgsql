@@ -1,37 +1,45 @@
 
-CREATE TABLE scrims_position (
+CREATE TABLE IF NOT EXISTS scrims_position (
 
-    id_position uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    name text NOT NULL,
+    id_position SERIAL PRIMARY KEY,
+    name text NOT NULL UNIQUE,
     sticky boolean NOT NULL,
     level INT NULL
     
 );
 
-INSERT INTO scrims_position (name, level, sticky) VALUES('server_booster', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('screensharer', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('developer', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('artist', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('editor', NULL, true);
+DO
+$$
+BEGIN
+    if NOT EXISTS (select * FROM scrims_position WHERE name = 'ticket_open_mention') THEN
+        INSERT INTO scrims_position (name, level, sticky) VALUES('ticket_open_mention', NULL, true);
+    END IF;
+    if NOT EXISTS (select * FROM scrims_position WHERE name = 'suggestion_blacklisted') THEN
+        INSERT INTO scrims_position (name, level, sticky) VALUES('suggestion_blacklisted', NULL, true);
+    END IF;
+    if NOT EXISTS (select * FROM scrims_position WHERE name = 'support_blacklisted') THEN
+        INSERT INTO scrims_position (name, level, sticky) VALUES('support_blacklisted', NULL, true);
+    END IF;
 
-INSERT INTO scrims_position (name, level, sticky) VALUES('prime', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('private', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('premium', NULL, true);
+    if NOT EXISTS (select * FROM scrims_position WHERE name = 'owner') THEN
+        INSERT INTO scrims_position (name, level, sticky) VALUES('owner', 1, false);
+    END IF;
+    if NOT EXISTS (select * FROM scrims_position WHERE name = 'staff') THEN
+        INSERT INTO scrims_position (name, level, sticky) VALUES('staff', 2, false);
+    END IF;
+    if NOT EXISTS (select * FROM scrims_position WHERE name = 'support') THEN
+        INSERT INTO scrims_position (name, level, sticky) VALUES('support', 3, false);
+    END IF;
 
-INSERT INTO scrims_position (name, level, sticky) VALUES('ticket_open_mention', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('suggestion_blacklisted', NULL, true);
-INSERT INTO scrims_position (name, level, sticky) VALUES('support_blacklisted', NULL, true);
-
-INSERT INTO scrims_position (name, level, sticky) VALUES('owner', 1, false);
-INSERT INTO scrims_position (name, level, sticky) VALUES('staff', 2, false);
-INSERT INTO scrims_position (name, level, sticky) VALUES('support', 3, false);
-
-INSERT INTO scrims_position (name, level, sticky) VALUES('bridge_scrims_member', 100, false);
-
+    if NOT EXISTS (select * FROM scrims_position WHERE name = 'bridge_scrims_member') THEN
+        INSERT INTO scrims_position (name, level, sticky) VALUES('bridge_scrims_member', 100, false);
+    END IF;
+END
+$$;
 
 CREATE OR REPLACE FUNCTION get_positions(
 
-    id_position uuid default null,
+    id_position bigint default null,
     name text default null,
     sticky boolean default null,
     level int default null
@@ -59,19 +67,18 @@ END $$
 LANGUAGE plpgsql;
 
 
-
 CREATE OR REPLACE FUNCTION get_position_id(
 
-    id_position uuid default null,
+    id_position bigint default null,
     name text default null,
     sticky boolean default null,
     level int default null
     
 ) 
-RETURNS uuid 
+RETURNS bigint 
 AS $$
 DECLARE
-    retval uuid;
+    retval bigint;
 BEGIN
 EXECUTE '
     SELECT scrims_position.id_position FROM scrims_position 

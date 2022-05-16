@@ -9,7 +9,7 @@ class ScrimsPositionUpdater {
          */
         this.sync = syncHostFeature
 
-        this.bot.on("startupComplete", () => this.startUp())
+        this.bot.on("databaseConnected", () => this.startUp())
 
     }
 
@@ -38,9 +38,7 @@ class ScrimsPositionUpdater {
         this.bot.on('guildMemberRemove', member => this.onMemberRemove(member))
         this.bot.on('scrimsGuildMemberAdd', member => this.onMemberAdd(member))
 
-        this.database.positionRoles.cache.on('push', positionRole => this.onPositionRoleChange(positionRole))
-        this.database.positionRoles.cache.on('update', positionRole => this.onPositionRoleChange(positionRole))
-        this.database.positionRoles.cache.on('remove', positionRole => this.onPositionRoleChange(positionRole))
+        this.database.positionRoles.cache.on('change', positionRole => this.onPositionRoleChange(positionRole))
 
     }
 
@@ -223,7 +221,7 @@ class ScrimsPositionUpdater {
     getPositionRoles(guildId, roles) {
 
         const positionRoles = this.bot.permissions.getGuildPositionRoles(guildId)
-        return [ ...new Set(roles.map(role => positionRoles.filter(roleP => roleP.role_id == role.id)).flat()) ];
+        return [ ...new Set(roles.map(role => positionRoles.filter(roleP => roleP.role_id === role.id)).flat()) ];
 
     }
 

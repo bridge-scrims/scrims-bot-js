@@ -1,6 +1,6 @@
-CREATE EXTENSION pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE scrims_attachment (
+CREATE TABLE IF NOT EXISTS scrims_attachment (
 
     attachment_id text NOT NULL,
 

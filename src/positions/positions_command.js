@@ -4,7 +4,8 @@ const subCmdHandlers = {
 
     "get": onGetSubcommand,
     "give": onGiveSubcommand,
-    "take": onTakeSubcommand
+    "take": onTakeSubcommand,
+    "info": onInfoSubcommand
 
 }
 
@@ -23,6 +24,26 @@ function sortUserPositions(userPositions) {
 
 }
 
+async function onInfoSubcommand(interaction) {
+
+    const positionId = interaction.options.getInteger("position")
+    if (positionId) {
+
+        const position = await getPosition(interaction)
+        if (!position) return false
+
+        const positionRole = await interaction.client.database.positionRoles.get({ id_position: position.id_position, guild_id: interaction.guild.id }).then(v => v[0])
+        await interaction.reply(PositionsResponseMessageBuilder.getPositionInfoMessage(position, positionRole, interaction.client.database.userPositions.cache.values()))
+    
+    }else {
+
+        await interaction.reply(PositionsResponseMessageBuilder.getPositionsInfoMessage(interaction.client.database.positions.cache.values(), interaction.client.database.userPositions.cache.values()))
+    
+    }
+
+}
+
+
 async function onGetSubcommand(interaction) {
 
     const user = interaction.options.getUser('user')
@@ -37,7 +58,7 @@ async function onGetSubcommand(interaction) {
 
 async function getPosition(interaction) {
 
-    const positionId = interaction.options.getString("position")
+    const positionId = interaction.options.getInteger("position")
     const position = interaction.client.database.positions.cache.get(positionId)
     if (!position) {
 

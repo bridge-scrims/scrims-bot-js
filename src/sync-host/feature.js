@@ -168,13 +168,13 @@ class ScrimsSyncHostFeature {
 
         const userPositions = await this.bot.database.userPositions.getArrayMap({ }, ['user', 'discord_id'])
 
-        await Promise.all(members.map(member => this.initializeMember(member, userPositions[member.id])))
+        for (let member of members.values()) await this.initializeMember(member, userPositions[member.id])
 
         const ghostUsers = this.bot.database.users.cache.values()
             .filter(scrimsUser => userPositions[scrimsUser.discord_id] && userPositions[scrimsUser.discord_id].filter(userPos => userPos?.position?.name === "bridge_scrims_member").length > 0)
             .filter(scrimsUser => !guild.members.cache.has(scrimsUser.discord_id))
 
-        await Promise.all(ghostUsers.map(ghost => this.scrimsMemberRemove(ghost.id_user, userPositions[ghost.discord_id])))
+        for (let ghost of ghostUsers) await this.scrimsMemberRemove(ghost.id_user, userPositions[ghost.discord_id])
 
     }
 

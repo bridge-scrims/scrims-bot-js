@@ -64,7 +64,7 @@ class ScrimsTicketType extends TableRow {
         super(client, typeData, []);
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_type
 

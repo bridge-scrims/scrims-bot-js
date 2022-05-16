@@ -1,5 +1,4 @@
-const { Modal, TextInputComponent } = require("discord-modals");
-const { MessageEmbed, MessageActionRow, MessageButton, Role, User } = require("discord.js");
+const { MessageEmbed, MessageActionRow, MessageButton, Role, User, TextInputComponent, Modal } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
 const ScrimsTicket = require("../lib/scrims/ticket");
 const ScrimsTicketType = require("../lib/scrims/ticket_type");
@@ -57,23 +56,23 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    static closeRequestActions(ticketId) {
+    static closeRequestActions(userId, ticketId) {
 
         return new MessageActionRow()
             .addComponents([
     
                 new MessageButton()
-                    .setCustomId(`support/ticketClose/${ticketId}/ACCEPT`)
+                    .setCustomId(`support/ticketClose/${ticketId}/${userId}/ACCEPT`)
                     .setLabel("Accept & Close")
                     .setStyle("PRIMARY"),
     
                 new MessageButton()
-                    .setCustomId(`support/ticketClose/${ticketId}/DENY`)
+                    .setCustomId(`support/ticketClose/${ticketId}/${userId}/DENY`)
                     .setLabel("Deny & Keep Open")
                     .setStyle("SECONDARY"),
 
                 new MessageButton()
-                    .setCustomId(`support/ticketClose/${ticketId}/FORCE`)
+                    .setCustomId(`support/ticketClose/${ticketId}/${userId}/FORCE`)
                     .setLabel("Force Close")
                     .setStyle("DANGER")
     
@@ -101,7 +100,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
         const content = (ticket.user) ? ticket.user.getMention('**') : null
         const embed = this.closeRequestEmbed(user, reason)
-        const actions = this.closeRequestActions(ticket.id_ticket)
+        const actions = this.closeRequestActions(user.id, ticket.id_ticket)
 
         return { content, embeds: [embed], components: [actions] };
 
@@ -131,27 +130,31 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
         if (type.name === 'report') {
 
             modal.addComponents(
-                new TextInputComponent()
-                    .setCustomId('targets')
-                    .setLabel('Who are you reporting?')
-                    .setStyle('SHORT')
-                    .setMinLength(8)
-                    .setMaxLength(100)
-                    .setPlaceholder('first#1011 second#2022 third#3033 ...')
-                    .setRequired(true)
+                new MessageActionRow().addComponents(
+                    new TextInputComponent()
+                        .setCustomId('targets')
+                        .setLabel('Who are you reporting?')
+                        .setStyle('SHORT')
+                        .setMinLength(8)
+                        .setMaxLength(100)
+                        .setPlaceholder('first#1011 second#2022 third#3033 ...')
+                        .setRequired(true)
+                )
             )
 
         }
 
         modal.addComponents(
-            new TextInputComponent()
-                .setCustomId('request-reason')
-                .setLabel('Why are you opening a ticket?')
-                .setStyle('LONG')
-                .setMinLength(30)
-                .setMaxLength(1000)
-                .setPlaceholder('Describe your problem here')
-                .setRequired(true)
+            new MessageActionRow().addComponents(
+                new TextInputComponent()
+                    .setCustomId('request-reason')
+                    .setLabel('Why are you opening a ticket?')
+                    .setStyle('PARAGRAPH')
+                    .setMinLength(30)
+                    .setMaxLength(1000)
+                    .setPlaceholder('Describe your problem here')
+                    .setRequired(true)
+            )
         )
 
         return modal;

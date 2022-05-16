@@ -1,4 +1,4 @@
-const Pool = require('pg-pool');
+const { Client } = require('pg');
 const fs = require('fs/promises');
 const path = require('path');
 
@@ -7,7 +7,7 @@ const config = require("./config.json").dbLogin;
 
 async function addCronStuff() {
 
-    const pool = new Pool({
+    const client = new Client({
 
         user: config.username,
         password: config.password,
@@ -17,7 +17,9 @@ async function addCronStuff() {
 
     })
 
-    pool.on('error', error => console.error(`Unexpected pgsql error ${error}!`))
+    await client.connect()
+
+    client.on('error', error => console.error(`Unexpected pgsql error ${error}!`))
 
     const querys = []
 
@@ -27,27 +29,29 @@ async function addCronStuff() {
 
     for (let query of querys) {
 
-        await pool.query(query).catch(console.error)
+        await client.query(query).catch(console.error)
 
     }
 
-    await pool.end()
+    await client.end()
 
 }
 
 async function create() {
 
-    const pool = new Pool({
+    const client = new Client({
 
         user: config.username,
         password: config.password,
         host: config.hostname,
         port: config.port,
-        database: "scrims_temp"
+        database: config.database
 
     })
 
-    pool.on('error', error => console.error(`Unexpected pgsql error ${error}!`))
+    await client.connect()
+    
+    client.on('error', error => console.error(`Unexpected pgsql error ${error}!`))
 
     const querys = []
 
@@ -62,16 +66,17 @@ async function create() {
     
     querys.push(await fs.readFile(path.join(ASSETS, 'ticket_table.pgsql'), { encoding: 'utf8' }))
     querys.push(await fs.readFile(path.join(ASSETS, 'transcript_table.pgsql'), { encoding: 'utf8' }))
+    querys.push(await fs.readFile(path.join(ASSETS, 'session_table.pgsql'), { encoding: 'utf8' }))
 
     for (let query of querys) {
 
-        await pool.query(query).catch(console.error)
+        await client.query(query).catch(console.error)
 
     }
 
-    await pool.end()
+    await client.end()
     await addCronStuff()
 
 }
 
-create().catch(console.error)
+module.exports = create;

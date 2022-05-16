@@ -1,6 +1,8 @@
 
 const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
+const ScrimsPosition = require("../lib/scrims/position");
+const ScrimsPositionRole = require("../lib/scrims/position_role");
 
 class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
@@ -25,6 +27,52 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
                     .setFooter({ text: `Page ${idx+1}/${containers.length}` })
                     .setTimestamp(Date.now())
             ))
+
+        };
+
+    }
+
+    static getPositionsInfoMessage(positions, userPositions) {
+
+        positions = positions.sort((a, b) => ((a.level ?? 100) - (b.level ?? 100)))
+        const getDetails = (pos) => `\`ID:\` ${pos.id}, \`Level:\` **${pos.level ?? '*None*'}**, \`Sticky:\` ${pos.sticky}, \`Members:\` **${userPositions.filter(v => v.id_position === pos.id_position).length}**`;
+
+        return { 
+
+            ephemeral: true,
+            components: [],
+            embeds: this.createMultipleEmbeds(positions, (positions, idx, containers) => (
+                new MessageEmbed()
+                    .setTitle(`Bridge Scrims Positions`)
+                    .setColor(this.syncViolet)
+                    .setDescription(positions.map(pos => `\`•\` **${pos.name}** ${getDetails(pos)}`).join("\n"))
+                    .setFooter({ text: `Page ${idx+1}/${containers.length}` })
+            ))
+
+        };
+
+    }
+
+    /**
+     * @param { ScrimsPosition } position 
+     * @param { ScrimsPositionRole } positionRole
+     */
+    static getPositionInfoMessage(position, positionRole, userPositions) {
+
+        return { 
+
+            ephemeral: true,
+            components: [],
+            embeds: [
+                new MessageEmbed()
+                    .setTitle(`${position.capitalizedName} Position`)
+                    .setColor(positionRole?.role?.hexColor || this.syncViolet)
+                    .setDescription(
+                        ((positionRole?.role) ? `\`Connected to:\` ${positionRole.role}\n` : '')
+                        + `\`ID:\` **${position.id}**\n\`Level:\` **${position.level ?? '*None*'}**\n`
+                        + `\`Sticky:\` **${position.sticky}**\n\`Members:\` **${userPositions.filter(v => v.id_position === position.id_position).length}**`
+                    )
+            ]
 
         };
 

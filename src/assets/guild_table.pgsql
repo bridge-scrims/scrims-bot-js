@@ -1,56 +1,89 @@
 
-CREATE TABLE scrims_guild_entry_type (
+CREATE TABLE IF NOT EXISTS scrims_guild_entry_type (
 
-    id_type uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL
+    id_type SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
         
 );
 
-INSERT INTO scrims_guild_entry_type (name) VALUES ('positions_log_channel');
-INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_log_channel');
-INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_log_channel');
+DO
+$$
+BEGIN
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'positions_log_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('positions_log_channel');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'suggestions_log_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_log_channel');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_log_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_log_channel');
+    END IF;
 
-INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_transcript_channel');
-INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_support_category');
-INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_report_category');
-INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_status_channel');
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_transcript_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_transcript_channel');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_support_category') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_support_category');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_report_category') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_report_category');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_status_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_status_channel');
+    END IF;
 
-INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_channel');
-INSERT INTO scrims_guild_entry_type (name) VALUES ('epic_suggestions_channel');
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'vouch_status_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('vouch_status_channel');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'prime_status_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('prime_status_channel');
+    END IF;
 
-INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_vote_const');
-INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestion_up_vote_emoji');
-INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestion_down_vote_emoji');
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'suggestions_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_channel');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'epic_suggestions_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('epic_suggestions_channel');
+    END IF;
+
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'suggestions_vote_const') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_vote_const');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'suggestion_up_vote_emoji') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestion_up_vote_emoji');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'suggestion_down_vote_emoji') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestion_down_vote_emoji');
+    END IF;
+END
+$$;
 
 CREATE OR REPLACE FUNCTION get_guild_entry_type_id (
 
-    id_type uuid default null,
+    id_type bigint default null,
     name text default null
 
 ) 
-RETURNS uuid 
+RETURNS bigint 
 AS $$
 DECLARE
-    retval uuid;
+    retval bigint;
 BEGIN
 EXECUTE '
     SELECT scrims_guild_entry_type.id_type FROM scrims_guild_entry_type 
     WHERE 
     ($1 is null or scrims_guild_entry_type.id_type = $1) AND
     ($2 is null or scrims_guild_entry_type.name = $2)
-' USING id_type, name
-INTO retval;
+' USING id_type, name INTO retval;
 RETURN retval;
 END $$ 
 LANGUAGE plpgsql;
 
-CREATE TABLE scrims_guild (
+CREATE TABLE IF NOT EXISTS scrims_guild (
 
-    guild_id TEXT NULL,
+    guild_id TEXT UNIQUE,
     name TEXT NOT NULL,
-    icon TEXT NULL,
-
-    UNIQUE(guild_id)
+    icon TEXT NULL
         
 );
 
@@ -78,17 +111,20 @@ BEGIN
 END $$
 LANGUAGE plpgsql;
 
-CREATE TRIGGER guild_trigger
-    AFTER INSERT OR UPDATE OR DELETE
-    ON scrims_guild
-    FOR EACH ROW
-    EXECUTE PROCEDURE process_guild_change();
+DO $$
+BEGIN
+    CREATE TRIGGER guild_trigger
+        AFTER INSERT OR UPDATE OR DELETE
+        ON scrims_guild
+        FOR EACH ROW
+        EXECUTE PROCEDURE process_guild_change();
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
-
-CREATE TABLE scrims_guild_entry (
+CREATE TABLE IF NOT EXISTS scrims_guild_entry (
 
     guild_id TEXT NULL,
-    id_type uuid NOT NULL,
+    id_type bigint NOT NULL,
 
     value TEXT NULL,
 
@@ -99,7 +135,7 @@ CREATE TABLE scrims_guild_entry (
 
 CREATE OR REPLACE FUNCTION get_guild_entrys(
     guild_id text default null,
-    id_type uuid default null,
+    id_type bigint default null,
     value text default null
 ) 
 returns json
@@ -160,9 +196,14 @@ BEGIN
 END $$
 LANGUAGE plpgsql;
 
-
-CREATE TRIGGER guild_entry_trigger
-    AFTER INSERT OR UPDATE OR DELETE
-    ON scrims_guild_entry
-    FOR EACH ROW
-    EXECUTE PROCEDURE process_guild_entry_change();
+DO
+$do$
+BEGIN
+    CREATE TRIGGER guild_entry_trigger
+        AFTER INSERT OR UPDATE OR DELETE
+        ON scrims_guild_entry
+        FOR EACH ROW
+        EXECUTE PROCEDURE process_guild_entry_change();
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;

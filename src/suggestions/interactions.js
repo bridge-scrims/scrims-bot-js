@@ -1,6 +1,5 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
-const { Modal, TextInputComponent, showModal, ModalSubmitInteraction } = require('discord-modals');
-const { MessageComponentInteraction, MessageContextMenuInteraction } = require("discord.js");
+const { MessageComponentInteraction, MessageContextMenuInteraction, ModalSubmitInteraction, Modal, TextInputComponent, MessageActionRow } = require("discord.js");
 const SuggestionsResponseMessageBuilder = require('./responses');
 
 const cooldown = 15*60*1000
@@ -97,17 +96,19 @@ async function createModal(interaction) {
         .setCustomId(`suggestion`)
         .setTitle('Suggestion')
         .addComponents(
-            new TextInputComponent()
-                .setCustomId('suggestion')
-                .setLabel('Your brilliant idea')
-                .setStyle('LONG')
-                .setMinLength(15)
-                .setMaxLength(1200)
-                .setPlaceholder('Write here')
-                .setRequired(true)
+            new MessageActionRow().addComponents(
+                new TextInputComponent()
+                    .setCustomId('suggestion')
+                    .setLabel('Your brilliant idea')
+                    .setStyle('PARAGRAPH')
+                    .setMinLength(15)
+                    .setMaxLength(1200)
+                    .setPlaceholder('Write here')
+                    .setRequired(true)
+            )    
         )
 
-    return showModal(modal, { client: interaction.client, interaction });
+    await interaction.showModal(modal)
 
 }
 
@@ -177,6 +178,9 @@ function getSuggestionText(text) {
 
 }
 
+/**
+ * @param { import('../types').ScrimsModalSubmitInteraction } interaction 
+ */
 async function onModalSubmit(interaction) {
 
     const allowed = await verifySuggestionRequest(interaction)
@@ -184,7 +188,7 @@ async function onModalSubmit(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    const inputValue = interaction.getTextInputValue('suggestion')
+    const inputValue = interaction.fields.getTextInputValue('suggestion')
     if (typeof inputValue !== 'string') return interaction.editReply(SuggestionsResponseMessageBuilder.errorMessage('Invalid Suggestion', "You suggestion must contain at least 15 letters to be valid."));
     const suggestion = getSuggestionText(inputValue)
 
@@ -219,7 +223,7 @@ async function onModalSubmit(interaction) {
    
     if (createResult === false) return message.delete().catch(error => onError(interaction, `delete suggestion message after aborting command`, error, false));
 
-    await message.startThread({ name: "Discuss" }).catch(console.error)
+    //await message.startThread({ name: "Discuss" }).catch(console.error)
     await interaction.editReply(SuggestionsResponseMessageBuilder.suggestionSentMessage());
 
 }

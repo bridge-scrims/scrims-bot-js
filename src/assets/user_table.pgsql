@@ -1,5 +1,5 @@
 
-CREATE TABLE scrims_user (
+CREATE TABLE IF NOT EXISTS scrims_user (
 
     id_user uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     joined_at bigint NOT NULL,
@@ -122,8 +122,14 @@ END $$
 LANGUAGE plpgsql;
 
 
-CREATE TRIGGER scrims_user_trigger
-    AFTER INSERT OR UPDATE OR DELETE
-    ON scrims_user
-    FOR EACH ROW
-    EXECUTE PROCEDURE process_scrims_user_change();
+DO
+$do$
+BEGIN
+    CREATE TRIGGER scrims_user_trigger
+        AFTER INSERT OR UPDATE OR DELETE
+        ON scrims_user
+        FOR EACH ROW
+        EXECUTE PROCEDURE process_scrims_user_change();
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;

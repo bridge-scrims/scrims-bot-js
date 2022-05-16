@@ -124,7 +124,7 @@ class ScrimsUserPosition extends TableRow {
         this.user
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_position
 

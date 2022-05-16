@@ -1,19 +1,19 @@
 
-CREATE TABLE scrims_ticket_type (
+CREATE TABLE IF NOT EXISTS scrims_ticket_type (
 
-    id_type uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    name text NOT NULL 
+    id_type SERIAL PRIMARY KEY,
+    name text NOT NULL UNIQUE
 
 );
 
 CREATE OR REPLACE FUNCTION get_ticket_type_id (
-    id_type uuid default null,
+    id_type bigint default null,
     name text default null
 ) 
-RETURNS uuid 
+RETURNS bigint 
 AS $$
 DECLARE
-    retval uuid;
+    retval bigint;
 BEGIN
 EXECUTE '
     SELECT scrims_ticket_type.id_type FROM scrims_ticket_type 
@@ -26,24 +26,33 @@ RETURN retval;
 END $$ 
 LANGUAGE plpgsql;
 
-INSERT INTO scrims_ticket_type (name) VALUES('support');
-INSERT INTO scrims_ticket_type (name) VALUES('report');
+DO
+$$
+BEGIN
+    if NOT EXISTS (select * FROM scrims_ticket_type WHERE name = 'support') THEN
+        INSERT INTO scrims_ticket_type (name) VALUES ('support');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_ticket_type WHERE name = 'report') THEN
+        INSERT INTO scrims_ticket_type (name) VALUES ('report');
+    END IF;
+END
+$$;
 
-CREATE TABLE scrims_ticket_status (
+CREATE TABLE IF NOT EXISTS scrims_ticket_status (
 
-    id_status uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    name text NOT NULL 
+    id_status SERIAL PRIMARY KEY,
+    name text NOT NULL UNIQUE
 
 );
 
 CREATE OR REPLACE FUNCTION get_ticket_status_id (
-    id_status uuid default null,
+    id_status bigint default null,
     name text default null
 ) 
-RETURNS uuid 
+RETURNS bigint 
 AS $$
 DECLARE
-    retval uuid;
+    retval bigint;
 BEGIN
 EXECUTE '
     SELECT scrims_ticket_status.id_status FROM scrims_ticket_status 
@@ -56,16 +65,27 @@ RETURN retval;
 END $$ 
 LANGUAGE plpgsql;
 
-INSERT INTO scrims_ticket_status (name) VALUES('open');
-INSERT INTO scrims_ticket_status (name) VALUES('closed');
-INSERT INTO scrims_ticket_status (name) VALUES('deleted');
+DO
+$$
+BEGIN
+    if NOT EXISTS (select * FROM scrims_ticket_status WHERE name = 'open') THEN
+        INSERT INTO scrims_ticket_status (name) VALUES ('open');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_ticket_status WHERE name = 'closed') THEN
+        INSERT INTO scrims_ticket_status (name) VALUES ('closed');
+    END IF;
+    if NOT EXISTS (select * FROM scrims_ticket_status WHERE name = 'deleted') THEN
+        INSERT INTO scrims_ticket_status (name) VALUES ('deleted');
+    END IF;
+END
+$$;
 
-CREATE TABLE scrims_ticket (
+CREATE TABLE IF NOT EXISTS scrims_ticket (
 
     id_ticket uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    id_type uuid NOT NULL,
+    id_type bigint NOT NULL,
+    id_status bigint NOT NULL,
     id_user uuid NOT NULL,
-    id_status uuid NOT NULL,
 
     guild_id text NOT NULL,
     channel_id text NOT NULL,
@@ -80,7 +100,7 @@ CREATE TABLE scrims_ticket (
 
 );
 
-CREATE SEQUENCE support_ticket_index;
+CREATE SEQUENCE IF NOT EXISTS support_ticket_index;
 
 CREATE OR REPLACE FUNCTION is_expired( expires_at bigint ) 
 RETURNS boolean
@@ -112,9 +132,9 @@ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_ticket_id (
 
     id_ticket uuid default null,
-    id_type uuid default null,
+    id_type bigint default null,
     id_user uuid default null,
-    id_status uuid default NULL,
+    id_status bigint default NULL,
     guild_id text default null,
     channel_id text default null,
     created_at bigint default null,
@@ -143,14 +163,12 @@ RETURN retval;
 END $$ 
 LANGUAGE plpgsql;
 
-
-
 CREATE OR REPLACE FUNCTION get_tickets (
 
     id_ticket uuid default null,
-    id_type uuid default null,
+    id_type bigint default null,
     id_user uuid default null,
-    id_status uuid default NULL,
+    id_status bigint default NULL,
     guild_id text default null,
     channel_id text default null,
     created_at bigint default null,
@@ -238,8 +256,14 @@ END $$
 LANGUAGE plpgsql;
 
 
-CREATE TRIGGER ticket_trigger
-    AFTER INSERT OR UPDATE OR DELETE
-    ON scrims_ticket
-    FOR EACH ROW
-    EXECUTE PROCEDURE process_ticket_change();
+DO
+$do$
+BEGIN
+    CREATE TRIGGER ticket_trigger
+        AFTER INSERT OR UPDATE OR DELETE
+        ON scrims_ticket
+        FOR EACH ROW
+        EXECUTE PROCEDURE process_ticket_change();
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;

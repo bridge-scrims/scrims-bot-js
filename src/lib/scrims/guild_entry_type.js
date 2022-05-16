@@ -65,7 +65,7 @@ class ScrimsGuildEntryType extends TableRow {
         super(client, typeData, []);
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_type
 
@@ -73,6 +73,12 @@ class ScrimsGuildEntryType extends TableRow {
          * @type { string }
          */
         this.name
+
+    }
+
+    get capitalizedName() {
+
+        return this.name && this.name[0].toUpperCase() + this.name.slice(1);
 
     }
 

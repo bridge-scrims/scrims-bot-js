@@ -1,9 +1,13 @@
-import { ModalSubmitField, ModalSubmitInteraction } from "discord-modals";
-import { CommandInteraction, CommandInteractionOptionResolver, GuildMember, Interaction, MessageComponentInteraction } from "discord.js";
+import { 
+    CommandInteraction, CommandInteractionOptionResolver, ContextMenuInteraction,
+    ModalSubmitInteraction, GuildMember, Interaction, MessageComponentInteraction, PartialTextInputData, Modal 
+} from "discord.js";
+
 import { SlashCommandBuilder } from "@discordjs/builders";
 
 import ScrimsUser from "./scrims/user";
-import ScrimsJSBot from "./bot";
+import ScrimsCouncilBot from "./bot";
+import I18n from "./Internationalization";
 
 export interface ScrimsGuildMember extends GuildMember {
 
@@ -21,22 +25,20 @@ export interface ScrimsPermissions {
 
 export interface ScrimsInteraction extends Interaction {
 
-    sendModal(modal: Modal, fields?: ModalSubmitField[] ): Promise<void>;
+    sendModal(modal: Modal, fields?: PartialTextInputData[] ): Promise<void>;
 
+    i18n: I18n;
     scrimsUser: ScrimsUser;
-    client: ScrimsJSBot; 
+    client: ScrimsCouncilBot; 
     member: ScrimsGuildMember;
+
+    commandName: string;
 
 }
 
+export interface ScrimsContextMenuInteraction extends ContextMenuInteraction, ScrimsInteraction {}
 
-export interface ScrimsCommandInteraction extends CommandInteraction {
-
-    sendModal(modal: Modal, fields?: ModalSubmitField[] ): Promise<void>;
-
-    scrimsUser: ScrimsUser;
-    client: ScrimsJSBot; 
-    member: ScrimsGuildMember;
+export interface ScrimsCommandInteraction extends ScrimsInteraction, CommandInteraction {
 
     params: CommandInteractionOptionResolver;
     scrimsCommand: SlashCommandBuilder;
@@ -44,27 +46,15 @@ export interface ScrimsCommandInteraction extends CommandInteraction {
 
 }
 
-export interface ScrimsComponentInteraction extends MessageComponentInteraction {
-
-    sendModal(modal: Modal, fields?: ModalSubmitField[] ): Promise<void>;
-
-    scrimsUser: ScrimsUser;
-    client: ScrimsJSBot; 
-    member: ScrimsGuildMember;
+export interface ScrimsComponentInteraction extends MessageComponentInteraction, ScrimsInteraction {
 
     memoryData: any;
-    commandName: string;
     args: string[];
 
 }
 
-export interface ScrimsModalSubmitInteraction extends ModalSubmitInteraction {
+export interface ScrimsModalSubmitInteraction extends ModalSubmitInteraction, ScrimsInteraction {
 
-    scrimsUser: ScrimsUser;
-    client: ScrimsJSBot; 
-    member: ScrimsGuildMember;
-
-    commandName: string;
     args: string[];
 
 }

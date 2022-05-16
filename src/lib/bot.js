@@ -1,5 +1,4 @@
-const { Client, Message, Interaction, CommandInteraction, MessageComponentInteraction, GuildMember, MessageReaction } = require("discord.js");
-const discordModals = require('discord-modals');
+const { Client, Message, Interaction, CommandInteraction, MessageComponentInteraction, GuildMember, MessageReaction, AutocompleteInteraction, ModalSubmitInteraction, Modal, TextInputComponent } = require("discord.js");
 
 const ScrimsCommandInstaller = require("./command_installer");
 const ScrimsPermissionsClient = require("./permissions");
@@ -13,6 +12,8 @@ const auditEvents = require("./audited_events");
 const { interactionHandler, eventHandlers, commands } = require("./commands");
 const ScrimsUserUpdater = require("./user_updater");
 const MemoryMessageButton = require("./memory_button");
+const I18n = require("./Internationalization");
+const VoiceChannelBasedSession = require("./vc_session");
 
 class ScrimsBot extends Client {
 
@@ -63,17 +64,22 @@ class ScrimsBot extends Client {
          */
         this.handles = []
 
-        discordModals(this)
+        /**
+         * @type { I18n }
+         */
+        this.i18n = null
+
         auditEvents(this)
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.commands.add(cmdData, cmdPerms))
 
     }
 
-    destroy() {
+    async destroy() {
 
         super.destroy()
-        this.database.destroy().catch(() => null)
+        await this.database.destroy().catch(() => null)
+        process.exit(0)
         
     }
 
@@ -97,10 +103,11 @@ class ScrimsBot extends Client {
 
     async login() {
 
-        await super.login(this.token);
-        console.log("Connected to discord!")
+        await I18n.initializeLocales()
+        this.i18n = I18n.getInstance()
 
-        this.user.setPresence({ activities: [{ type: 'LISTENING', name: 'why cats are best' }] })
+        await super.login(this.token)
+        console.log("Connected to discord!")
 
         const guilds = await this.guilds.fetch()
         
@@ -115,11 +122,11 @@ class ScrimsBot extends Client {
         console.log("Commands initialized!")
 
         console.log("Initializing guilds...")
-        await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
+        for (let guild of guilds.values()) await this.updateScrimsGuild(null, guild)
         console.log("Guilds initialized!")
         
         console.log("Initializing guild members...")
-        await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
+        for (let guild of guilds.values()) await this.scrimsUsers.initializeGuildMembers(guild)
         console.log("Guild members initialized!")
         
         this.emit("startupComplete")
@@ -148,17 +155,14 @@ class ScrimsBot extends Client {
 
     }
 
-    getErrorPayload(error) {
+    /**
+     * @param { I18n } i18n 
+     * @param { Error } error
+     */
+    getErrorPayload(i18n, error) {
 
-        if (error?.code == 'ECONNREFUSED') return ScrimsMessageBuilder.errorMessage(
-            "Command Failed", `Unfortunately your command cannot be handled at the moment. Please try again later.`
-        );
-
-        return ScrimsMessageBuilder.errorMessage(
-            "Unexpected Exception", `Unfortunately your command could not be handled due to an unexpected error.`
-            + ` This error was automatically reported to the bridge scrims developer team.`
-            + ` Sorry for any inconvenience. Please try again later.`
-        );
+        if (error?.code == 'ECONNREFUSED') return ScrimsMessageBuilder.errorMessage(i18n.get('command_failed_title'), i18n.get('command_failed'));
+        return ScrimsMessageBuilder.errorMessage(i18n.get('unexpected_error_title'), i18n.get('unexpected_error'));
 
     }
 
@@ -175,16 +179,17 @@ class ScrimsBot extends Client {
 
             // Fail safe for unexpected command handler errors e.g. database errors
 
-            console.error(`Unexpected error while handling a ${event}!`, error, interactEvent)
+            if (!['Unknown interaction', 'The user aborted a request.'].includes(error.message))
+                console.error(`Unexpected error while handling a ${event}!`, error, interactEvent)
 
-            if (interactEvent instanceof Interaction || interactEvent instanceof discordModals.ModalSubmitInteraction) {
+            if (interactEvent instanceof Interaction) {
                 
                 if (!(interactEvent instanceof Interaction && interactEvent.isAutocomplete())) {
 
-                    if (interactEvent instanceof discordModals.ModalSubmitInteraction)
+                    if (interactEvent instanceof ModalSubmitInteraction)
                         if (!interactEvent.replied && !interactEvent.deferred) await interactEvent.deferReply({ ephemeral: true })
 
-                    const payload = this.getErrorPayload(error)
+                    const payload = this.getErrorPayload(interactEvent.i18n, error)
 
                     if (interactEvent.replied || interactEvent.deferred) await interactEvent.editReply(payload).catch(() => null)
                     else await interactEvent.reply(payload).catch(() => null)
@@ -206,10 +211,11 @@ class ScrimsBot extends Client {
         const handler = MemoryMessageButton.getHandler(handlerIdentifier) || this.eventHandlers[handlerIdentifier]
         if (handler) return this.runHandler(handler, interactEvent, event)
 
-        if (interactEvent instanceof Interaction || interactEvent instanceof discordModals.ModalSubmitInteraction) {
+        if (interactEvent instanceof Interaction) {
 
-            if (interactEvent instanceof MessageComponentInteraction) await interactEvent.update({ content: 'This message is no longer being hosted', components: [], embeds: [] }).catch(console.error)
-            else await interactEvent.reply({ content: "This command does not have a handler. Please refrain from trying again.", ephemeral: true }).catch(console.error)
+            if (interactEvent instanceof MessageComponentInteraction) await interactEvent.update({ content: interactEvent.i18n.get('message_not_hosted'), components: [], embeds: [] }).catch(console.error)
+            else if (interactEvent instanceof AutocompleteInteraction) await interactEvent.respond([]).catch(console.error)
+            else await interactEvent.reply({ content: interactEvent.i18n.get('missing_command_handler'), ephemeral: true }).catch(console.error)
 
         }
 
@@ -257,13 +263,13 @@ class ScrimsBot extends Client {
     }
 
     /**
-     * @param { discordModals.Modal } modal 
-     * @param { Interaction } interaction 
-     * @param { discordModals.ModalSubmitField[] } fields 
+     * @param { Modal } modal 
+     * @param { MessageComponentInteraction | CommandInteraction } interaction 
+     * @param { TextInputComponent[] } fields 
      */
     async sendModal(modal, interaction, fields=[]) {
 
-        const inputs = modal.components.map(actionRow => actionRow.components[0]).flat()
+        const inputs = modal.components
         fields.forEach(field => {
 
             const input = inputs.filter(value => value.customId === field.customId)[0]
@@ -275,7 +281,7 @@ class ScrimsBot extends Client {
 
         })
 
-        await discordModals.showModal(modal, { client: this, interaction })
+        await interaction.showModal(modal)
 
     }
 
@@ -286,8 +292,10 @@ class ScrimsBot extends Client {
 
         const isCommandInteraction = (interactEvent instanceof CommandInteraction)
         const isComponentInteraction = (interactEvent instanceof MessageComponentInteraction)
-        const isModalSumbitInteraction = (interactEvent instanceof discordModals.ModalSubmitInteraction)
-        const isInteraction = (interactEvent instanceof Interaction) || isModalSumbitInteraction
+        const isModalSumbitInteraction = (interactEvent instanceof ModalSubmitInteraction)
+        const isInteraction = (interactEvent instanceof Interaction)
+
+        interactEvent.i18n = I18n.getInstance(interactEvent.locale)
 
         if (interactEvent instanceof Message) this.expandMessage(interactEvent)
 
@@ -299,15 +307,15 @@ class ScrimsBot extends Client {
 
         if (interactEvent.user) interactEvent.userId = interactEvent.user.id
         if (interactEvent.commandName === "CANCEL" && isComponentInteraction) 
-            return interactEvent.update({ content: `Operation cancelled.`, embeds: [], components: [] });
+            return interactEvent.update({ content: interactEvent.i18n.get('operation_cancelled'), embeds: [], components: [] });
 
-        if (interactEvent.commandName === "ping" && (interactEvent instanceof CommandInteraction)) 
+        if (interactEvent.commandName === "ping" && isCommandInteraction) 
             return interactEvent.reply({ content: `pong`, embeds: [], components: [], ephemeral: true });
 
         if (this.blocked && isInteraction && !['killAction', 'kill'].includes(interactEvent.commandName)) {
 
             if (isCommandInteraction || isComponentInteraction) 
-                await interactEvent.reply({ content: 'I am currently restarting. Please try again in a minute.', ephemeral: true });
+                await interactEvent.reply({ content: interactEvent.i18n.get('blocked_cancel'), ephemeral: true });
             
             this.emit('blocked', interactEvent.constructor.name)
             
@@ -325,7 +333,7 @@ class ScrimsBot extends Client {
             
         if (interactEvent instanceof CommandInteraction)
             if (!(await this.isPermitted(interactEvent))) 
-                return interactEvent.reply(ResponseTemplates.errorMessage("Insufficient Permissions", "You are missing the required permissions to use this command!")).catch(console.error);
+                return interactEvent.reply(ResponseTemplates.missingPermissionsMessage(interactEvent.i18n, interactEvent.i18n.get('missing_command_permissions'))).catch(console.error);
         
         return this.handleInteractEvent(interactEvent, event)
         

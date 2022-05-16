@@ -86,7 +86,7 @@ class ScrimsTicket extends TableRow {
         super(table, ticketData, references)
 
         /**
-         * @type { string }
+         * @type { number }
          */
         this.id_ticket
         

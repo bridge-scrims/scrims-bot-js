@@ -6,20 +6,17 @@
     "scripts": {
         "start": "node ./src/index.js",
         "dbtest": "node ./tests/db_test.js",
-        "test": "node ./tests/index.js",
-        "recovery": "node ./src/recovery.js",
-        "create": "node ./src/create-db.js"
+        "test": "node ./tests/index.js"
     },
     "dependencies": {
-        "@discordjs/builders": "^0.13.0",
-        "discord-modals": "^1.2.3",
-        "discord.js": "^13.6.0",
-        "got": "^11.8.2",
-        "moment-timezone": "^0.5.34",
-        "pg": "^8.7.3",
-        "pg-ipc": "^1.0.5",
-        "pg-pool": "^3.5.1",
-        "uuid": "^8.3.2"
+        "@discordjs/builders": "0.13.0",
+        "discord.js": "13.7.0",
+        "got": "11.8.2",
+        "moment-timezone": "0.5.34",
+        "pg": "8.7.3",
+        "pg-ipc": "1.0.5",
+        "pg-pool": "3.5.1",
+        "uuid": "8.3.2"
     },
     "repository": {
         "type": "git",

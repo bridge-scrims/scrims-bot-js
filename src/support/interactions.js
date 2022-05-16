@@ -17,7 +17,7 @@ async function onCommand(interaction) {
     const handler = commandHandlers[interaction.commandName]
     if (handler) {
 
-        if (!interaction.guild) return interaction.reply(SupportResponseMessageBuilder.guildOnlyMessage());
+        if (!interaction.guild) return interaction.reply(SupportResponseMessageBuilder.guildOnlyMessage(interaction.i18n));
 
         return handler(interaction);
 

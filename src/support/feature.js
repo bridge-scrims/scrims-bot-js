@@ -351,7 +351,7 @@ class SupportFeature {
 
     async closeTicket(channel, ticket, executor) {
 
-        const closer = (executor.id) ? { closer: { discord_id: executor.id } } : { id_closer: null }
+        const closer = (executor?.id) ? { closer: { discord_id: executor.id } } : { id_closer: null }
         await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" }, ...closer })
 
         this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })

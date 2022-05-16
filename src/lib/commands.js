@@ -66,8 +66,7 @@ async function kill(interaction) {
     if (interaction.replied || interaction.deferred) await interaction.editReply(payload).catch(console.error)
     else await interaction.reply(payload).catch(console.error)
 
-    interaction.client.destroy()
-    process.exit(0)
+    await interaction.client.destroy()
 
 }
 
@@ -129,21 +128,21 @@ async function onConfigAutocomplete(interaction) {
     const entryTypes = interaction.client.database.guildEntryTypes.cache.values()
     const relevant = entryTypes.filter(type => type.name.toLowerCase().includes(focused))
     
-    await interaction.respond([ { name: "All", value: 'ALL' }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])
+    await interaction.respond([ { name: "All", value: -1 }, ...relevant.map(type => ({ name: type.name, value: type.id_type })) ])
 
 }
 
 async function onConfigCommand(interaction) {
 
     if (interaction.isAutocomplete()) return onConfigAutocomplete(interaction);
-    if (!interaction.guild) return interaction.reply( ScrimsMessageBuilder.guildOnlyMessage() );
+    if (!interaction.guild) return interaction.reply( ScrimsMessageBuilder.guildOnlyMessage(interaction.i18n) );
 
     await interaction.deferReply({ ephemeral: true })
 
-    const entryTypeId = interaction.options.getString("key")
+    const entryTypeId = interaction.options.getInteger("key")
     const value = interaction.options.getString("value") ?? null
 
-    if (entryTypeId === 'ALL') {
+    if (entryTypeId === -1) {
 
         const entrys = await interaction.client.database.guildEntrys.get({ guild_id: interaction.guild.id })
 
@@ -187,7 +186,7 @@ function getConfigCommand() {
     const configCommand = new SlashCommandBuilder()
         .setName("config")
         .setDescription("Used to configure the bot for this discord server.")
-        .addStringOption(option => (
+        .addIntegerOption(option => (
             option
                 .setName("key")
                 .setDescription("What exact you are trying to configure.")
