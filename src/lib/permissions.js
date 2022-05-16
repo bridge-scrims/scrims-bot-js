@@ -156,7 +156,7 @@ class ScrimsPermissionsClient {
         const requiredLevel = this.positions.filter(pos => pos.name === permissionLevel)[0]?.level
         if (!requiredLevel) return [ permissionLevel ]; // Not in hierarchy so only that position gives you permission
 
-        return this.positions.filter(pos => pos.level <= requiredLevel).map(pos => pos.name); // Remove all levels of the hierarchy below the required one
+        return this.positions.filter(pos => pos.level && (pos.level <= requiredLevel)).map(pos => pos.name); // Remove all levels of the hierarchy below the required one
 
     }
 
