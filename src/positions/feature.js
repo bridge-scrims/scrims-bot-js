@@ -1,4 +1,5 @@
 
+const { GuildMember } = require("discord.js");
 const { interactionHandler, eventListeners, commands } = require("./commands");
 
 class PositionsFeature {
@@ -69,11 +70,14 @@ class PositionsFeature {
 
     }
 
+    /**
+     * @param { GuildMember } member 
+     */
     async onMemberAdd(member) {
 
         const userPositions = this.bot.database.userPositions.cache.find({ id_user: member.scrimsUser.id_user, position: { sticky: true } })
         const discordRoleIds = userPositions.map(p => this.bot.permissions.getPositionRequiredRoles(member.guild.id, p.id_position)).flat()
-        const missingRoleIds = [ ...new Set(discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))) ]
+        const missingRoleIds = [ ...new Set(discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))) ].filter(roleId => !member.guild.roles.cache.get(roleId)?.managed)
 
         if (missingRoleIds.length > 0) {
 
@@ -106,7 +110,8 @@ class PositionsFeature {
 
     async givePositionRoles(member, id_position) {
 
-        const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position).filter(roleId => !member.roles.cache.has(roleId))
+        const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position)
+            .filter(roleId => !member.roles.cache.has(roleId)).filter(roleId => !member.guild.roles.cache.get(roleId)?.managed)
 
         if (roleIds.length > 0) {
 
@@ -141,7 +146,8 @@ class PositionsFeature {
 
     async removePositionRoles(member, id_position) {
 
-        const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position).filter(roleId => member.roles.cache.has(roleId))
+        const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position)
+            .filter(roleId => member.roles.cache.has(roleId)).filter(roleId => !member.guild.roles.cache.get(roleId)?.managed)
         const roles = roleIds.map(id => member.guild.roles.cache.get(id) ?? id).map(role => `@${(role?.name) ? role.name : role}`)
 
         if (roleIds.length > 0) {
