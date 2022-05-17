@@ -42,6 +42,10 @@ class TicketTranscriber {
 
                 }).catch(console.error))
             )
+
+            if (!message.content && message.embeds?.length === 1) {
+                message.content = message.embeds[0]?.title || message.embeds[0]?.author?.name || ''
+            }
             
         }
 

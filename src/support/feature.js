@@ -225,7 +225,7 @@ class SupportFeature {
         const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
-        if (message.author.id == this.bot.user.id) return false;
+        if (message.author.id === this.bot.user.id) return false;
         if (!message.content) message.content = "";
 
         await this.transcriber.transcribe(ticket.id, message)

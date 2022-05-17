@@ -273,7 +273,7 @@ async function onTicketCloseRequest(interaction) {
     const executorId = interaction.args.shift()
     if (executorId) interaction.executor = await interaction.client.users.fetch(executorId)
 
-    if (!interaction.ticket || !interaction.executor || interaction.ticket.status.name !== 'deleted') {
+    if (!interaction.ticket || !interaction.executor || interaction.ticket.status.name === 'deleted') {
 
         if (interaction.message.deletable) await interaction.message.delete().catch(() => null)
         else await interaction.editReply({ content: 'This message is invalid.', components: [], embeds: [] }).catch(() => null)
@@ -298,7 +298,7 @@ async function onDeny(interaction, ticket) {
 
     const ticketCreatorId = ticket.user.discord_id;
     if (ticketCreatorId !== interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticket.user));
+        return interaction.editReply(getNotAllowedPayload(interaction.i18n, ticket.user));
 
     const transcriber = interaction.client.support.transcriber;
     const message = { id: interaction.id, author: interaction.user, content: "denied the close request" }
@@ -317,7 +317,7 @@ async function onAccept(interaction, ticket) {
 
     const ticketCreatorId = ticket.user.discord_id;
     if (ticketCreatorId !== interaction.user.id)
-        return interaction.editReply(getNotAllowedPayload(ticket.user));
+        return interaction.editReply(getNotAllowedPayload(interaction.i18n, ticket.user));
 
     await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.executor, `accepted the close request from ${interaction.executor.tag}`)
 
@@ -340,10 +340,10 @@ async function onAccept(interaction, ticket) {
 
 }
 
-function getNotAllowedPayload(ticketCreator) {
+function getNotAllowedPayload(i18n, ticketCreator) {
 
     return SupportResponseMessageBuilder.missingPermissionsMessage(
-        `Only ${ticketCreator?.getMention('**') ?? 'unknown-user'} can make this decision.`
+        i18n, `Only ${ticketCreator?.getMention('**') ?? 'unknown-user'} can make this decision.`
     );
 
 }
