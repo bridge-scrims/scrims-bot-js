@@ -16,7 +16,7 @@ async function onInteraction(interaction) {
     const interactionHandler = interactionHandlers[interaction.commandName]
     if (interactionHandler) return interactionHandler(interaction);
 
-    await interaction.reply({ content: `How did we get here?`, ephemeral: true })
+    throw new Error(`Interaction with name '${interaction.commandName}' does not have a handler!`, interactionHandlers);
 
 }
 
@@ -99,8 +99,6 @@ async function onTransferPositionsComponent(interaction) {
 
 async function onCreatePositionCommand(interaction) {
 
-    if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
-
     const name = interaction.options.getString("name") ?? 'unnamed_position'
     const sticky = interaction.options.getBoolean("sticky") ?? false
     const level = interaction.options.getInteger("level") ?? null
@@ -128,8 +126,6 @@ async function onRemovePositionCommand(interaction) {
 
     if (interaction.isAutocomplete()) return onPositionAutoComplete(interaction); 
 
-    if (!interaction.scrimsUser) return interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage());
-
     const positionId = interaction.options.getInteger("position")
     const position = interaction.client.database.positions.cache.get(positionId)
     if (!position) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
@@ -149,7 +145,7 @@ function getTransferPositionsCommand() {
         .setName("transfer-user-positions")
         .setDescription("Will add user positions based off their discord roles.")
     
-    return [ transferPositionsCommand, { permissionLevel: "staff" } ];
+    return [ transferPositionsCommand, { permissionLevel: "staff" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
 
 }
 
@@ -162,7 +158,7 @@ function getCreatePositionCommand() {
         .addBooleanOption(option => option.setName("sticky").setDescription("Whether the position should always stay."))
         .addIntegerOption(option => option.setName("level").setDescription("The level in the bridge scrims hierarchy."))
     
-    return [ createPositionCommand, { permissionLevel: "owner" } ];
+    return [ createPositionCommand, { permissionLevel: "owner" }, { forceGuild: false, bypassBlock: false, forceScrimsUser: true } ];
 
 }
 
@@ -173,7 +169,7 @@ function getRemovePositionCommand() {
         .setDescription("Removes a bridge scrims position.")
         .addIntegerOption(option => option.setName("position").setDescription("The name of the position that should be removed.").setAutocomplete(true))
     
-    return [ removePositionCommand, { permissionLevel: "owner" } ];
+    return [ removePositionCommand, { permissionLevel: "owner" }, { forceGuild: false, bypassBlock: false, forceScrimsUser: true } ];
 
 }
 

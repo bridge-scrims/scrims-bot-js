@@ -1,6 +1,6 @@
 import { 
     CommandInteraction, CommandInteractionOptionResolver, ContextMenuInteraction,
-    ModalSubmitInteraction, GuildMember, Interaction, MessageComponentInteraction, PartialTextInputData, Modal 
+    ModalSubmitInteraction, GuildMember, Interaction, MessageComponentInteraction, PartialTextInputData, Modal, AutocompleteInteraction 
 } from "discord.js";
 
 import { SlashCommandBuilder } from "@discordjs/builders";
@@ -23,6 +23,15 @@ export interface ScrimsPermissions {
 
 }
 
+export interface ScrimsCommandConfiguration {
+
+    forceGuild?: boolean;
+    forceScrimsUser?: boolean;
+    ephemeralDefer?: boolean;
+    bypassBlock?: boolean;
+    
+}
+
 export interface ScrimsInteraction extends Interaction {
 
     sendModal(modal: Modal, fields?: PartialTextInputData[] ): Promise<void>;
@@ -36,24 +45,26 @@ export interface ScrimsInteraction extends Interaction {
 
 }
 
-export interface ScrimsContextMenuInteraction extends ContextMenuInteraction, ScrimsInteraction {}
+export interface ScrimsAutoCompleteInteraction extends ScrimsInteraction, AutocompleteInteraction {}
+export interface ScrimsContextMenuInteraction extends ScrimsInteraction, ContextMenuInteraction {}
 
 export interface ScrimsCommandInteraction extends ScrimsInteraction, CommandInteraction {
 
     params: CommandInteractionOptionResolver;
     scrimsCommand: SlashCommandBuilder;
+    commandConfig: ScrimsCommandConfiguration;
     scrimsPermissions: ScrimsPermissions;
 
 }
 
-export interface ScrimsComponentInteraction extends MessageComponentInteraction, ScrimsInteraction {
+export interface ScrimsComponentInteraction extends ScrimsInteraction, MessageComponentInteraction {
 
     memoryData: any;
     args: string[];
 
 }
 
-export interface ScrimsModalSubmitInteraction extends ModalSubmitInteraction, ScrimsInteraction {
+export interface ScrimsModalSubmitInteraction extends ScrimsInteraction, ModalSubmitInteraction {
 
     args: string[];
 

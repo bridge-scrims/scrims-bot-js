@@ -1,3 +1,4 @@
+const { ContextMenuCommandBuilder, SlashCommandBuilder } = require('@discordjs/builders');
 
 class ScrimsCommandInstaller {
 
@@ -8,6 +9,9 @@ class ScrimsCommandInstaller {
          */
         this.bot = bot
 
+        /**
+         * @type { [ SlashCommandBuilder | ContextMenuCommandBuilder, import('./types').ScrimsPermissions, import('./types').ScrimsCommandConfiguration ][] }
+         */
         this.cmdData = []
 
         this.appCommands = []
@@ -48,7 +52,11 @@ class ScrimsCommandInstaller {
 
     }
 
-    add(commandData, commandPermissionData={}) {
+    /**
+     * @param { import('./types').ScrimsPermissions } commandPermissionData
+     * @param { import('./types').ScrimsCommandConfiguration } cmdConfig 
+     */
+    add(commandData, commandPermissionData={}, cmdConfig={}) {
 
         const options = commandData.options
         
@@ -56,13 +64,13 @@ class ScrimsCommandInstaller {
         if (options) options.filter(option => (!option.type)).forEach(option => option.type = "SUB_COMMAND")
         if (options) options.filter(option => (option?.options?.length === 0)).forEach(option => option.options = undefined)
 
-        this.cmdData.push([ commandData, commandPermissionData ])
+        this.cmdData.push([ commandData, commandPermissionData, cmdConfig ])
 
     }
 
     getScrimsCommand(name) {
 
-        const scrimsCommand = this.cmdData.filter(([cmd, _]) => cmd.name == name)[0];
+        const scrimsCommand = this.cmdData.filter(([cmd, _]) => cmd.name === name)[0];
         if (scrimsCommand) return scrimsCommand[0];
         return null;
 
@@ -70,8 +78,16 @@ class ScrimsCommandInstaller {
 
     getScrimsCommandPermissions(name) {
 
-        const scrimsCommand = this.cmdData.filter(([cmd, _]) => cmd.name == name)[0];
+        const scrimsCommand = this.cmdData.filter(([cmd, _]) => cmd.name === name)[0];
         if (scrimsCommand) return scrimsCommand[1];
+        return null;
+
+    }
+
+    getScrimsCommandConfiguration(name) {
+
+        const scrimsCommand = this.cmdData.filter(([cmd, _]) => cmd.name === name)[0];
+        if (scrimsCommand) return scrimsCommand[2];
         return null;
 
     }

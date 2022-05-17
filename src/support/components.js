@@ -50,24 +50,14 @@ async function onTicketModalSubmit(interaction) {
     ticketData.type = getTicketTypeFromId(interaction)
     if (!ticketData.type) return interaction.reply(SupportResponseMessageBuilder.failedMessage('create a support ticket'));
 
-    const inputValue = interaction.fields.getTextInputValue('request-reason')
+    const inputValue = interaction.fields.getTextInputValue('reason')
     if (typeof inputValue !== 'string') return interaction.reply(SupportResponseMessageBuilder.errorMessage('Invalid Reason', "You reason must contain at least 15 letters to be valid."));
     
     ticketData.reason = SupportResponseMessageBuilder.stripText(inputValue)
 
     ticketData.targets = await SupportResponseMessageBuilder.parseDiscordUsers(interaction.guild, interaction.fields._fields.find(f => f.customId === 'targets')?.value)
-
-    const actions = new MessageActionRow()
-        .addComponents(
-            new MemoryMessageButton(interaction.client, ticketData).setCustomId('support/sendTicket/CREATE').setLabel('Create').setStyle('SUCCESS'),
-            new MemoryMessageButton(interaction.client, ticketData).setCustomId('support/sendTicket/REOPEN').setLabel('Edit').setStyle('PRIMARY'),
-            SupportResponseMessageBuilder.cancelButton(interaction.i18n)
-        )
-
-    const payload = { 
-        ...(await interaction.client.support.getTicketInfoPayload(interaction.member, [], { ...ticketData })), content: `**This is just a preview of what the support team will see.**`, 
-        components: [ actions ], ephemeral: true 
-    }
+    
+    const payload = SupportResponseMessageBuilder.ticketConfirmMessage(interaction.i18n, interaction.client, ticketData)
 
     if (interaction.args.shift() === 'REOPEN') {
         
@@ -136,7 +126,7 @@ async function onTicketSendRequest(interaction) {
 async function reopenModal(interaction) {
 
     const fields = []
-    if (interaction.ticketData?.reason) fields.push({ customId: 'request-reason', value: interaction.ticketData.reason })
+    if (interaction.ticketData?.reason) fields.push({ customId: 'reason', value: interaction.ticketData.reason })
     if (interaction.ticketData?.targets) 
         fields.push({ customId: 'targets', value: interaction.ticketData.targets.map(value => (value instanceof GuildMember) ? value.user.tag : value.slice(2, -2)).join(' ').split('').slice(0, 100).join('') })
 
@@ -199,15 +189,21 @@ async function createTicket(interaction) {
 
     await interaction.followUp(getCreatedPayload(channel, ticket.type))
 
-    const message = await channel.send(await interaction.client.support.getTicketInfoPayload(interaction.member, mentionRoles, interaction.ticketData)).catch(console.error)
-    if (message) await message.edit(await interaction.client.support.getTicketInfoPayload(interaction.member, [], interaction.ticketData)).catch(console.error)
+    const payload = await interaction.client.support.getTicketInfoPayload(interaction.member, mentionRoles, interaction.ticketData)
+    const message = await channel.send(payload).catch(console.error)
+    if (message) await message.edit({ ...payload, content: null }).catch(console.error)
 
+    const targets = interaction?.ticketData?.targets
+    const reason = interaction?.ticketData?.reason
+    
     const logMessage = { 
 
         id: interaction.id, 
         createdTimestamp: Date.now(),
         author: interaction.user, 
-        content: `Created a ${interaction.ticketData.type.name} ticket.${(interaction?.ticketData?.targets?.length > 0) ? ` Reporting: ${interaction.ticketData.targets.map(target => target?.user?.tag ? `@${target.user.tag}` : target).join(' | ')}`: ``} Reason: ${interaction.ticketData.reason}` 
+        content: `Created a ${interaction.ticketData.type.name} ticket.`
+            + ((targets?.length > 0) ? ` Reporting: ${targets.map(target => target?.user?.tag ? `@${target.user.tag}` : target).join(' | ')}`: ``)
+            + (reason ? ` Reason: ${reason}` : ``) 
 
     }
     
@@ -277,7 +273,7 @@ async function onTicketCloseRequest(interaction) {
     const executorId = interaction.args.shift()
     if (executorId) interaction.executor = await interaction.client.users.fetch(executorId)
 
-    if (!interaction.ticket || !interaction.executor) {
+    if (!interaction.ticket || !interaction.executor || interaction.ticket.status.name !== 'deleted') {
 
         if (interaction.message.deletable) await interaction.message.delete().catch(() => null)
         else await interaction.editReply({ content: 'This message is invalid.', components: [], embeds: [] }).catch(() => null)
@@ -305,7 +301,7 @@ async function onDeny(interaction, ticket) {
         return interaction.editReply(getNotAllowedPayload(ticket.user));
 
     const transcriber = interaction.client.support.transcriber;
-    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "denied the close request" }
+    const message = { id: interaction.id, author: interaction.user, content: "denied the close request" }
     await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
 
     await interaction.editReply("Close request denied.");
@@ -323,11 +319,7 @@ async function onAccept(interaction, ticket) {
     if (ticketCreatorId !== interaction.user.id)
         return interaction.editReply(getNotAllowedPayload(ticket.user));
 
-    const transcriber = interaction.client.support.transcriber;
-    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: `accepted the close request from ${interaction.executor.tag}` }
-    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
-    
-    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.executor)
+    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.executor, `accepted the close request from ${interaction.executor.tag}`)
 
 }
 

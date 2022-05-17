@@ -1,4 +1,3 @@
-const DBCache = require("../lib/postgresql/cache");
 const DBTable = require("../lib/postgresql/table");
 
 const { Message } = require("discord.js");
@@ -7,19 +6,9 @@ const ScrimsGuild = require("../lib/scrims/guild");
 const ScrimsUser = require("../lib/scrims/user");
 const TableRow = require("../lib/postgresql/row");
 
-class SuggestionsTableCache extends DBCache {
-
-    /**
-     * @returns { ScrimsSuggestion[] }
-     */
-    get(...args) {
-
-        return super.get(...args);
-
-    }
-
-}
-
+/**
+ * @extends DBTable<ScrimsSuggestion>
+ */
 class ScrimsSuggestionsTable extends DBTable {
 
     constructor(client) {
@@ -29,12 +18,7 @@ class ScrimsSuggestionsTable extends DBTable {
             [ "attachment", "attachment_id", "get_attachment_id" ]
         ]
 
-        super(client, "scrims_suggestion", "get_suggestions", foreigners, ['id_suggestion'], ScrimsSuggestion, SuggestionsTableCache);
-
-        /**
-         * @type { SuggestionsTableCache }
-         */
-        this.cache
+        super(client, "scrims_suggestion", "get_suggestions", foreigners, ['id_suggestion'], ScrimsSuggestion);
 
     }
 
@@ -46,37 +30,6 @@ class ScrimsSuggestionsTable extends DBTable {
         this.ipc.on('suggestion_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('suggestion_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('suggestion_create', message => this.cache.push(this.getRow(message.payload)))
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsSuggestion[]> }
-     */
-     async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsSuggestion> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsSuggestion[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
 
     }
     
@@ -163,7 +116,7 @@ class ScrimsSuggestion extends TableRow {
 
     get attachmentURL() {
 
-        return this.attachment.url;
+        return this.attachment?.url ?? null;
         
     }
 

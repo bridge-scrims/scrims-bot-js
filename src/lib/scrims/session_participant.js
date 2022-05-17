@@ -1,4 +1,3 @@
-const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
 const TableRow = require("../postgresql/row");
 
@@ -6,7 +5,6 @@ const ScrimsSession = require("./session");
 const ScrimsUser = require("./user");
 
 /**
- * @class
  * @extends DBTable<ScrimsSessionParticipant>
  */
 class ScrimsSessionParticipantTable extends DBTable {
@@ -21,11 +19,6 @@ class ScrimsSessionParticipantTable extends DBTable {
         const uniqueKeys = ['id_session', 'id_user']
 
         super(client, "scrims_session_participant", "get_session_participants", foreigners, uniqueKeys, ScrimsSessionParticipant);
-
-        /**
-         * @type { DBCache<ScrimsSessionParticipant> }
-         */
-        this.cache
 
     }
     

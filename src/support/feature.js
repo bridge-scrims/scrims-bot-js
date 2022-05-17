@@ -3,6 +3,7 @@ const ScrimsMessageBuilder = require("../lib/responses");
 
 const { commandHandler, eventHandlers, commands } = require("./interactions");
 const SupportResponseMessageBuilder = require("./responses");
+const { SnowflakeUtil } = require("discord.js");
 
 class SupportFeature {
 
@@ -343,13 +344,13 @@ class SupportFeature {
         if (tickets) {
             
             const openTickets = tickets.filter(ticket => ticket.status.name !== "deleted")
-            await Promise.all(openTickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor))).catch(console.error)
+            await Promise.all(openTickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor, `deleted the ticket channel`))).catch(console.error)
 
         }
 
     }
 
-    async closeTicket(channel, ticket, executor) {
+    async closeTicket(channel, ticket, executor, content) {
 
         const statusName = ticket?.status?.name
         const closer = (executor?.id) ? { closer: { discord_id: executor.id } } : { id_closer: null }
@@ -357,6 +358,11 @@ class SupportFeature {
 
         if (!statusName || statusName !== 'deleted') {
 
+            if (content && executor) {
+                const message = { id: SnowflakeUtil.generate(), author: executor, content }
+                await this.transcriber.transcribe(ticket.id_ticket, message)
+            }
+            
             this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })
             await this.transcriber.send(channel.guild, ticket)
       

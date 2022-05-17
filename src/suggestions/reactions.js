@@ -9,12 +9,12 @@ async function onReactionUpdate(reaction) {
 
     const [suggestionUpVote, suggestionDownVote] = reaction.client.suggestions.getVoteEmojis(reaction.message.guild)
     
-    const suggestionData = reaction.client.database.suggestions.cache.find({ message_id: reaction.message.id })[0]
-    if (!suggestionData) return false;
+    const suggestion = reaction.client.database.suggestions.cache.find({ message_id: reaction.message.id })[0]
+    if (!suggestion) return false;
 
     const upVotes = reaction.message.reactions.cache.get(suggestionUpVote.id ?? suggestionUpVote)?.count || 1;
     const downVotes = reaction.message.reactions.cache.get(suggestionDownVote.id ?? suggestionDownVote)?.count || 1;
-    const suggestion = { ...suggestionData.toJSON(), upVotes, downVotes }
+    suggestion.updateWith({ upVotes, downVotes })
 
     if ((downVotes/upVotes) > voteConst) return onUnpopularSuggestion(reaction.client, reaction.message, suggestion);
 
@@ -23,9 +23,7 @@ async function onReactionUpdate(reaction) {
     const ratio = (upVotes > downVotes) ? (upVotes / downVotes) : -(downVotes / upVotes)
     const hue = (ratio === -1) ? (maxHue/2) : (ratio * ((maxHue/2) / voteConst)) + (maxHue/2)
 
-    const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(
-        hue, suggestionData.suggestion, suggestionData.created_at*1000, reaction.client.users.resolve(suggestion.creator.discord_id)
-    )
+    const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(hue, suggestion)
     
     await reaction.message.edit({ embeds: [embed] })
     
@@ -39,7 +37,7 @@ async function onUnpopularSuggestion(client, message, suggestion) {
 
         guild_id: message.guild.id,
         executor_id: client.user.id,
-        suggestion
+        suggestion: suggestion.toJSON()
 
     }
 
@@ -67,9 +65,7 @@ async function onUnpopularSuggestion(client, message, suggestion) {
 async function onPopularSuggestion(client, message, suggestion) {
     
     const { upVotes, downVotes } = suggestion
-    const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(
-        -1, suggestion.suggestion, suggestion.created_at*1000, client.users.resolve(suggestion.creator.discord_id)
-    )
+    const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(-1, suggestion)
         
     //if (!message.pinned) await message.pin().catch(console.error)
     await message.edit({ embeds: [embed] }).catch(console.error)

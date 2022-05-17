@@ -6,7 +6,6 @@ const ScrimsSessionType = require("./session_type");
 const ScrimsUser = require("./user");
 
 /**
- * @class
  * @extends DBTable<ScrimsSession>
  */
 class ScrimsSessionTable extends DBTable {
@@ -21,11 +20,6 @@ class ScrimsSessionTable extends DBTable {
         const uniqueKeys = ['id_session']
 
         super(client, "scrims_session", "get_sessions", foreigners, uniqueKeys, ScrimsSession);
-
-        /**
-         * @type { DBCache<ScrimsSession> }
-         */
-        this.cache
 
     }
     

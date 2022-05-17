@@ -3,15 +3,13 @@ const ScrimsTicketType = require("./ticket_type");
 const ScrimsGuild = require("./guild");
 const ScrimsUser = require("./user");
 
-const DBCache = require("../postgresql/cache");
 const DBTable = require("../postgresql/table");
 const TableRow = require("../postgresql/row");
 const { TextChannel } = require("discord.js");
 
-class ScrimsTicketCache extends DBCache {
-
-}
-
+/**
+ * @extends DBTable<ScrimsTicket>
+ */
 class ScrimsTicketTable extends DBTable {
 
     constructor(client) {
@@ -24,43 +22,7 @@ class ScrimsTicketTable extends DBTable {
             [ "closer", "id_closer", "get_user_id" ]
         ]
 
-        super(client, "scrims_ticket", "get_tickets", foreigners, ['id_ticket'], ScrimsTicket, ScrimsTicketCache);
-
-        /**
-         * @type { ScrimsTicketCache }
-         */
-        this.cache
-
-    }
-    
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsTicket[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsTicket> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /**
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsTicket[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
+        super(client, "scrims_ticket", "get_tickets", foreigners, ['id_ticket'], ScrimsTicket);
 
     }
 

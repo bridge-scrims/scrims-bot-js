@@ -1,23 +1,15 @@
 const { Constants } = require("discord.js");
-const DBCache = require("../postgresql/cache");
 const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
-class ScrimsUserCache extends DBCache {
-
-
-}
-
+/**
+ * @extends DBTable<ScrimsUser>
+ */
 class ScrimsUserTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_user", "get_users", [], ['id_user'], ScrimsUser, ScrimsUserCache);
-
-        /**
-         * @type { ScrimsUserCache }
-         */
-        this.cache
+        super(client, "scrims_user", "get_users", [], ['id_user'], ScrimsUser);
 
     }
 
@@ -29,37 +21,6 @@ class ScrimsUserTable extends DBTable {
         this.ipc.on('scrims_user_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('scrims_user_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('scrims_user_create', message => this.cache.push(this.getRow(message.payload)))
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsUser[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsUser> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsUser[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
 
     }
 

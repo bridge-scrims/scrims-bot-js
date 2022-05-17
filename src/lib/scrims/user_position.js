@@ -1,9 +1,12 @@
 const DBCache = require("../postgresql/cache");
-const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
+const TableRow = require("../postgresql/row");
 const ScrimsPosition = require("./position");
 const ScrimsUser = require("./user");
 
+/**
+ * @extends DBCache<ScrimsUserPosition>
+ */
 class ScrimsUserPositionCache extends DBCache {
 
     /**
@@ -24,6 +27,9 @@ class ScrimsUserPositionCache extends DBCache {
 
 }
 
+/**
+ * @extends DBTable<ScrimsUserPosition>
+ */
 class ScrimsUserPositionsTable extends DBTable {
 
     constructor(client) {
@@ -55,17 +61,6 @@ class ScrimsUserPositionsTable extends DBTable {
         this.ipc.on('user_position_create', message => this.cache.push(this.getRow(message.payload)))
 
     }
-    
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsUserPosition[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
 
     /** 
      * @param { Object.<string, any> } data
@@ -73,24 +68,17 @@ class ScrimsUserPositionsTable extends DBTable {
      */
     async create(data) {
 
-        if (data?.position?.name === "bridge_scrims_member") {
+        const obj = this.getRow(data)
 
-            const [ formated, formatValues ] = this.format({ ...data })
-            return this.query( ...this.createInsertQuery(formated, formatValues) );
+        if (obj?.position?.name === "bridge_scrims_member") {
+
+            const [ formated, formatValues ] = this.format(obj.toMinimalForm())
+            await this.query( ...this.createInsertQuery(formated, formatValues) )
+            return obj;
 
         }
 
-        return super.create(data);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsUserPosition[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
+        return super.create(obj);
 
     }
 

@@ -11,15 +11,22 @@ const interactionHandlers = {
     "kill": onKillCommand
 
 }
+
+/**
+ * @param { import('./types').ScrimsInteraction } interaction
+ */
 async function onInteraction(interaction) {
 
     const interactionHandler = interactionHandlers[interaction.commandName]
     if (interactionHandler) return interactionHandler(interaction);
 
-    await interaction.reply({ content: `How did we get here?`, ephemeral: true })
+    throw new Error(`Interaction with name '${interaction.commandName}' does not have a handler!`, interactionHandlers);
 
 }
 
+/**
+ * @param { import('./types').ScrimsComponentInteraction } interaction
+ */
 async function onKillAction(interaction) {
 
     const action = interaction.args.shift()
@@ -40,9 +47,10 @@ async function onKillAction(interaction) {
 
 }
 
+/**
+ * @param { import('./types').ScrimsCommandInteraction } interaction
+ */
 async function onReloadCommand(interaction) {
-
-    await interaction.deferReply({ ephemeral: true })
 
     await interaction.client.database.guilds.initializeCache()
     await interaction.client.database.guildEntryTypes.initializeCache()
@@ -59,6 +67,9 @@ async function onReloadCommand(interaction) {
 
 }
 
+/**
+ * @param { import('./types').ScrimsCommandInteraction | import('./types').ScrimsComponentInteraction } interaction
+ */
 async function kill(interaction) {
 
     const payload = { content: `👋 **Goodbye**`, embeds: [], components: [], ephemeral: true }
@@ -66,15 +77,16 @@ async function kill(interaction) {
     if (interaction.replied || interaction.deferred) await interaction.editReply(payload).catch(console.error)
     else await interaction.reply(payload).catch(console.error)
 
+    console.log(`kill command used by ${interaction?.user?.tag} to terminate this process`);
     await interaction.client.destroy()
 
 }
 
+/**
+ * @param { import('./types').ScrimsCommandInteraction } interaction
+ */
 async function onKillCommand(interaction) {
 
-    /**
-     * @type { import("./bot") }
-     */
     const bot = interaction.client
 
     bot.blocked = true
@@ -121,6 +133,9 @@ async function onKillCommand(interaction) {
 
 }
 
+/**
+ * @param { import('./types').ScrimsAutoCompleteInteraction } interaction
+ */
 async function onConfigAutocomplete(interaction) {
 
     const focused = interaction.options.getFocused().toLowerCase()
@@ -132,12 +147,12 @@ async function onConfigAutocomplete(interaction) {
 
 }
 
+/**
+ * @param { import('./types').ScrimsCommandInteraction } interaction
+ */
 async function onConfigCommand(interaction) {
 
     if (interaction.isAutocomplete()) return onConfigAutocomplete(interaction);
-    if (!interaction.guild) return interaction.reply( ScrimsMessageBuilder.guildOnlyMessage(interaction.i18n) );
-
-    await interaction.deferReply({ ephemeral: true })
 
     const entryTypeId = interaction.options.getInteger("key")
     const value = interaction.options.getString("value") ?? null
@@ -171,16 +186,26 @@ async function onConfigCommand(interaction) {
 
 } 
 
+/**
+ * @returns { [ SlashCommandBuilder, import('./types').ScrimsPermissions, import('./types').ScrimsCommandConfiguration } ] }
+ */
 function getReloadCommand() {
 
     const reloadCommand = new SlashCommandBuilder()
         .setName("reload")
         .setDescription("Reloads the application commands and permissions.")
     
-    return [ reloadCommand, { permissionLevel: "staff" } ];
+    return [ 
+        reloadCommand, 
+        { permissionLevel: "staff" }, 
+        { forceGuild: false, bypassBlock: false, forceScrimsUser: false, ephemeralDefer: true } 
+    ];
 
 }
 
+/**
+ * @returns { [ SlashCommandBuilder, import('./types').ScrimsPermissions, import('./types').ScrimsCommandConfiguration } ] }
+ */
 function getConfigCommand() {
 
     const configCommand = new SlashCommandBuilder()
@@ -200,27 +225,37 @@ function getConfigCommand() {
                 .setRequired(false)
         ))
     
-    return [ configCommand, { permissionLevel: "owner" } ];
+    return [ 
+        configCommand, 
+        { permissionLevel: "owner" }, 
+        { forceGuild: true, bypassBlock: true, forceScrimsUser: true, ephemeralDefer: true } 
+    ];
 
 }
 
+/**
+ * @returns { [ SlashCommandBuilder, import('./types').ScrimsPermissions, import('./types').ScrimsCommandConfiguration } ] }
+ */
 function getPingCommand() {
 
     const pingCommand = new SlashCommandBuilder()
         .setName("ping")
         .setDescription("Used to test the bots connection.")
     
-    return [ pingCommand, { } ];
+    return [ pingCommand, { }, { forceGuild: false, bypassBlock: true, forceScrimsUser: false } ];
 
 }
 
+/**
+ * @returns { [ SlashCommandBuilder, import('./types').ScrimsPermissions, import('./types').ScrimsCommandConfiguration } ] }
+ */
 function getKillCommand() {
 
     const killCommand = new SlashCommandBuilder()
         .setName("kill")
         .setDescription("Used to kill the bot.")
     
-    return [ killCommand, { permissionLevel: "owner" } ];
+    return [ killCommand, { permissionLevel: "owner" }, { forceGuild: false, bypassBlock: true, forceScrimsUser: false } ];
 
 }
 

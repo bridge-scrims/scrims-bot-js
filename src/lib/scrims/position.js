@@ -1,9 +1,7 @@
-const DBCache = require("../postgresql/cache");
 const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
 /**
- * @class
  * @extends DBTable<ScrimsPosition>
  */
 class ScrimsPositionTable extends DBTable {
@@ -11,11 +9,6 @@ class ScrimsPositionTable extends DBTable {
     constructor(client) {
 
         super(client, "scrims_position", "get_positions", [], ['id_position'], ScrimsPosition);
-
-        /**
-         * @type { DBCache<ScrimsPosition> }
-         */
-        this.cache
         
     }
 

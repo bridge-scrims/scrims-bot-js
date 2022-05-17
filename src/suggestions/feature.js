@@ -2,7 +2,7 @@ const SuggestionsResponseMessageBuilder = require("./responses");
 const ScrimsSuggestion = require("./suggestion");
 const onReactionUpdate = require("./reactions");
 
-const { interactionHandler, contextMenus } = require("./interactions");
+const { interactionHandler, listeners, contextMenus } = require("./interactions");
 const { commandHandler, eventListeners, commands } = require("./commands");
 
 const { Message } = require("discord.js");
@@ -256,8 +256,7 @@ class SuggestionsFeature {
 
     addEventHandlers() {
 
-        this.bot.addEventHandler("suggestion", interactionHandler)
-
+        listeners.forEach(eventName => this.bot.addEventHandler(eventName, interactionHandler))
         contextMenus.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, interactionHandler))
         commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
         eventListeners.forEach(eventName => this.bot.addEventHandler(eventName, commandHandler))

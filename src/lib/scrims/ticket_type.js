@@ -1,52 +1,14 @@
-const DBCache = require("../postgresql/cache");
 const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
-class ScrimsTicketTypeCache extends DBCache {
-
-}
-
+/**
+ * @extends DBTable<ScrimsTicketType>
+ */
 class ScrimsTicketTypeTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_ticket_type", null, [], ['id_type'], ScrimsTicketType, ScrimsTicketTypeCache);
-
-        /**
-         * @type { ScrimsTicketTypeCache }
-         */
-        this.cache
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsTicketType[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsTicketType> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /**
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsTicketType[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
+        super(client, "scrims_ticket_type", null, [], ['id_type'], ScrimsTicketType);
 
     }
 

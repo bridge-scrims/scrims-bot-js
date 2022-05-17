@@ -1,5 +1,5 @@
 const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
-const { SlashCommandBuilder } = require("@discordjs/builders");
+const { SlashCommandBuilder, SlashCommandSubcommandGroupBuilder, SlashCommandSubcommandBuilder } = require("@discordjs/builders");
 
 const SuggestionsResponseMessageBuilder = require("./responses");
 const ScrimsMessageBuilder = require("../lib/responses");
@@ -7,19 +7,34 @@ const ScrimsSuggestion = require("./suggestion");
 
 const commandHandlers = {
 
-    "attach-to-suggestion": suggestionAttachCommand,
-    "remove-suggestion": suggestionRemoveCommand,
+    "suggestions": onSuggestionCommand,
+    //"suggestionAttach": suggestionAttachComponent,
+    //"suggestionDeattach":suggestionDeattachComponent,
     "suggestionRemove": suggestionRemoveComponent
 
 }
 async function onCommand(interaction) {
 
     const handler = commandHandlers[interaction.commandName]
-    if (handler) {
-        
-        return handler(interaction);
+    if (handler) return handler(interaction);
 
-    }
+    throw new Error(`Interaction with name '${interaction.commandName}' does not have a handler!`, commandHandlers);
+
+}
+
+const suggestionCommandHandlers = {
+
+    //"attach": suggestionAttachCommand,
+    "remove": suggestionRemoveCommand,
+    //"detach": suggestionDetachCommand
+
+}
+async function onSuggestionCommand(interaction) {
+
+    const handler = suggestionCommandHandlers[interaction.options.getSubcommand()]
+    if (handler) return handler(interaction);
+
+    throw new Error(`Interaction with subcommand '${interaction.options.getSubcommand()}' does not have a handler!`, suggestionCommandHandlers);
 
 }
 
@@ -59,6 +74,34 @@ async function getSuggestions(interaction) {
 /**
  * @param { import('../types').ScrimsCommandInteraction } interaction 
  */
+async function suggestionDetachCommand(interaction) {
+
+    const suggestions = await getSuggestions(interaction)
+    if (suggestions === false) return false;
+
+    const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
+
+    if (suggestions.length === 0) 
+        return interaction.reply( ScrimsMessageBuilder.errorMessage(
+            'No Suggestions', `You currently have no suggestions created. `
+            + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
+        ));
+
+    const attachedSuggestions = suggestions.filter(suggestion => suggestion.attachmentURL)
+    if (attachedSuggestions.length === 0) {
+        return interaction.reply( ScrimsMessageBuilder.errorMessage(
+            'No Suggestions', `You currently have no suggestions with an attachment. `
+                + `To add a attachment run this command again, but pass through a file you would like to add.`
+        ));
+    }
+
+    await interaction.reply( SuggestionsResponseMessageBuilder.deattachSuggestionConfirmMessage(attachedSuggestions.slice(0, 5)) )
+
+}
+
+/**
+ * @param { import('../types').ScrimsCommandInteraction } interaction 
+ */
 async function suggestionAttachCommand(interaction) {
 
     const suggestions = await getSuggestions(interaction)
@@ -73,7 +116,58 @@ async function suggestionAttachCommand(interaction) {
         ));
 
     const attachment = interaction.options.getAttachment('attachment')
-    return interaction.reply( SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(interaction.client, suggestions.slice(0, 5), attachment) );
+
+    const scrimsAttachmentData = { attachment_id: `_${attachment.id}`, filename: attachment.name, content_type: attachment.contentType, url: attachment.url }
+    await interaction.client.database.attachments.create(scrimsAttachmentData)
+
+    setTimeout(() => interaction.client.database.attachments.remove({ attachment_id: `_${attachment.id}` }).catch(console.error), 15*60*1000)
+    await interaction.reply( SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(suggestions.slice(0, 5), attachment) )
+
+}
+
+/**
+ * @param { import('../types').ScrimsComponentInteraction } interaction 
+ */
+ async function suggestionDeattachComponent(interaction) {
+
+    const id_suggestion = interaction.args.shift()
+    const suggestion = interaction.client.database.suggestions.cache.get(id_suggestion)
+    if (!suggestion) 
+        return interaction.update(SuggestionsResponseMessageBuilder.errorMessage('Unknown Suggestion', `That suggestion does not exist anymore.`));
+
+    await interaction.client.database.suggestions.update({ id_suggestion }, { attachment_id: null })
+
+    const message = await suggestion.fetchMessage()
+    await message.edit({ embeds: [message.embeds[0].setImage(null) ] })
+
+    await interaction.update({ content: `Attachment successfully removed.`, embeds: [], components: [] })
+
+}
+
+/**
+ * @param { import('../types').ScrimsComponentInteraction } interaction 
+ */
+async function suggestionAttachComponent(interaction) {
+
+    const id_suggestion = interaction.args.shift()
+    const suggestion = interaction.client.database.suggestions.cache.get(id_suggestion)
+    if (!suggestion) 
+        return interaction.update(SuggestionsResponseMessageBuilder.errorMessage('Unknown Suggestion', `That suggestion does not exist anymore.`));
+
+    const attachment_id = interaction.args.shift()
+    const attachment = interaction.client.database.attachments.cache.get(`_${attachment_id}`)
+    if (!attachment) 
+        return interaction.update(SuggestionsResponseMessageBuilder.errorMessage('Unknown Attachment', `That attachment does not exist anymore.`));
+
+    if (!interaction.client.database.attachments.cache.get(attachment_id))
+        await interaction.client.database.attachments.create({ ...attachment.toMinimalForm(), attachment_id })
+    
+    await interaction.client.database.suggestions.update({ id_suggestion }, { attachment_id })
+
+    const message = await suggestion.fetchMessage()
+    await message.edit({ embeds: [message.embeds[0].setImage(attachment.url) ] })
+
+    await interaction.update({ content: `Attachment successfully added.`, embeds: [], components: [] })
 
 }
 
@@ -145,20 +239,18 @@ async function suggestionRemoveComponent(interaction) {
 
 }
 
-function buildRemoveCommand() {
+function getRemoveSubcommand() {
 
-    const removeCommand =  new SlashCommandBuilder()
-        .setName("remove-suggestion")
+    return new SlashCommandSubcommandBuilder()
+        .setName("remove")
         .setDescription("Use this command to remove a suggestion.")
-
-    return [ removeCommand, {} ];
 
 }
 
-function buildAttachCommand() {
+function getAttachSubcommand() {
 
-    const command = new SlashCommandBuilder()
-        .setName("attach-to-suggestion")
+    return new SlashCommandSubcommandBuilder()
+        .setName("attach")
         .setDescription("Use this command to atach a file to one of your suggestions.")
         .addAttachmentOption( attachmentOption => (
                 attachmentOption 
@@ -166,16 +258,35 @@ function buildAttachCommand() {
                     .setDescription("The file you would like to attach to a suggestion.")
                     .setRequired(true)
             )
-        )
-        
-    return [ command, {} ];
+        ) 
+
+}
+
+function getDetachSubcommand() {
+
+    return new SlashCommandSubcommandBuilder()
+        .setName("detach")
+        .setDescription("Use this command to detach a file from one of your suggestions.")
+
+}
+
+function buildSuggestionCommandGroup() {
+
+    const group = new SlashCommandSubcommandGroupBuilder()
+        .setName('suggestions')
+        .setDescription('Commands used to do stuff with suggestions.')
+        .addSubcommand( getRemoveSubcommand() )
+        //.addSubcommand( getAttachSubcommand() )
+        //.addSubcommand( getDetachSubcommand() )
+
+    return [ group, {}, { forceGuild: false, bypassBlock: false, forceScrimsUser: true } ];
 
 }
 
 module.exports = {
 
     commandHandler: onCommand,
-    eventListeners: [ "suggestionRemove" ],
-    commands: [ buildRemoveCommand() ]
+    eventListeners: [ "suggestionRemove", "suggestionAttach", "suggestionDeattach" ],
+    commands: [ buildSuggestionCommandGroup() ]
 
 }

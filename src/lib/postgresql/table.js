@@ -20,7 +20,7 @@ class DBTable {
         this.RowClass = RowClass
 
         /**
-         * @type { DBCache }
+         * @type { DBCache<T> }
          */
         this.cache = new CacheClass()
 
@@ -189,6 +189,7 @@ class DBTable {
 
     /**
      * @param { Object.<string, any> } rowData
+     * @returns { T }
      */
     getRow(rowData) {
 

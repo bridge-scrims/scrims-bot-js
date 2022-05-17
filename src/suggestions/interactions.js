@@ -1,6 +1,7 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { MessageComponentInteraction, MessageContextMenuInteraction, ModalSubmitInteraction, Modal, TextInputComponent, MessageActionRow } = require("discord.js");
 const SuggestionsResponseMessageBuilder = require('./responses');
+const ScrimsSuggestion = require('./suggestion');
 
 const cooldown = 15*60*1000
 const cooldowns = {}
@@ -20,7 +21,7 @@ async function onInteraction(interaction) {
     if (interaction instanceof MessageContextMenuInteraction) return onContextMenu(interaction);
     if (interaction instanceof ModalSubmitInteraction) return onModalSubmit(interaction);
     
-    await interaction.reply({ content: "How did we get here?", ephemeral: true });
+    throw new Error(`Interaction with type '${interaction?.constructor?.name}' does not have a handler!`);
 
 }
 
@@ -190,9 +191,19 @@ async function onModalSubmit(interaction) {
 
     const inputValue = interaction.fields.getTextInputValue('suggestion')
     if (typeof inputValue !== 'string') return interaction.editReply(SuggestionsResponseMessageBuilder.errorMessage('Invalid Suggestion', "You suggestion must contain at least 15 letters to be valid."));
-    const suggestion = getSuggestionText(inputValue)
+    const suggestionText = getSuggestionText(inputValue)
 
-    const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(60, suggestion, interaction.createdTimestamp, interaction.user)
+    const suggestion = new ScrimsSuggestion(interaction.client.database.suggestions, {
+
+        id_suggestion: interaction.client.database.generateUUID(),
+        guild_id: interaction.guild.id, 
+        created_at: Math.round(Date.now()/1000),
+        suggestion: suggestionText,
+        id_creator: interaction.scrimsUser.id_user
+
+    })
+
+    const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(60, suggestion)
     const message = await interaction.channel.send({ embeds: [embed] }).catch(error => onError(interaction, `send suggestions message`, error, true))
     if (message === false) return false;
 
@@ -204,21 +215,16 @@ async function onModalSubmit(interaction) {
     // Delete the current suggestions info message since it is no longer the last message
     await interaction.client.suggestions.sendSuggestionInfoMessage(interaction.channel, true)
 
-    const newSuggestion = { 
+    suggestion.updateWith({  
 
-        id_suggestion: interaction.client.database.generateUUID(),
-        guild_id: interaction.guild.id,
         channel_id: message.channel.id, 
-        message_id: message.id, 
-        created_at: Math.round(Date.now()/1000),
-        suggestion,
-        id_creator: interaction.scrimsUser.id_user
+        message_id: message.id
 
-    }
+    })
 
-    if (!(await interaction.member.hasPermission("support"))) addCooldown(interaction.userId)
+    if (!(await interaction.member.hasPermission("staff"))) addCooldown(interaction.userId)
 
-    const createResult = await interaction.client.database.suggestions.create(newSuggestion)
+    const createResult = await interaction.client.database.suggestions.create(suggestion)
         .catch(error => onError(interaction, `add suggestion to database`, error, true))
    
     if (createResult === false) return message.delete().catch(error => onError(interaction, `delete suggestion message after aborting command`, error, false));
@@ -230,13 +236,18 @@ async function onModalSubmit(interaction) {
 
 function buildRemoveSuggestionContextMenuCommand() {
 
-    return [ new ContextMenuCommandBuilder().setName("Remove Suggestion").setType(3), {} ];
+    return [ 
+        new ContextMenuCommandBuilder().setName("Remove Suggestion").setType(3), 
+        {},
+        { forceGuild: true, bypassBlock: false, forceScrimsUser: false }
+    ];
 
 }
 
 module.exports = {
 
     interactionHandler: onInteraction,
+    listeners: [ "suggestion" ],
     contextMenus: [ buildRemoveSuggestionContextMenuCommand() ]
 
 };

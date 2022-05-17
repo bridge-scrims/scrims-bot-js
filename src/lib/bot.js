@@ -1,4 +1,8 @@
-const { Client, Message, Interaction, CommandInteraction, MessageComponentInteraction, GuildMember, MessageReaction, AutocompleteInteraction, ModalSubmitInteraction, Modal, TextInputComponent } = require("discord.js");
+const { 
+    Client, Message, Interaction, CommandInteraction, 
+    MessageComponentInteraction, GuildMember, AutocompleteInteraction, 
+    ModalSubmitInteraction, Modal, TextInputComponent 
+} = require("discord.js");
 
 const ScrimsCommandInstaller = require("./command_installer");
 const ScrimsPermissionsClient = require("./permissions");
@@ -6,14 +10,12 @@ const HypixelClient = require("./middleware/hypixel");
 const ScrimsMessageBuilder = require("./responses");
 const MojangClient = require("./middleware/mojang");
 const DBClient = require("./postgresql/database");
-const ResponseTemplates = require("./responses");
 const auditEvents = require("./audited_events");
 
 const { interactionHandler, eventHandlers, commands } = require("./commands");
-const ScrimsUserUpdater = require("./user_updater");
 const MemoryMessageButton = require("./memory_button");
+const ScrimsUserUpdater = require("./user_updater");
 const I18n = require("./Internationalization");
-const VoiceChannelBasedSession = require("./vc_session");
 
 class ScrimsBot extends Client {
 
@@ -69,9 +71,8 @@ class ScrimsBot extends Client {
          */
         this.i18n = null
 
-        auditEvents(this)
-
-        commands.forEach(([ cmdData, cmdPerms ]) => this.commands.add(cmdData, cmdPerms))
+        this.on('error', console.error)
+        commands.forEach(([ cmdData, cmdPerms, cmdConfig ]) => this.commands.add(cmdData, cmdPerms, cmdConfig))
 
     }
 
@@ -144,6 +145,7 @@ class ScrimsBot extends Client {
 
         cmdInteraction.params = cmdInteraction.options
         cmdInteraction.scrimsCommand = this.commands.getScrimsCommand(cmdInteraction.commandName) ?? null
+        cmdInteraction.commandConfig = this.commands.getScrimsCommandConfiguration(cmdInteraction.commandName) ?? null
         cmdInteraction.scrimsPermissions = this.commands.getScrimsCommandPermissions(cmdInteraction.commandName) ?? null
 
     }
@@ -187,7 +189,7 @@ class ScrimsBot extends Client {
                 if (!(interactEvent instanceof Interaction && interactEvent.isAutocomplete())) {
 
                     if (interactEvent instanceof ModalSubmitInteraction)
-                        if (!interactEvent.replied && !interactEvent.deferred) await interactEvent.deferReply({ ephemeral: true })
+                        if (!interactEvent.replied && !interactEvent.deferred) await interactEvent.deferReply({ ephemeral: true }).catch(() => null)
 
                     const payload = this.getErrorPayload(interactEvent.i18n, error)
 
@@ -209,7 +211,13 @@ class ScrimsBot extends Client {
         const handlerIdentifier = interactEvent?.commandName || null;
 
         const handler = MemoryMessageButton.getHandler(handlerIdentifier) || this.eventHandlers[handlerIdentifier]
-        if (handler) return this.runHandler(handler, interactEvent, event)
+        if (handler) {
+            
+            const defer = interactEvent?.commandConfig?.ephemeralDefer
+            if (defer !== undefined) await interactEvent.deferReply({ ephemeral: defer })
+            return this.runHandler(handler, interactEvent, event);
+            
+        }
 
         if (interactEvent instanceof Interaction) {
 
@@ -243,19 +251,6 @@ class ScrimsBot extends Client {
 
     }
 
-    async ensureScrimsUser(interactEvent) {
-
-        interactEvent.scrimsUser = await this.database.users.get({ discord_id: interactEvent.user.id }).then(result => result[0] ?? null)
-            .catch(error => console.error(`Getting scrims user failed because of ${error}!`, interactEvent.user))
-            
-        if (!interactEvent.scrimsUser && interactEvent.member) {
-
-            interactEvent.scrimsUser = await this.scrimsUsers.createScrimsUser(interactEvent.member)
-
-        }    
-
-    }
-
     expandMember(member) {
 
         member.hasPermission = async (...args) => this.permissions.hasPermission(member, ...args);
@@ -269,7 +264,7 @@ class ScrimsBot extends Client {
      */
     async sendModal(modal, interaction, fields=[]) {
 
-        const inputs = modal.components
+        const inputs = modal.components.map(v => v.components[0]).flat()
         fields.forEach(field => {
 
             const input = inputs.filter(value => value.customId === field.customId)[0]
@@ -291,11 +286,12 @@ class ScrimsBot extends Client {
         if (!interactEvent) return false;
 
         const isCommandInteraction = (interactEvent instanceof CommandInteraction)
+        const isAutoCompleteInteraction = (interactEvent instanceof AutocompleteInteraction)
         const isComponentInteraction = (interactEvent instanceof MessageComponentInteraction)
         const isModalSumbitInteraction = (interactEvent instanceof ModalSubmitInteraction)
         const isInteraction = (interactEvent instanceof Interaction)
 
-        interactEvent.i18n = I18n.getInstance(interactEvent.locale)
+        interactEvent.i18n = I18n.getInstance(interactEvent?.locale)
 
         if (interactEvent instanceof Message) this.expandMessage(interactEvent)
 
@@ -307,34 +303,58 @@ class ScrimsBot extends Client {
 
         if (interactEvent.user) interactEvent.userId = interactEvent.user.id
         if (interactEvent.commandName === "CANCEL" && isComponentInteraction) 
-            return interactEvent.update({ content: interactEvent.i18n.get('operation_cancelled'), embeds: [], components: [] });
+            return interactEvent.update({ content: interactEvent.i18n.get('operation_cancelled'), embeds: [], components: [] }).catch(console.error);
 
         if (interactEvent.commandName === "ping" && isCommandInteraction) 
-            return interactEvent.reply({ content: `pong`, embeds: [], components: [], ephemeral: true });
+            return interactEvent.reply({ content: `pong`, embeds: [], components: [], ephemeral: true }).catch(console.error);
 
-        if (this.blocked && isInteraction && !['killAction', 'kill'].includes(interactEvent.commandName)) {
+        if (this.blocked && isInteraction && !interactEvent?.commandConfig?.bypassBlock) {
 
-            if (isCommandInteraction || isComponentInteraction) 
-                await interactEvent.reply({ content: interactEvent.i18n.get('blocked_cancel'), ephemeral: true });
-            
+            if (isAutoCompleteInteraction) await interactEvent.respond([]).catch(console.error);
+            else if (isCommandInteraction || isComponentInteraction || isModalSumbitInteraction) 
+                await interactEvent.reply({ content: interactEvent.i18n.get('blocked_cancel'), ephemeral: true }).catch(console.error);
+
             this.emit('blocked', interactEvent.constructor.name)
             
             return false;
 
         }
 
-        if (interactEvent instanceof Message || interactEvent instanceof MessageReaction) {
+        if (interactEvent.user) {
+
+            if (interactEvent?.commandConfig?.forceScrimsUser) {
+                interactEvent.scrimsUser = await this.database.users.get({ discord_id: interactEvent.user.id }).then(result => result[0] ?? false).catch(console.error)
+                
+                if ((interactEvent.scrimsUser === false) && interactEvent.member) 
+                    interactEvent.scrimsUser = await this.scrimsUsers.createScrimsUser(interactEvent.member)
+
+                if (!interactEvent.scrimsUser) {
+                    if (isCommandInteraction || isComponentInteraction || isModalSumbitInteraction) 
+                        await interactEvent.reply(ScrimsMessageBuilder.scrimsUserNeededMessage(interactEvent.i18n)).catch(console.error);
+                      
+                    return false;
+                }
+            }
 
             interactEvent.scrimsUser = this.database.users.cache.find({ discord_id: interactEvent?.user?.id })[0] ?? null;
 
-        }else if (interactEvent.user) await this.ensureScrimsUser(interactEvent)
+        }
 
         if (interactEvent.member instanceof GuildMember) this.expandMember(interactEvent.member)
             
-        if (interactEvent instanceof CommandInteraction)
+        if (isCommandInteraction)
             if (!(await this.isPermitted(interactEvent))) 
-                return interactEvent.reply(ResponseTemplates.missingPermissionsMessage(interactEvent.i18n, interactEvent.i18n.get('missing_command_permissions'))).catch(console.error);
+                return interactEvent.reply(ScrimsMessageBuilder.missingPermissionsMessage(interactEvent.i18n, interactEvent.i18n.get('missing_command_permissions'))).catch(console.error);
         
+        if (interactEvent?.commandConfig?.forceGuild && !interactEvent.guild) {
+
+            if (isCommandInteraction || isComponentInteraction || isModalSumbitInteraction) 
+                await interactEvent.reply(ScrimsMessageBuilder.guildOnlyMessage(interactEvent.i18n)).catch(console.error);
+
+            return false;
+
+        }
+
         return this.handleInteractEvent(interactEvent, event)
         
     }
@@ -371,6 +391,8 @@ class ScrimsBot extends Client {
     }
 
     addEventListeners() {
+
+        auditEvents(this)
 
         this.on('modalSubmit', interaction => this.onInteractEvent(interaction, "ModalSubmit"))
         this.on('interactionCreate', interaction => this.onInteractEvent(interaction, "InteractionCreate"))

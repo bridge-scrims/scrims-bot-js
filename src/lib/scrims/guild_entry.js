@@ -1,14 +1,11 @@
-const DBCache = require("../postgresql/cache");
 const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 const ScrimsGuild = require("./guild");
 const ScrimsGuildEntryType = require("./guild_entry_type");
 
-class ScrimsGuildEntrysCache extends DBCache {
-
-
-}
-
+/**
+ * @extends DBTable<ScrimsGuildEntry>
+ */
 class ScrimsGuildEntrysTable extends DBTable {
 
     constructor(client) {
@@ -17,12 +14,7 @@ class ScrimsGuildEntrysTable extends DBTable {
             [ "type", "id_type", "get_guild_entry_type_id" ]
         ]
 
-        super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, ['guild_id', 'id_type'], ScrimsGuildEntry, ScrimsGuildEntrysCache);
-
-        /**
-         * @type { ScrimsGuildEntrysCache }
-         */
-        this.cache
+        super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, ['guild_id', 'id_type'], ScrimsGuildEntry);
 
     }
 
@@ -34,37 +26,6 @@ class ScrimsGuildEntrysTable extends DBTable {
         this.ipc.on('guild_entry_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('guild_entry_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('guild_entry_create', message => this.cache.push(this.getRow(message.payload)))
-
-    }
-    
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsGuildEntry[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsGuildEntry> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /**
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsGuildEntry[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
 
     }
 

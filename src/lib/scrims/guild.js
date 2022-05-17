@@ -1,24 +1,15 @@
 const { Constants } = require("discord.js");
-const DBCache = require("../postgresql/cache");
 const TableRow = require("../postgresql/row");
 const DBTable = require("../postgresql/table");
 
-class ScrimsGuildCache extends DBCache {
-
-
-
-}
-
+/**
+ * @extends DBTable<ScrimsGuild>
+ */
 class ScrimsGuildTable extends DBTable {
 
     constructor(client) {
 
-        super(client, "scrims_guild", null, [], ['id_guild'], ScrimsGuild, ScrimsGuildCache);
-
-        /**
-         * @type { ScrimsGuildCache }
-         */
-        this.cache
+        super(client, "scrims_guild", null, [], ['id_guild'], ScrimsGuild);
 
     }
 

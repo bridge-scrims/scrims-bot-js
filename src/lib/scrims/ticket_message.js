@@ -1,14 +1,11 @@
 const DBTable = require("../postgresql/table");
-const DBCache = require("../postgresql/cache");
 const ScrimsTicket = require("./ticket");
 const ScrimsUser = require("./user");
 const TableRow = require("../postgresql/row");
 
-class ScrimsTicketMessagesCache extends DBCache {
-
-
-}
-
+/**
+ * @extends DBTable<ScrimsTicketMessage>
+ */
 class ScrimsTicketMessagesTable extends DBTable {
 
     constructor(client) {
@@ -20,46 +17,10 @@ class ScrimsTicketMessagesTable extends DBTable {
 
         const uniqueKeys = [ 'id_ticket', 'message_id', 'created_at' ]
 
-        super(client, "scrims_ticket_message", "get_ticket_messages", foreigners, uniqueKeys, ScrimsTicketMessage, ScrimsTicketMessagesCache);
-
-        /**
-         * @type { ScrimsTicketMessagesCache }
-         */
-        this.cache
+        super(client, "scrims_ticket_message", "get_ticket_messages", foreigners, uniqueKeys, ScrimsTicketMessage);
 
     }
     
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsTicketMessage[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-    
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsTicketMessage> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /**
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsTicketMessage[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
-
-    }
-
 }
 
 class ScrimsTicketMessage extends TableRow {

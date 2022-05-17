@@ -15,13 +15,9 @@ const commandHandlers = {
 async function onCommand(interaction) {
 
     const handler = commandHandlers[interaction.commandName]
-    if (handler) {
-
-        if (!interaction.guild) return interaction.reply(SupportResponseMessageBuilder.guildOnlyMessage(interaction.i18n));
-
-        return handler(interaction);
-
-    }
+    if (handler) return handler(interaction);
+    
+    throw new Error(`Interaction with name '${interaction.commandName}' does not have a handler!`, commandHandlers);
 
 }
 
@@ -60,8 +56,6 @@ async function supportMessage(interaction) {
  */
 async function requestTicketClosure(interaction) {
 
-    if (!interaction.scrimsUser) return interaction.reply(SupportResponseMessageBuilder.scrimsUserNeededMessage());
-
     const reason = interaction.options.getString('reason') ?? "no reason provided";
 
     const ticket = await interaction.client.database.tickets.get({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
@@ -93,11 +87,8 @@ async function requestTicketClosure(interaction) {
 async function closeTicket(interaction, ticket, content) {
 
     await interaction.reply({ content: `Support ticket closing...` })
-
-    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content }
-    await interaction.client.support.transcriber.transcribe(ticket.id_ticket, message)
-
-    await interaction.client.support.closeTicket(interaction.channel, ticket, interaction.user)
+    
+    await interaction.client.support.closeTicket(interaction.channel, ticket, interaction.user, content)
 
 }
 
@@ -154,7 +145,7 @@ function buildCloseCommand() {
         ))
 
 
-    return [closeCommand, { permissionLevel: "support" }];
+    return [closeCommand, { permissionLevel: "support" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: true }];
 
 }
 
@@ -164,7 +155,7 @@ function buildSupportMessageCommand() {
         .setName("support-message")
         .setDescription("Sends the support message in the channel.")
 
-    return [supportMessageCommand, { permissionLevel: "support" }];
+    return [supportMessageCommand, { permissionLevel: "support" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false }];
 
 }
 
@@ -185,7 +176,7 @@ function buildSupportTicketCommand() {
             .setRequired(true)
         )
 
-    return [supportTicketOptionCommand, { permissionLevel: "support" }];
+    return [supportTicketOptionCommand, { permissionLevel: "support" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false }];
     
 }
 

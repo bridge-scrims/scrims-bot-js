@@ -1,15 +1,11 @@
 const DBTable = require("../postgresql/table");
-const DBCache = require("../postgresql/cache");
 const ScrimsPosition = require("./position");
 const ScrimsGuild = require("./guild");
 const TableRow = require("../postgresql/row");
 
-class ScrimsPositionRolesCache extends DBCache {
-
-
-
-}
-
+/**
+ * @extends DBTable<ScrimsPositionRole>
+ */
 class ScrimsPositionRolesTable extends DBTable {
 
     constructor(client) {
@@ -20,12 +16,7 @@ class ScrimsPositionRolesTable extends DBTable {
 
         const uniqueKeys = [ 'id_position', 'role_id', 'guild_id' ]
 
-        super(client, "scrims_position_role", "get_position_roles", foreigners, uniqueKeys, ScrimsPositionRole, ScrimsPositionRolesCache);
-
-        /**
-         * @type { ScrimsPositionRolesCache }
-         */
-        this.cache
+        super(client, "scrims_position_role", "get_position_roles", foreigners, uniqueKeys, ScrimsPositionRole);
 
     }
 
@@ -37,37 +28,6 @@ class ScrimsPositionRolesTable extends DBTable {
         this.ipc.on('position_role_remove', message => this.cache.filterOut(message.payload))
         this.ipc.on('position_role_update', message => this.cache.update(message.payload.data, message.payload.selector))
         this.ipc.on('position_role_create', message => this.cache.push(this.getRow(message.payload)))
-
-    }
-    
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsPositionRole[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsPositionRole> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsPositionRole[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
 
     }
 

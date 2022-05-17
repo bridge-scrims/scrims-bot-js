@@ -64,7 +64,7 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
                     .setTitle("Suggestion Sent")
                     .setDescription(
                         "Your suggestion was successfully created! "
-                            + `To remove it use the **/remove-suggestion** command in any channel and pick this suggestion.`
+                            + `To remove it use the **/suggestions remove** command in any channel and pick this suggestion.`
                     )
             ],
 
@@ -144,39 +144,49 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    static getSuggestionAttachButtons(client, suggestions, data) {
+    static getSuggestionAttachButtons(suggestions, attachment_id) {
 
         return suggestions.map((suggestion, idx) => (
 
-            new MemoryMessageButton(client, data)
+            new MessageButton()
                 .setLabel(`Attach to ${idx+1}.`)
-                .setCustomId(`suggestionAttach/${suggestion.id_suggestion}`)
+                .setCustomId(`suggestionAttach/${suggestion.id_suggestion}/${attachment_id}`)
                 .setStyle('PRIMARY')
 
         ))
 
     }
 
-    static attachSuggestionConfirmMessage(client, suggestions, data) {
+    static getSuggestionDeattachButtons(suggestions) {
+
+        return suggestions.map((suggestion, idx) => (
+
+            new MessageButton()
+                .setLabel(`Detach from ${idx+1}.`)
+                .setCustomId(`suggestionDeattach/${suggestion.id_suggestion}`)
+                .setStyle('DANGER')
+
+        ))
+
+    }
+
+    static deattachSuggestionConfirmMessage(suggestions) {
 
         return {
 
             embeds: [
 
                 new MessageEmbed()
-                    .setColor('#3fcefe')
-                    .setTitle("Add Attachment to Suggestion")
-                    .setDescription(
-                        `Please confirm which suggestion you would like to add this attachment to. `
-                        + `This attachment will override any attachments previously added to the chosen suggestion.`
-                    )
+                    .setColor('#ff809f')
+                    .setTitle("Remove Attachments from Suggestion")
+                    .setDescription(`Please confirm which suggestion you would like to remove the attachment of.`)
                     .addFields(this.getSuggestionFields(suggestions))
 
             ],
 
             components: [
 
-                new MessageActionRow().addComponents(this.getSuggestionAttachButtons(client, suggestions, data)),
+                new MessageActionRow().addComponents(this.getSuggestionDeattachButtons(suggestions)),
                 new MessageActionRow().addComponents(this.cancelButton())
 
             ],
@@ -187,12 +197,44 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    static suggestionEmbed(hue, suggestion, created_at, creator) {
+    static attachSuggestionConfirmMessage(suggestions, attachment) {
+
+        return {
+
+            embeds: [
+
+                new MessageEmbed()
+                    .setColor('#80c3ff')
+                    .setTitle("Add Attachment to Suggestion")
+                    .setDescription(
+                        `Please confirm which suggestion you would like to add this attachment to. `
+                        + `This attachment will override any attachments previously added to the chosen suggestion.`
+                    )
+                    .addFields(this.getSuggestionFields(suggestions))
+                    .setImage(attachment.url)
+
+            ],
+
+            components: [
+
+                new MessageActionRow().addComponents(this.getSuggestionAttachButtons(suggestions, attachment.id)),
+                new MessageActionRow().addComponents(this.cancelButton())
+
+            ],
+
+            ephemeral: true
+
+        }
+
+    }
+
+    static suggestionEmbed(hue, suggestion) {
         return new MessageEmbed()
-            .setAuthor({ name: creator.tag, iconURL: creator.displayAvatarURL({ dynamic: true }) })
+            .setAuthor({ name: suggestion?.creator?.tag || 'Unknown User', iconURL: suggestion?.creator?.avatarURL() })
             .setColor((hue < 0 ? this.epicPurple : hsv2rgb(hue, 1, 1)))
-            .setDescription(suggestion)
-            .setTimestamp(created_at)
+            .setDescription(suggestion.suggestion)
+            .setTimestamp(suggestion.created_at*1000)
+            .setImage(suggestion.attachmentURL)
     }
 
     static errorMessage(title, description) {

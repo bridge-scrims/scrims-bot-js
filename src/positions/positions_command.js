@@ -32,7 +32,7 @@ async function onInfoSubcommand(interaction) {
         const position = await getPosition(interaction)
         if (!position) return false
 
-        const positionRole = await interaction.client.database.positionRoles.get({ id_position: position.id_position, guild_id: interaction.guild.id }).then(v => v[0])
+        const positionRole = await interaction.client.database.positionRoles.get({ id_position: position.id_position, guild_id: interaction?.guild?.id }).then(v => v[0])
         await interaction.reply(PositionsResponseMessageBuilder.getPositionInfoMessage(position, positionRole, interaction.client.database.userPositions.cache.values()))
     
     }else {
@@ -120,7 +120,7 @@ async function onTakeSubcommand(interaction) {
 
     }
 
-    const eventPayload = { guild_id: interaction.guild.id, executor_id: interaction.user.id, userPosition: existing[0] }
+    const eventPayload = { guild_id: interaction?.guild?.id , executor_id: interaction.user.id, userPosition: existing[0] }
     interaction.client.database.ipc.notify('audited_user_position_remove', eventPayload)
 
     const userPositions = interaction.client.database.userPositions.cache.find({ user: { discord_id: user.id } })
@@ -191,7 +191,7 @@ async function onGiveSubcommand(interaction) {
     const existing = await interaction.client.database.userPositions.get({ ...selector, show_expired: true }, false)
     if (existing.length > 0) {
 
-        const eventPayload = { guild_id: interaction.guild.id, executor_id: interaction.user.id, userPosition: existing[0], expires_at }
+        const eventPayload = { guild_id: interaction?.guild?.id, executor_id: interaction.user.id, userPosition: existing[0], expires_at }
         if (expires_at) {
 
             await interaction.client.database.userPositions.update(selector, { expires_at })
@@ -206,13 +206,7 @@ async function onGiveSubcommand(interaction) {
         
     }
 
-    if (!interaction.scrimsUser) {
-
-        return interaction.reply( PositionsResponseMessageBuilder.scrimsUserNeededMessage() );
-
-    }
-
-    const userPosition = { ...selector, expires_at, given_at: Math.round((Date.now()/1000)), id_executor: interaction.scrimsUser.id_user }
+    const userPosition = { ...selector, expires_at, given_at: Math.round((Date.now()/1000)), executor: { discord_id: interaction.user.id } }
     await interaction.client.database.userPositions.create(userPosition)
     
     const userPositions = interaction.client.database.userPositions.cache.find({ user: { discord_id: user.id } })

@@ -83,15 +83,12 @@ async function onPositionAutoComplete(interaction) {
 
 async function onInteraction(interaction) {
 
-    if (!interaction.guild)
-        return interaction.reply(PositionsResponseMessageBuilder.errorMessage("Guild Only", "This should only be used in discord servers!"));
-
     if (interaction.isAutocomplete()) return onPositionAutoComplete(interaction);
 
     const commandHandler = commandHandlers[interaction.commandName]
     if (commandHandler) return commandHandler(interaction);
      
-    await interaction.reply({ content: "How did we get here?", ephemeral: true });
+    throw new Error(`Interaction with name '${interaction.commandName}' does not have a handler!`, commandHandlers);
 
 }
 
@@ -271,7 +268,7 @@ function getPositionRolesCommandGroup() {
         .addSubcommand( getPositionRolesAddSubcommand() )
         .addSubcommand( getPositionRolesRemoveSubcommand() )
 
-    return [ getPositionRolesCommandGroup, { permissionLevel: "staff" } ];
+    return [ getPositionRolesCommandGroup, { permissionLevel: "staff" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
 
 }
 
@@ -285,7 +282,7 @@ function getPositionsCommandGroup() {
         .addSubcommand( getPositionsTakeSubcommand() )
         .addSubcommand( getPositionsInfoSubcommand() )
 
-    return [ positionsCommandGroup, { permissionLevel: "support" } ];
+    return [ positionsCommandGroup, { permissionLevel: "support" }, { forceGuild: false, bypassBlock: false, forceScrimsUser: false } ];
 
 }
 
@@ -295,7 +292,7 @@ function getBridgeScrimsSyncCommand() {
         .setName("scrims-sync-members")
         .setDescription("Use this command to sync everyones bridge scrims position roles.")
 
-    return [ syncCommand, { permissionLevel: "staff" } ];
+    return [ syncCommand, { permissionLevel: "staff" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
 
 }
 
