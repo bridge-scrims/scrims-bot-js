@@ -273,6 +273,10 @@ async function onTicketCloseRequest(interaction) {
     const executorId = interaction.args.shift()
     if (executorId) interaction.executor = await interaction.client.users.fetch(executorId)
 
+    const fields = interaction.message.embeds[0]?.fields
+    if (fields) interaction.reason = fields.find(field => field.name === 'Reason')?.value?.replace(/```/g, '')
+    if (!interaction.reason) interaction.reason = 'no reason provided'
+
     if (!interaction.ticket || !interaction.executor || interaction.ticket.status.name === 'deleted') {
 
         if (interaction.message.deletable) await interaction.message.delete().catch(() => null)
@@ -301,7 +305,10 @@ async function onDeny(interaction, ticket) {
         return interaction.editReply(getNotAllowedPayload(interaction.i18n, ticket.user));
 
     const transcriber = interaction.client.support.transcriber;
-    const message = { id: interaction.id, author: interaction.user, content: "denied the close request" }
+    const message = { 
+        id: interaction.id, author: interaction.user, 
+        content: `denied the close request from ${interaction.executor.tag} with reason: ${interaction.reason}` 
+    }
     await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
 
     await interaction.editReply("Close request denied.");
@@ -319,7 +326,10 @@ async function onAccept(interaction, ticket) {
     if (ticketCreatorId !== interaction.user.id)
         return interaction.editReply(getNotAllowedPayload(interaction.i18n, ticket.user));
 
-    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.executor, `accepted the close request from ${interaction.executor.tag}`)
+    await interaction.client.support.closeTicket(
+        interaction.channel, interaction.ticket, interaction.executor, 
+        interaction.user, `accepted the close request from ${interaction.executor.tag} with reason: ${interaction.reason}`
+    )
 
 }
 
@@ -332,18 +342,17 @@ async function onAccept(interaction, ticket) {
     const hasPermission = await interaction.member.hasPermission('support')
     if (!hasPermission) return interaction.editReply(SupportResponseMessageBuilder.missingPermissionsMessage('You must be bridge scrims support or higher to do this.'))
 
-    const transcriber = interaction.client.support.transcriber;
-    const message = { ...interaction, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: "forcibly closed this request" }
-    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
-    
-    await interaction.client.support.closeTicket(interaction.channel, interaction.ticket, interaction.user)
+    await interaction.client.support.closeTicket(
+        interaction.channel, interaction.ticket, interaction.executor, interaction.user, 
+        `forcibly closed this ticket using the request from ${interaction.executor.tag} with reason: ${interaction.reason}`
+    )
 
 }
 
 function getNotAllowedPayload(i18n, ticketCreator) {
 
     return SupportResponseMessageBuilder.missingPermissionsMessage(
-        i18n, `Only ${ticketCreator?.getMention('**') ?? 'unknown-user'} can make this decision.`
+        i18n, `Only ${ticketCreator?.getMention('**') ?? '@unknown-user'} can make this decision.`
     );
 
 }

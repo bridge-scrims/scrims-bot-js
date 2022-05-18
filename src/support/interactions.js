@@ -88,7 +88,7 @@ async function closeTicket(interaction, ticket, content) {
 
     await interaction.reply({ content: `Support ticket closing...` })
     
-    await interaction.client.support.closeTicket(interaction.channel, ticket, interaction.user, content)
+    await interaction.client.support.closeTicket(interaction.channel, ticket, interaction.user, interaction.user, content)
 
 }
 

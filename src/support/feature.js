@@ -280,7 +280,7 @@ class SupportFeature {
             }
 
             // Ticket is open, but the channel does not exist
-            await this.closeTicket({ guild: interaction.guild }, existing[0], null)
+            await this.closeTicket({ guild: interaction.guild }, existing[0], null, this.bot.user, `closed this ticket because of the channel no longer existing`)
         
         }
 
@@ -344,16 +344,16 @@ class SupportFeature {
         if (tickets) {
             
             const openTickets = tickets.filter(ticket => ticket.status.name !== "deleted")
-            await Promise.all(openTickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor, `deleted the ticket channel`))).catch(console.error)
+            await Promise.all(openTickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor, channel?.executor, `deleted the ticket channel`))).catch(console.error)
 
         }
 
     }
 
-    async closeTicket(channel, ticket, executor, content) {
+    async closeTicket(channel, ticket, ticketCloser, executor, content) {
 
         const statusName = ticket?.status?.name
-        const closer = (executor?.id) ? { closer: { discord_id: executor.id } } : { id_closer: null }
+        const closer = (ticketCloser?.id) ? { closer: { discord_id: ticketCloser.id } } : { id_closer: null }
         await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" }, ...closer })
 
         if (!statusName || statusName !== 'deleted') {
@@ -363,7 +363,7 @@ class SupportFeature {
                 await this.transcriber.transcribe(ticket.id_ticket, message)
             }
             
-            this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (executor?.id ?? null) })
+            this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (ticketCloser?.id ?? null) })
             await this.transcriber.send(channel.guild, ticket)
       
             if (typeof channel.delete === "function") await channel.delete().catch(() => { /* Channel could already be deleted. */ })
