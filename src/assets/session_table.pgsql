@@ -42,18 +42,29 @@ CREATE TABLE IF NOT EXISTS scrims_session (
 
     id_creator uuid NULL,
     started_at bigint NOT NULL,
+    ended_at bigint NULL,
 
     FOREIGN KEY (id_type) REFERENCES scrims_session_type(id_type),
     FOREIGN KEY (id_creator) REFERENCES scrims_user(id_user)
 
 );
 
+DO
+$$
+BEGIN
+    if NOT EXISTS (SELECT * FROM information_schema.columns WHERE table_name='scrims_session' and column_name='ended_at') THEN
+        ALTER TABLE scrims_session ADD COLUMN ended_at bigint NULL;
+    END IF;
+END
+$$;
+
 CREATE OR REPLACE FUNCTION get_session_id (
 
     id_session uuid default null,
     id_type bigint default null,
     id_creator uuid default null,
-    started_at bigint default null
+    started_at bigint default null,
+    ended_at bigint default null
 
 ) 
 RETURNS bigint 
@@ -66,8 +77,9 @@ EXECUTE '
     ($1 is null or scrims_session.id_session = $1) AND
     ($2 is null or scrims_session.id_type = $2) AND
     ($3 is null or scrims_session.id_creator = $3) AND
-    ($4 is null or scrims_session.started_at = $4) 
-' USING id_session, id_type, id_creator, started_at
+    ($4 is null or scrims_session.started_at = $4) AND
+    ($5 is null or scrims_session.ended_at = $5)
+' USING id_session, id_type, id_creator, started_at, ended_at
 INTO retval;
 RETURN retval;
 END $$ 
@@ -78,7 +90,8 @@ CREATE OR REPLACE FUNCTION get_sessions (
     id_session uuid default null,
     id_type bigint default null,
     id_creator uuid default null,
-    started_at bigint default null
+    started_at bigint default null,
+    ended_at bigint default null
 
 ) 
 returns json
@@ -98,7 +111,8 @@ EXECUTE '
                 ''id_creator'', scrims_session.id_creator,
                 ''creator'', to_json(creator_user),
 
-                ''started_at'', scrims_session.started_at
+                ''started_at'', scrims_session.started_at,
+                ''ended_at'', scrims_session.ended_at
             )
         )
     FROM 
@@ -109,12 +123,22 @@ EXECUTE '
     ($1 is null or scrims_session.id_session = $1) AND
     ($2 is null or scrims_session.id_type = $2) AND
     ($3 is null or scrims_session.id_creator = $3) AND
-    ($4 is null or scrims_session.started_at = $4) 
-' USING id_session, id_type, id_creator, started_at
+    ($4 is null or scrims_session.started_at = $4) AND
+    ($5 is null or scrims_session.ended_at = $5) 
+' USING id_session, id_type, id_creator, started_at, ended_at
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
 LANGUAGE plpgsql;
+
+DO
+$do$
+BEGIN
+    DROP FUNCTION get_session_id(uuid, bigint, uuid, bigint);
+    DROP FUNCTION get_sessions(uuid, bigint, uuid, bigint);
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;
 
 CREATE TABLE IF NOT EXISTS scrims_session_participant (
  
@@ -148,7 +172,7 @@ EXECUTE '
         json_agg(
             json_build_object(
                 ''id_session'', scrims_session_participant.id_session,
-                ''session'', sessions->>0,
+                ''session'', (sessions->>0)::json,
 
                 ''id_user'', scrims_session_participant.id_user,
                 ''user'', to_json(scrims_user),

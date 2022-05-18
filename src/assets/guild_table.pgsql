@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS scrims_guild_entry_type (
 DO
 $$
 BEGIN
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'guild_positions_log_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('guild_positions_log_channel');
+    END IF;
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'positions_log_channel') THEN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('positions_log_channel');
     END IF;

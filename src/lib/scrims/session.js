@@ -71,6 +71,11 @@ class ScrimsSession extends TableRow {
          */
         this.started_at
 
+        /**
+         * @type { number }
+         */
+        this.ended_at
+        
     }
 
 }

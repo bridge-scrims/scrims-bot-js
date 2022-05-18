@@ -1,30 +1,28 @@
 const { VoiceBasedChannel, GuildMember, VoiceState } = require("discord.js");
 const ScrimsSession = require("./scrims/session");
+const ScrimsSessionParticipant = require("./scrims/session_participant");
 const ScrimsSessionType = require("./scrims/session_type");
+const ScrimsUser = require("./scrims/user");
 
-class VCParticipantInformation {
+class VCSessionParticipant extends ScrimsSessionParticipant {
 
-    constructor(member) {
+    /**
+     * @param { VoiceChannelBasedSession } session 
+     * @param { ScrimsUser } user 
+     */
+    constructor(session, user) {
 
-        /**
-         * @type { GuildMember }
-         */
-        this.member = member
-
-        /**
-         * @type { number }
-         */
-        this.joined_at = Math.floor(Date.now() / 1000)
-
+        super(session.client.sessionParticipants, { session, user, joined_at: Math.floor(Date.now() / 1000), breaks: [], left_at: null })
+    
         /**
          * @type { number[] }
          */
-        this.breaks = []
+        this.breaks
 
         /**
          * @type { number }
          */
-        this.left_at = null
+        this.left_at
 
     }
 
@@ -49,10 +47,16 @@ class VCParticipantInformation {
 
     }
 
-    getConnectTime() {
+    /**
+     * @override
+     */
+    async create() {
 
         const referenceTime = this.left_at ?? (Date.now() / 1000)
-        return Math.floor((referenceTime - this.joined_at) - this.breaks.reduce((pv, cv) => pv + cv, 0));
+        const breakTime = this.breaks.reduce((pv, cv) => pv + cv, 0)
+        this.participation_time = Math.floor((referenceTime - this.joined_at) - breakTime)
+
+        return super.create();
 
     }
 
@@ -71,7 +75,8 @@ class VoiceChannelBasedSession extends ScrimsSession {
             id_session: voiceChannel.client.database.generateUUID(),
             type: { name: typeName }, 
             creator: { discord_id: creator.id }, 
-            started_at: Math.floor(Date.now() / 1000) 
+            started_at: Math.floor(Date.now() / 1000),
+            ended_at: null
         }
 
         super(voiceChannel.client.database.sessions, data)
@@ -82,7 +87,7 @@ class VoiceChannelBasedSession extends ScrimsSession {
         this.channel = voiceChannel
 
         /**
-         * @type { Object.<string, VCParticipantInformation>  }
+         * @type { Object.<string, VCSessionParticipant>  }
          */
         this.participants = {}
 
@@ -92,14 +97,27 @@ class VoiceChannelBasedSession extends ScrimsSession {
          */
         this.bot
 
+        this.initialize()
         this.addListeners()
 
     }
 
     addListeners() {
 
-        this.voiceUpdateCallback = async (...args) => this.onVoiceStateUpdate().catch(console.error)
+        this.voiceUpdateCallback = async (...args) => this.onVoiceStateUpdate(...args).catch(console.error)
         this.bot.on('voiceStateUpdate', this.voiceUpdateCallback)
+
+    }
+
+    async initialize() {
+
+        for (const member of this.channel.members.values()) {
+
+            const scrimsUser = await this.client.users.get({ discord_id: member.id }).then(v => v[0]).catch(() => null)
+            if (scrimsUser && !(member.id in this.participants)) 
+                this.participants[member.id] = new VCSessionParticipant(this, scrimsUser)
+
+        }
 
     }
 
@@ -116,8 +134,9 @@ class VoiceChannelBasedSession extends ScrimsSession {
 
             if (!(member.id in this.participants)) {
 
+                const scrimsUser = await this.client.users.get({ discord_id: member.id }).then(v => v[0]).catch(() => null)
                 // Someone joined for the first time of this session
-                this.participants[member.id] = new VCParticipantInformation(member)
+                if (scrimsUser) this.participants[member.id] = new VCSessionParticipant(this, scrimsUser)
 
             }else {
 
@@ -145,12 +164,15 @@ class VoiceChannelBasedSession extends ScrimsSession {
 
         this.bot.off('voiceStateUpdate', this.voiceUpdateCallback)
 
-        const length = (Date.now() / 1000) - this.started_at - trimTime
+        this.updateWith({ ended_at: Math.floor((Date.now() / 1000) - trimTime) })
+        const length = this.ended_at - this.started_at 
 
         // This session was to short to be saved in the database
-        //if (length < (3*60)) return false;
+        if (length < (3*60)) return false;
 
         await this.create()
+        for (const participant of Object.values(this.participants))
+            await participant.create()
 
         delete this.channel;
         delete this.participants;

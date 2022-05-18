@@ -58,28 +58,28 @@ class PositionLoggingFeature {
         if (!payload.positionRole) {
 
             const msg = `Created an unknown new positions role.`
-            return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Position Role Created", '#0098EB');
+            return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Position Role Created", '#0098EB');
 
         }
 
         const positionRole = new ScrimsPositionRole(this.database.positionRoles, payload.positionRole)
-        const role = positionRole.role ? `@${positionRole.role.name}` : positionRole.role_id
+        const role = positionRole.role ? `${positionRole.role}` : positionRole.role_id
         const position = positionRole.position?.name ?? positionRole.id_position
 
         const msg = `Connected discord **${role}** to bridge scrims **${position}**.`
-        return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Position Role Created", '#0098EB');
+        return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Position Role Created", '#0098EB', [positionRole.guild_id]);
 
     }
 
     async onPositionRoleRemove(payload) {
 
         const guild = payload?.selector?.guild_id ? (await this.database.guilds.get({ guild_id: payload.selector.guild_id }).then(results => results[0]?.discordGuild ?? null)) : null
-        const role = (guild && payload?.selector?.role_id) ? `@${guild.roles.resolve(payload.selector.role_id)?.name}` : payload?.selector?.role_id
+        const role = (guild && guild.roles.resolve(payload?.selector?.role_id)) ? `${guild.roles.resolve(payload.selector.role_id)}` : payload?.selector?.role_id
 
         const position = (payload?.selector?.id_position) ? this.database.positions.cache.get(payload.selector.id_position)?.name : payload?.selector?.id_position
 
         const msg = `Unconnected discord **${role}** from ` + (position ? `bridge scrims **${position}**.` : `any bridge scrims positions.`)
-        return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Position Role Removed", '#F00A7D');
+        return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Position Role Removed", '#F00A7D', [payload?.selector?.guild_id]);
 
     }
 
@@ -162,27 +162,27 @@ class PositionLoggingFeature {
 
     async onJoinedRolesReceived(payload) {
 
-        const roles = payload.roles.map(roleName => `**${roleName}**`)
+        const roles = payload.roles
         const msg = `Received ${roles.join(", ")} discord role(s) after joining the server.`
-        return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Roles Received", '#FFE633');
+        return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Received", '#FFE633', [payload.guild_id]);
 
     }
 
     async onPositionRolesReceived(payload) {
 
         const position = this.database.positions.cache.get(payload.id_position)?.name ?? "unknown-position"
-        const roles = payload.roles.map(role => `**${role}**`)
+        const roles = payload.roles
         const msg = `Received ${roles.join(", ")} discord role(s) because of their **${position}** bridge scrims position.`
-        return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Roles Received", '#7800E0');
+        return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Received", '#7800E0', [payload.guild_id]);
 
     }
 
     async onPositionRolesLost(payload) {
 
         const position = this.database.positions.cache.get(payload.id_position)?.name ?? "unknown-position"
-        const roles = payload.roles.map(role => `**${role}**`)
+        const roles = payload.roles
         const msg = `Lost ${roles.join(", ")} discord role(s) because of losing their **${position}** bridge scrims position.`
-        return this.logging.sendLogMessages({ msg, ...payload }, "positions_log_channel", "Roles Lost", '#EB00A4');
+        return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Lost", '#EB00A4', [payload.guild_id]);
 
     }
 

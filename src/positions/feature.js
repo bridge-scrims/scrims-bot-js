@@ -88,7 +88,7 @@ class PositionsFeature {
                 )
             )
 
-            const addedRoles = missingRoleIds.filter(id => member.roles.cache.has(id)).map(id => `@${member.roles.cache.get(id).name}`)
+            const addedRoles = missingRoleIds.filter(id => member.roles.cache.has(id)).map(id => `${member.roles.cache.get(id)}`)
             this.database.ipc.notify(`joined_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, roles: addedRoles })
         
         }
@@ -122,7 +122,7 @@ class PositionsFeature {
                 )
             )
 
-            const addedRoles = roleIds.filter(id => member.roles.cache.has(id)).map(id => `@${member.roles.cache.get(id).name}`)
+            const addedRoles = roleIds.filter(id => member.roles.cache.has(id)).map(id => `${member.roles.cache.get(id)}`)
             this.database.ipc.notify(`position_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, id_position, roles: addedRoles })
 
         }
@@ -147,8 +147,10 @@ class PositionsFeature {
     async removePositionRoles(member, id_position) {
 
         const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position)
-            .filter(roleId => member.roles.cache.has(roleId)).filter(roleId => !member.guild.roles.cache.get(roleId)?.managed)
-        const roles = roleIds.map(id => member.guild.roles.cache.get(id) ?? id).map(role => `@${(role?.name) ? role.name : role}`)
+            .filter(roleId => member.roles.cache.has(roleId))
+            .filter(roleId => !member.roles.cache.get(roleId).managed)
+        
+        const roles = roleIds.map(id => `${member.roles.cache.get(id)}`)
 
         if (roleIds.length > 0) {
 
