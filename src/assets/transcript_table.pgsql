@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS scrims_ticket_message (
     id_author uuid NOT NULL,
 
     message_id text NOT NULL,
+    reference_id text NULL,
+
     content text NOT NULL,
     deleted bigint NULL,
     created_at bigint NOT NULL,
@@ -14,6 +16,16 @@ CREATE TABLE IF NOT EXISTS scrims_ticket_message (
     FOREIGN KEY (id_author) REFERENCES scrims_user(id_user)
 
 );
+
+DO 
+$$
+BEGIN
+    IF NOT EXISTS (SELECT * FROM information_schema.columns WHERE table_name='scrims_ticket_message' and column_name='reference_id') 
+        THEN ALTER TABLE scrims_ticket_message ADD COLUMN reference_id text NULL;
+    END IF;
+EXCEPTION WHEN OTHERS THEN NULL;
+END 
+$$;
 
 CREATE OR REPLACE FUNCTION get_ticket_messages (
     id_ticket uuid default null,
@@ -39,14 +51,14 @@ EXECUTE '
             ''message_id'', scrims_ticket_message.message_id,
             ''content'', scrims_ticket_message.content,
             ''deleted'', scrims_ticket_message.deleted,
-            ''created_at'', scrims_ticket_message.created_at
+            ''created_at'', scrims_ticket_message.created_at,
+            ''reference_id'', scrims_ticket_message.reference_id
         )
     )
     FROM 
     scrims_ticket_message 
     LEFT JOIN scrims_ticket ticket ON ticket.id_ticket = scrims_ticket_message.id_ticket 
     LEFT JOIN scrims_user author ON author.id_user = scrims_ticket_message.id_author 
-
     WHERE 
     ($1 is null or scrims_ticket_message.id_ticket = $1) AND
     ($2 is null or scrims_ticket_message.id_author = $2) AND

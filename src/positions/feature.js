@@ -210,8 +210,8 @@ class PositionsFeature {
      */
     async syncPositionsForMember(member) {
 
-        const unallowedRoles = this.getMemberUnallowedRoles(member)
-        const missingRoles = this.getMemberMissingRoles(member)
+        const unallowedRoles = await this.getMemberUnallowedRoles(member)
+        const missingRoles = await this.getMemberMissingRoles(member)
 
         const removeResults = await Promise.all(
             unallowedRoles.map(roleId => (

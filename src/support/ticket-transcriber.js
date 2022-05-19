@@ -54,6 +54,7 @@ class TicketTranscriber {
             id_ticket: ticketId, 
             message_id: message.id, 
             content: message.content, 
+            reference_id: message?.reference?.messageId ?? null,
             author: { discord_id: message.author.id },
             created_at: Math.round(Date.now()/1000)
 

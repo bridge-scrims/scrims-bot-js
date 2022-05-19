@@ -21,7 +21,8 @@ const commandHandlers = {
     "positions": positionsCommandHandler, 
     "position-roles": positionRolesCommandHandler,
     "PositionRoles": positionRolesCommandHandler,
-    "scrims-sync-members": syncMembersCommandHandler
+    "scrims-sync-members": syncMembersCommandHandler,
+    "SyncMembers": onSyncMembersComponent
 
 }
 
@@ -151,7 +152,7 @@ async function onSyncMembersComponent(interaction) {
     if (result instanceof Error) {
 
         console.error(`Sync failed!`, result)
-        return interaction.editReply(ScrimsMessageBuilder.failedMessage(`transfer the user positions`));
+        return interaction.editReply(PositionsResponseMessageBuilder.failedMessage(`transfer the user positions`));
 
     }
 
@@ -319,14 +320,14 @@ function getBridgeScrimsSyncCommand() {
         .setName("scrims-sync-members")
         .setDescription("Use this command to sync everyones bridge scrims position roles.")
 
-    return [ syncCommand, { permissionLevel: "staff" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
+    return [ syncCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
 
 }
 
 module.exports = {
 
     interactionHandler: onInteraction,
-    eventListeners: [ "PositionRoles" ],
+    eventListeners: [ "PositionRoles", "SyncMembers" ],
     commands: [ getPositionsCommandGroup(), getPositionRolesCommandGroup(), getBridgeScrimsSyncCommand() ]
 
 };

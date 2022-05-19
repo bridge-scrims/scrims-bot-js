@@ -65,6 +65,11 @@ class ScrimsTicketMessage extends TableRow {
         this.message_id
 
         /**
+         * @type { string } 
+         */
+        this.reference_id
+
+        /**
          * @type { string }
          */
         this.content
