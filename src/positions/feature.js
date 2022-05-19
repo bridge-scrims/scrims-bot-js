@@ -197,6 +197,40 @@ class PositionsFeature {
 
     }
 
+    async syncPositions(guild) {
+
+        const members = await guild.members.fetch()
+        return Promise.all(members.map(member => this.syncPositionsForMember(member)))
+            .then(results => results.reduce(([rmv, create], [removeResults, createResults]) => [ [...rmv, ...removeResults], [...create, ...createResults] ], [[], []]))
+
+    }
+
+    /**
+     * @param { GuildMember } member 
+     */
+    async syncPositionsForMember(member) {
+
+        const unallowedRoles = this.getMemberUnallowedRoles(member)
+        const missingRoles = this.getMemberMissingRoles(member)
+
+        const removeResults = await Promise.all(
+            unallowedRoles.map(roleId => (
+                member.roles.remove(roleId).then(() => true)
+                    .catch(error => console.error(`Unable to remove role because of ${error}!`, roleId))
+            ))
+        )
+
+        const createResults = await Promise.all(
+            missingRoles.map(roleId => (
+                member.roles.add(roleId).then(() => true)
+                    .catch(error => console.error(`Unable to create role because of ${error}!`, roleId))
+            ))
+        )
+
+        return [removeResults, createResults];
+
+    }
+
 }
 
 module.exports = PositionsFeature;

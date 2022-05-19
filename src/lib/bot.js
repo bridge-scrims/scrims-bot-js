@@ -86,7 +86,7 @@ class ScrimsBot extends Client {
 
     getConfig(guild_id, key) {
 
-        return this.database.guildEntrys.cache.find({ guild_id, type: { name: key } })[0]?.value;
+        return this.database.guildEntrys.cache.find({ guild_id, type: { name: key } })[0]?.value ?? null;
 
     }
 
@@ -123,11 +123,11 @@ class ScrimsBot extends Client {
         console.log("Commands initialized!")
 
         console.log("Initializing guilds...")
-        for (let guild of guilds.values()) await this.updateScrimsGuild(null, guild)
+        await Promise.all(guilds.map(guild =>  this.updateScrimsGuild(null, guild)))
         console.log("Guilds initialized!")
         
         console.log("Initializing guild members...")
-        for (let guild of guilds.values()) await this.scrimsUsers.initializeGuildMembers(guild)
+        await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
         console.log("Guild members initialized!")
         
         this.emit("startupComplete")
@@ -175,6 +175,8 @@ class ScrimsBot extends Client {
 
         try {
 
+            const defer = interactEvent?.commandConfig?.ephemeralDefer
+            if (defer !== undefined) await interactEvent.deferReply({ ephemeral: defer })
             await handler(interactEvent, event)
 
         }catch(error) {
@@ -211,13 +213,7 @@ class ScrimsBot extends Client {
         const handlerIdentifier = interactEvent?.commandName || null;
 
         const handler = MemoryMessageButton.getHandler(handlerIdentifier) || this.eventHandlers[handlerIdentifier]
-        if (handler) {
-            
-            const defer = interactEvent?.commandConfig?.ephemeralDefer
-            if (defer !== undefined) await interactEvent.deferReply({ ephemeral: defer })
-            return this.runHandler(handler, interactEvent, event);
-            
-        }
+        if (handler) return this.runHandler(handler, interactEvent, event);
 
         if (interactEvent instanceof Interaction) {
 

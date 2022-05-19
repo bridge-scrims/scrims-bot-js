@@ -1,4 +1,4 @@
-const { OAuth2Guild, Guild, User, PartialUser, GuildMember } = require("discord.js")
+const { OAuth2Guild, Guild, User, PartialUser, GuildMember, Collection } = require("discord.js")
 const ScrimsUser = require("./scrims/user")
 
 class ScrimsUserUpdater {
@@ -65,20 +65,30 @@ class ScrimsUserUpdater {
 
         const members = await guild.members.fetch()
         const scrimsUsers = await this.bot.database.users.getMap({}, ["discord_id"], false)
-        await Promise.all(members.map(member => this.createMember(member, scrimsUsers)))
+        await Promise.all(members.map(member => this.createMember(member, scrimsUsers[member.id]))).catch(console.error)
 
         const allScrimsUsers = await this.bot.database.users.getMap({}, ["discord_id"], false)
-        Promise.all(members.map(member => this.updateMember(member, allScrimsUsers))).catch(console.error)
+        this.updateMembers(members, allScrimsUsers).catch(console.error)
+
+    }
+
+    /**
+     * @param { Collection<string, GuildMember> } members
+     * @param { Object.<string, ScrimsUser } allScrimsUsers 
+     */
+    async updateMembers(members, allScrimsUsers) {
+
+        for (const member of members.values()) 
+            await this.updateMember(member, allScrimsUsers).catch(console.error)
 
     }
 
     /**
      * @param { GuildMember } member
-     * @param { Object.<string, ScrimsUser> } scrimsUsers
+     * @param { ScrimsUser } scrimsUser
      */
-     async createMember(member, scrimsUsers) {
+     async createMember(member, scrimsUser) {
 
-        const scrimsUser = scrimsUsers[member.id]
         if (!scrimsUser) {
 
             await member.user.fetch()

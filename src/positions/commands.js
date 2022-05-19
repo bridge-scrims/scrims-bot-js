@@ -138,6 +138,33 @@ async function syncMembersCommandHandler(interaction) {
 
 }
 
+async function onSyncMembersComponent(interaction) {
+
+    if (interaction.args.shift() !== "CONFIRM") return false;
+
+    if (!interaction.scrimsUser) return interaction.reply(PositionsResponseMessageBuilder.scrimsUserNeededMessage(interaction.i18n));
+
+    await interaction.deferUpdate()
+    await interaction.editReply({ content: `Syncing...`, embeds: [], components: [] })
+
+    const result = await interaction.client.positions.syncPositionsForMember(interaction.member).catch(error => error)
+    if (result instanceof Error) {
+
+        console.error(`Sync failed!`, result)
+        return interaction.editReply(ScrimsMessageBuilder.failedMessage(`transfer the user positions`));
+
+    }
+
+    const [ removed, added ] = result
+    
+    const content = `**${removed.filter(v => v === true).length}/${removed.length}** \`removed\` successfully and `
+        + `**${added.filter(v => v === true).length}/${added.length}** \`added\` successfully`
+
+    await interaction.editReply({ content, embeds: [], components: [], ephemeral: true })
+        .catch(() => {/* This could take more then 15 minutes, making the interaction token expire. */})
+
+}
+
 function getUserOption(description) {
 
     return new SlashCommandUserOption()

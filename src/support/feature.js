@@ -79,7 +79,7 @@ class SupportFeature {
 
     async updateTicketStatusChannel() {
 
-        const tickets = this.database.tickets.cache.values()
+        const tickets = this.database.tickets.cache.values().filter(ticket => ticket.guild_id === this.statusChannel.guildId)
         const status = `${tickets.filter(t => t.status.name !== 'open').length}/${tickets.length} Tickets`
         if (this.statusChannel.name !== status) {
 
@@ -269,7 +269,7 @@ class SupportFeature {
 
         }
 
-        const existing = await this.database.tickets.get({ type: { name: typeName }, id_user: interaction.scrimsUser.id_user, status: { name: "open" } })
+        const existing = await this.database.tickets.get({ guild_id: interaction.guild.id, type: { name: typeName }, id_user: interaction.scrimsUser.id_user, status: { name: "open" } })
         if (existing.length > 0) {
             
             const channel = await this.bot.channels.fetch(existing[0].channel_id).catch(() => null)

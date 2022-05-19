@@ -6,6 +6,8 @@ const { interactionHandler, listeners, contextMenus } = require("./interactions"
 const { commandHandler, eventListeners, commands } = require("./commands");
 
 const { Message } = require("discord.js");
+const DynamicallyConfiguredValueUpdater = require("../lib/configed_value_updater");
+const AsyncFunctionBuffer = require("../lib/buffer");
 
 class SuggestionsFeature {
 
@@ -28,6 +30,8 @@ class SuggestionsFeature {
         this.suggestionInfoMessageReloads = {}
         this.suggestionInfoMessages = {}
         this.suggestionChannels = {}
+
+        this.configChangeBuffer = new AsyncFunctionBuffer((guildId) => this.onConfigurationChange(guildId))
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
         contextMenus.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
@@ -55,45 +59,26 @@ class SuggestionsFeature {
 
     }
 
+    getChannelId(guildId) {
+
+        return this.bot.getConfig(guildId, "suggestions_channel");
+
+    }
+
     async onStartup() {
 
-        const channelConfigs = this.database.guildEntrys.cache.find({ type: { name: "suggestions_channel" } })
-        const configured = channelConfigs.filter(entry => this.getVoteConst(entry.guild_id))
-
-        await Promise.all(configured.map(entry => this.startupGuild(entry.guild_id, entry.value)))
-
-        this.database.guildEntrys.cache.on('push', config => this.onConfigCreate(config))
-        this.database.guildEntrys.cache.on('update', config => this.onConfigCreate(config))
-        this.database.guildEntrys.cache.on('remove', config => this.onConfigRemove(config))
-        
-    }
-
-    async onConfigRemove(config) {
-
-        if (config.type.name == "suggestions_channel" || config.type.name == "suggestions_vote_const") {
-
-            await this.shutDownGuild(config.guild_id)
-
-        }
+        new DynamicallyConfiguredValueUpdater(this.database, `suggestions_channel`, (guildId) => this.configChangeBuffer.run(guildId), (guildId) => this.configChangeBuffer.run(guildId))
+        new DynamicallyConfiguredValueUpdater(this.database, `suggestions_vote_const`, (guildId) => this.configChangeBuffer.run(guildId), (guildId) => this.configChangeBuffer.run(guildId))
 
     }
 
-    async onConfigCreate(config) {
+    async onConfigurationChange(guildId) {
 
-        if (config.type.name == "suggestions_vote_const") {
+        const isConfigured = (this.getChannelId(guildId) && this.getVoteConst(guildId))
+        if (!isConfigured) await this.shutDownGuild(guildId);
 
-            if (!this.getVoteConst(config.guild_id)) return this.shutDownGuild(config.guild_id);    
-
-        }
-
-        if (config.type.name == "suggestions_vote_const" || config.type.name == "suggestions_channel") {
-
-            await this.shutDownGuild(config.guild_id)
-
-            const channelId = this.bot.getConfig(config.guild_id, "suggestions_channel")
-            if (channelId && this.getVoteConst(config.guild_id)) await this.startupGuild(config.guild_id, channelId)
-
-        }
+        if (isConfigured && this.suggestionChannels[guildId]?.id !== this.getChannelId(guildId)) await this.shutDownGuild(guildId);
+        if (isConfigured && !this.suggestionChannels[guildId]) await this.startupGuild(guildId);
 
     }
 
@@ -105,41 +90,27 @@ class SuggestionsFeature {
         const context = { guild_id: guild.id, channel_id: channelId }
 
         const channel = await this.bot.channels.fetch(channelId)
-            .catch(error => this.logError(`Epic suggestions channel could not be fetched!`, { ...context, error }))
-    
         context.channel_name = channel.name
 
         await channel.send({ embeds: [epicEmbed] })
-            .catch(error => this.logError(`Could not send epic suggestion in epic suggestions channel!`, { ...context, error }))
-
         await channel.send({ content: voteStatus })
-            .catch(error => this.logError(`Could not send epic suggestion in epic suggestions channel!`, { ...context, error }))
 
     }
 
-    async startupGuild(guildId, channelId) {
+    async startupGuild(guildId) {
 
-        const context = { guild_id: guildId, channel_id: channelId }
+        const context = { guild_id: guildId, channel_id: this.getChannelId(guildId) }
 
         const guild = await this.bot.guilds.fetch(guildId)
-            .catch(error => this.logError(`Suggestions guild could not be fetched!`, { ...context, error }))
-        if (!guild) return false;
-
         context.guild_id = guild.id
 
-        const channel = await this.bot.channels.fetch(channelId)
-            .catch(error => this.logError(`Suggestions channel could not be fetched!`, { ...context, error }))
-        if (!channel) return false;
-        
+        const channel = await this.bot.channels.fetch(this.getChannelId(guildId))
         context.channel_name = channel.name
 
         await this.logSuccess(`Suggestions channel found and is initializing with a critical vote ratio of ${this.getVoteConst(guildId)}.`, context)
 
         const messages = await channel.messages.fetch()
-            .catch(error => this.logError(`Suggestions channel messages could not be fetched!`, { ...context, error }))
-
         await Promise.all(messages.filter(msg => (msg.components.length > 0)).map(msg => msg.delete()))
-            .catch(error => this.logError(`Suggestions info messages could not be deleted!`, { ...context, error }))
 
         await this.sendSuggestionInfoMessage(channel, true)
 
