@@ -31,7 +31,7 @@ class ScrimsJSBot extends ScrimsBot {
 
         this.logging = new LoggingFeature(this, config)
 
-        this.on('ready', () => this.user.setPresence({ activities: [{ type: 'PLAYING', name: 'Wool Wars Scrims' }] }))
+        this.on('ready', () => this.user.setPresence({ activities: [{ type: 'PLAYING', name: 'Bridge Scrims' }] }))
 
     }
     
