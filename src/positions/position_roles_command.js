@@ -39,7 +39,7 @@ async function getGuild(interaction) {
 
     const guild_id = interaction?.options?.getString("guild") || interaction?.args?.shift() || interaction.guild.id
     
-    const guild = interaction.client.database.guilds.cache.get(guild_id)
+    const guild = interaction.client.database.guilds.cache.resolve(guild_id)
     if (!guild) {
 
         return interaction.reply(
@@ -80,7 +80,7 @@ async function onStatusSubcommand(interaction) {
 
     const guild_id = interaction.options.getString("guild") ?? interaction.guild.id
 
-    const positionRoles = interaction.client.database.positionRoles.cache.find({ guild_id })
+    const positionRoles = interaction.client.database.positionRoles.cache.get({ guild_id })
     const sortedPositionRoles = sortPositionRoles(positionRoles)
     await interaction.reply(PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id))
 
@@ -151,7 +151,7 @@ async function onAddSubcommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    const existing = interaction.client.database.positionRoles.cache.find({ guild_id, role_id: role.id })
+    const existing = interaction.client.database.positionRoles.cache.get({ guild_id, role_id: role.id })
     if (existing instanceof Error) {
 
         console.error(`Unable to get existing position roles ${existing}!`)

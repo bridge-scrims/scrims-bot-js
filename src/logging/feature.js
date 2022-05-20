@@ -108,7 +108,7 @@ class LoggingFeature {
      */
     async getChannels(configKey, guilds) {
 
-        const configured = this.database.guildEntrys.cache.find({ type: { name: configKey } })
+        const configured = this.database.guildEntrys.cache.get({ type: { name: configKey } })
             .filter(config => config.discordGuild && config.value && (!guilds || guilds.includes(config.guild_id)))
         
         return Promise.all(configured.map(config => config.discordGuild.channels.fetch(config.value).catch(() => null)))

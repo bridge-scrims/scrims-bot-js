@@ -121,8 +121,8 @@ class TableRow {
     getObject(table, filter) {
 
         if (!filter.partial) return filter;
-        if (filter.id) return table.cache.get(filter.id);
-        return table.cache.find(filter)[0] ?? null;
+        if (filter.id) return table.cache.resolve(filter.id);
+        return table.cache.get(filter)[0] ?? null;
 
     }
 

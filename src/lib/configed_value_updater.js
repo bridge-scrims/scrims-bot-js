@@ -27,7 +27,7 @@ class DynamicallyConfiguredValueUpdater {
         this.database = database
 
         //Adding the config type if it does not exist
-        if (this.database.guildEntryTypes.cache.find({ name: typename }).length === 0) {
+        if (this.database.guildEntryTypes.cache.get({ name: typename }).length === 0) {
             this.database.guildEntryTypes.create({ name: typename }).catch(console.error)
         }
 
@@ -40,7 +40,7 @@ class DynamicallyConfiguredValueUpdater {
         this.database.guildEntrys.cache.on('update', this.updateCallback)
         this.database.guildEntrys.cache.on('remove', this.removeCallback)
         
-        const configured = this.database.guildEntrys.cache.find({ type: { name: typename } })
+        const configured = this.database.guildEntrys.cache.get({ type: { name: typename } })
         Promise.allSettled(configured.map(entry => setCallback(entry.guild_id, entry.value).catch(console.error)))
 
     }

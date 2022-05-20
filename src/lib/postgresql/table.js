@@ -203,7 +203,7 @@ class DBTable {
      */
     async get(selectCondition, useCache=true) { 
 
-        const cached = this.cache.find(this.getRow(selectCondition))
+        const cached = this.cache.get(this.getRow(selectCondition))
         if (cached.length > 0 && useCache) return cached;
 
         const [ formated, values1 ] = this.format({ ...selectCondition })

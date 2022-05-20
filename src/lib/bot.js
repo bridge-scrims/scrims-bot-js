@@ -19,9 +19,9 @@ const I18n = require("./Internationalization");
 
 class ScrimsBot extends Client {
 
-    constructor(intents, partials, config) {
+    constructor(intents, partials, presence, config) {
         
-        super({ intents, partials });
+        super({ intents, partials, presence });
 
         this.eventHandlers = {};
         this.token = config.discordToken;
@@ -78,15 +78,15 @@ class ScrimsBot extends Client {
 
     async destroy() {
 
+        this.database.destroy().catch(() => null)
         super.destroy()
-        await this.database.destroy().catch(() => null)
         process.exit(0)
         
     }
 
     getConfig(guild_id, key) {
 
-        return this.database.guildEntrys.cache.find({ guild_id, type: { name: key } })[0]?.value ?? null;
+        return this.database.guildEntrys.cache.get({ guild_id, type: { name: key } })[0]?.value ?? null;
 
     }
 
@@ -332,7 +332,7 @@ class ScrimsBot extends Client {
                 }
             }
 
-            interactEvent.scrimsUser = this.database.users.cache.find({ discord_id: interactEvent?.user?.id })[0] ?? null;
+            interactEvent.scrimsUser = this.database.users.cache.get({ discord_id: interactEvent?.user?.id })[0] ?? null;
 
         }
 
@@ -364,7 +364,7 @@ class ScrimsBot extends Client {
 
     async updateScrimsGuild(oldGuild, newGuild) {
 
-        const existing = this.database.guilds.cache.get(newGuild.id)
+        const existing = this.database.guilds.cache.resolve(newGuild.id)
         if (!existing) {
 
             return this.database.guilds.create({

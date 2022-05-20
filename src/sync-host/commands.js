@@ -127,13 +127,14 @@ async function onRemovePositionCommand(interaction) {
     if (interaction.isAutocomplete()) return onPositionAutoComplete(interaction); 
 
     const positionId = interaction.options.getInteger("position")
-    const position = interaction.client.database.positions.cache.get(positionId)
+    const position = interaction.client.database.positions.cache.resolve(positionId)
     if (!position) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
 
     const result = await interaction.client.database.positions.remove({ id_position: position.id_position }).catch(error => error)
     if (result instanceof Error)
         return interaction.reply(ScrimsMessageBuilder.failedMessage(`remove the **${position.name}** position`));
 
+    interaction.client.database.ipc.send('audited_position_remove', { position, id_executor: interaction.scrimsUser.id_user })
     await interaction.reply({ content: `Removed **${position.name}**.`, ephemeral: true })
     
 }

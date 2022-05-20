@@ -18,7 +18,7 @@ class TicketTranscriber {
 
             message.mentions.users.forEach(mentionedUser => message.content = message.content.replaceAll(`<@${mentionedUser.id}>`, `@${mentionedUser.tag}`))
             
-            const notAddedAttachments = message.attachments.filter(value => this.client.attachments.cache.find({ attachment_id: value.id }).length === 0)
+            const notAddedAttachments = message.attachments.filter(value => this.client.attachments.cache.get({ attachment_id: value.id }).length === 0)
             
             Promise.allSettled(notAddedAttachments.map(value => got(value.url).catch(console.error)))
             await Promise.allSettled(
@@ -33,7 +33,7 @@ class TicketTranscriber {
             )
 
             await Promise.allSettled(
-                message.attachments.filter(value => this.client.ticketMessageAttachments.cache.find({ attachment_id: value.id }).length === 0)
+                message.attachments.filter(value => this.client.ticketMessageAttachments.cache.get({ attachment_id: value.id }).length === 0)
                     .map(value => this.client.ticketMessageAttachments.create({
                 
                     id_ticket: ticketId, 

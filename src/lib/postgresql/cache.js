@@ -43,7 +43,7 @@ class DBCache extends EventEmitter {
 
     createHandle(id) {
 
-        const row = this.get(id)
+        const row = this.resolve(id)
         if (!row) return [null, null];
 
         return this.addHandle(row);
@@ -81,7 +81,7 @@ class DBCache extends EventEmitter {
 
         if (value === null) return null;
 
-        if (existing === null) existing = this.get(value.id)
+        if (existing === null) existing = this.resolve(value.id)
     
         if (existing) {
             
@@ -160,7 +160,7 @@ class DBCache extends EventEmitter {
      * @param { string[] } ids
      * @returns { T }
      */ 
-    get(...ids) {
+    resolve(...ids) {
 
         return this.data[ids.join('#')] ?? null;
 
@@ -171,10 +171,20 @@ class DBCache extends EventEmitter {
      * @param { Boolean } invert
      * @returns { T[] }
      */ 
-    find(filter, invert) {
+    get(filter, invert) {
 
         if (invert) return this.values().filter(row => !row.equals(filter));
         else return this.values().filter(row => row.equals(filter));
+
+    }
+
+    /**
+     * @param { (value: T, index: number, array: T[]) => boolean } predicate
+     * @returns { T[] }
+     */ 
+    filter(predicate) {
+
+        return this.values().filter(predicate);
 
     }
 
@@ -184,7 +194,7 @@ class DBCache extends EventEmitter {
      */
     filterOut(filter) {
 
-        const remove = this.find(filter)
+        const remove = this.get(filter)
         remove.forEach(value => this.remove(value.id))
         return remove;
 
@@ -216,7 +226,7 @@ class DBCache extends EventEmitter {
      */
     updateWith(value, id) {
 
-        const existing = this.get(id ?? value.id)
+        const existing = this.resolve(id ?? value.id)
         if (existing && !existing.exactlyEquals(value)) {
 
             existing.updateWith(value)
@@ -232,7 +242,7 @@ class DBCache extends EventEmitter {
      */
     update(data, selector) {
 
-        const update = this.find(selector)
+        const update = this.get(selector)
         update.forEach(obj => this.updateWith(data, obj.id))
 
     }

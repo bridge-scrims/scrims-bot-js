@@ -131,6 +131,7 @@ class ScrimsSyncHostFeature {
         const userPositionData = {
             given_at: Math.round(Date.now()/1000), 
             executor: { discord_id: (executor?.id || this.bot.user.id) },
+            expires_at: null,
             ...selector
         }
 

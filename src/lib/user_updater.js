@@ -51,7 +51,7 @@ class ScrimsUserUpdater {
     async onMemberAdd(member) {
 
         const scrimsUsers = this.bot.database.users.cache.getMap("discord_id")
-        member.scrimsUser = await this.createMember(member, scrimsUsers)
+        member.scrimsUser = await this.createMember(member, scrimsUsers[member.id])
         this.bot.emit('scrimsGuildMemberAdd', member)
 
     }

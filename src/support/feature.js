@@ -4,6 +4,8 @@ const ScrimsMessageBuilder = require("../lib/responses");
 const { commandHandler, eventHandlers, commands } = require("./interactions");
 const SupportResponseMessageBuilder = require("./responses");
 const { SnowflakeUtil } = require("discord.js");
+const StatusChannel = require("../lib/status_channel");
+const DynamicallyConfiguredValueUpdater = require("../lib/configed_value_updater");
 
 class SupportFeature {
 
@@ -36,34 +38,54 @@ class SupportFeature {
 
         this.transcriber = new TicketTranscriber(this.database)
 
-        const channelConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_transcript_channel" } })
-        await Promise.all(channelConfigs.map(entry => this.setTranscriptChannel(entry.guild_id, entry.value)))
+        new DynamicallyConfiguredValueUpdater(
+            this.database, `tickets_transcript_channel`, 
+            (...args) => this.setTranscriptChannel(...args), 
+            (guildId) => this.onTranscriptChannelDelete(guildId)
+        )
 
-        const reportCategoryConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_report_category" } })
-        await Promise.all(reportCategoryConfigs.map(entry => this.setTicketsCategory(entry.guild_id, entry.value, 'report')))
+        new DynamicallyConfiguredValueUpdater(
+            this.database, `tickets_report_category`, 
+            (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'report'), 
+            (guildId) => this.onTicketCategoryDelete(guildId, 'report')
+        )
 
-        const supportCategoryConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_support_category" } })
-        await Promise.all(supportCategoryConfigs.map(entry => this.setTicketsCategory(entry.guild_id, entry.value, 'support')))
+        new DynamicallyConfiguredValueUpdater(
+            this.database, `tickets_support_category`, 
+            (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'support'), 
+            (guildId) => this.onTicketCategoryDelete(guildId, 'support')
+        )
 
-        const statusChannelConfigs = this.database.guildEntrys.cache.find({ type: { name: "tickets_status_channel" } })
-        await Promise.all(statusChannelConfigs.map(entry => this.setTicketStatusChannel(entry.guild_id, entry.value)))
+        new DynamicallyConfiguredValueUpdater(
+            this.database, `tickets_status_channel`, 
+            (...args) => this.setTicketStatusChannel(...args), 
+            (guildId) => this.onStatusChannelDelete(guildId)
+        )
 
-        this.database.guildEntrys.cache.on('push', config => this.onConfigCreate(config))
-        this.database.guildEntrys.cache.on('update', config => this.onConfigCreate(config))
-        this.database.guildEntrys.cache.on('remove', config => this.onConfigRemove(config))
-
-        this.database.tickets.cache.on('push', ticket => this.onTicketStatusUpdate(ticket))
-        this.database.tickets.cache.on('update', ticket => this.onTicketStatusUpdate(ticket))
-        this.database.tickets.cache.on('remove', ticket => this.onTicketStatusUpdate(ticket))
+        this.database.tickets.cache.on('change', ticket => this.onTicketStatusUpdate(ticket).catch(console.error))
 
         this.addEventHandlers()
 
-        this.bot.on('messageCreate', message => this.onMessageCreate(message))
-        this.bot.on('messageDelete', message => this.onMessageDelete(message))
-        this.bot.on('messageDeleteBulk', messages => this.onMessageDeleteBulk(messages))
-        this.bot.on('messageUpdate', (oldMessage, newMessage) => this.onMessageUpdate(oldMessage, newMessage))
+        await this.deleteGhostTickets().catch(console.error)
+        setInterval(() => this.deleteGhostTickets().catch(console.error), 10*60*1000)
 
-        this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel))
+    }
+
+    async deleteGhostTickets() {
+
+        const existingTickets = this.database.tickets.cache.filter(ticket => ticket.status.name !== 'deleted')
+        for (const ticket of existingTickets) {
+
+            if (ticket.discordGuild && (!ticket.channel_id || !ticket.discordGuild.channels.cache.has(ticket.channel_id))) {
+
+                await this.closeTicket(
+                    { guild: ticket.discordGuild }, ticket, null, 
+                    this.bot.user, `closed this ticket because of the channel no longer existing`
+                ).catch(console.error)
+
+            }
+
+        }
 
     }
 
@@ -79,72 +101,9 @@ class SupportFeature {
 
     async updateTicketStatusChannel() {
 
-        const tickets = this.database.tickets.cache.values().filter(ticket => ticket.guild_id === this.statusChannel.guildId)
+        const tickets = this.database.tickets.cache.filter(ticket => ticket.guild_id === this.statusChannel.guildId)
         const status = `${tickets.filter(t => t.status.name !== 'open').length}/${tickets.length} Tickets`
-        if (this.statusChannel.name !== status) {
-
-            await this.statusChannel.setName(status).catch(console.error)
-
-        }
-
-    }
-
-    async onConfigCreate(config) {
-
-        if (config.type.name == "tickets_transcript_channel") {
-
-            await this.setTranscriptChannel(config.guild_id, config.value)
-
-        }
-
-        if (config.type.name == "tickets_report_category") {
-
-            await this.setTicketsCategory(config.guild_id, config.value, 'report')
-
-        }
-
-        if (config.type.name == "tickets_support_category") {
-
-            await this.setTicketsCategory(config.guild_id, config.value, 'support')
-
-        }
-
-        if (config.type.name == "tickets_status_channel") {
-
-            await this.setTicketStatusChannel(config.guild_id, config.value)
-
-        }
-    }
-
-    async onConfigRemove(config) {
-
-        if (config.type.name == "tickets_transcript_channel") {
-
-            if (this.transcriptChannels[config.guild_id]) this.logError(`Transcript channel unconfigured!`, { guild_id: config.guild_id })
-            delete this.transcriptChannels[config.guild_id]
-
-        }
-
-        if (config.type.name == "tickets_report_category") {
-
-            if (this.ticketCategorys[config.guild_id]?.report) this.logError(`Ticket report category unconfigured!`, { guild_id: config.guild_id })
-            delete this.ticketCategorys[config.guild_id]?.report
-
-        }
-
-        if (config.type.name == "tickets_support_category") {
-
-            if (this.ticketCategorys[config.guild_id]?.support) this.logError(`Ticket support category unconfigured!`, { guild_id: config.guild_id })
-            delete this.ticketCategorys[config.guild_id]?.support
-
-        }
-
-        if (config.type.name == "tickets_status_channel") {
-
-            if (this.statusChannel) this.logError(`Ticket status channel unconfigured!`, { guild_id: config.guild_id })
-            this.statusChannel = null
-
-        }
+        await this.statusChannel.update(status).catch(console.error)
 
     }
 
@@ -162,14 +121,48 @@ class SupportFeature {
 
     }
 
+    async onTranscriptChannelDelete(guild_id) {
+
+        if (this.getTranscriptChannel(guild_id)) {
+
+            this.logError(`Transcript channel unconfigured!`, { guild_id })
+            delete this.transcriptChannels[guild_id]
+
+        }
+
+    }
+
+    async onTicketCategoryDelete(guild_id, typeName) {
+
+        if (this.getTicketCategory(guild_id, typeName)) {
+
+            this.logError(`Ticket ${typeName} category unconfigured!`, { guild_id })
+            delete this.ticketCategorys[guild_id][typeName]
+
+        }
+
+    }
+
+    async onStatusChannelDelete(guild_id) {
+
+        if (this.statusChannel) {
+
+            this.logError(`Ticket status channel unconfigured!`, { guild_id })
+            this.statusChannel.destroy()
+            this.statusChannel = null
+            
+        }
+
+    }
+
     async setTranscriptChannel(guildId, channelId) {
 
-        const channel = await this.bot.channels.fetch(channelId)
-            .catch(error => this.logError(`Fetching tickets transcript channel failed!`, { guild_id: guildId, error }))
+        if (this.getTranscriptChannel(guildId)?.id === channelId) return true;
+
+        const channel = await this.bot.channels.fetch(channelId).catch(console.error)
 
         if (channel) {
 
-            this.logSuccess(`Transcript channel set as **${channel.name}**.`, { guild_id: guildId })
             this.transcriptChannels[guildId] = channel
 
         }
@@ -178,13 +171,10 @@ class SupportFeature {
 
     async setTicketsCategory(guildId, channelId, typeName) {
 
-        const channel = await this.bot.channels.fetch(channelId)
-            .catch(error => this.logError(`Fetching ${typeName} ticket category failed!`, { guild_id: guildId, error }))
+        const channel = await this.bot.channels.fetch(channelId).catch(console.error)
 
         if (channel) {
-
-            this.logSuccess(`The category for \`${typeName}\` tickets set as **${channel}**.`, { guild_id: guildId })
-            
+ 
             if (!(guildId in this.ticketCategorys)) this.ticketCategorys[guildId] = {}
             this.ticketCategorys[guildId][typeName] = channel
 
@@ -194,13 +184,11 @@ class SupportFeature {
 
     async setTicketStatusChannel(guild_id, channelId) {
 
-        const channel = await this.bot.channels.fetch(channelId)
-            .catch(error => this.logError(`Fetching ticket status channel failed!`, { guild_id, error }))
+        const channel = await this.bot.channels.fetch(channelId).catch(console.error)
 
         if (channel) {
 
-            this.logSuccess(`The ticket status channel set as **${channel}**.`, { guild_id })
-            this.statusChannel = channel
+            this.statusChannel = new StatusChannel(channel)
             await this.updateTicketStatusChannel()
 
         }
@@ -222,7 +210,7 @@ class SupportFeature {
 
     async onMessageCreate(message) {
 
-        const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })[0]
+        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
         if (message.author.id === this.bot.user.id) return false;
@@ -242,7 +230,7 @@ class SupportFeature {
 
     async onMessageDelete(message) {
 
-        const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })[0]
+        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
         if (!ticket) return false;
 
         await this.database.ticketMessages.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })
@@ -373,6 +361,12 @@ class SupportFeature {
     }
 
     addEventHandlers() {
+
+        this.bot.on('messageCreate', message => this.onMessageCreate(message).catch(console.error))
+        this.bot.on('messageDelete', message => this.onMessageDelete(message).catch(console.error))
+        this.bot.on('messageDeleteBulk', messages => this.onMessageDeleteBulk(messages).catch(console.error))
+        this.bot.on('messageUpdate', (oldMessage, newMessage) => this.onMessageUpdate(oldMessage, newMessage).catch(console.error))
+        this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel).catch(console.error))
 
         commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
         eventHandlers.forEach(eventName => this.bot.addEventHandler(eventName, commandHandler))

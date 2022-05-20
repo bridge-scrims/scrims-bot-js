@@ -9,7 +9,7 @@ async function onReactionUpdate(reaction) {
 
     const [suggestionUpVote, suggestionDownVote] = reaction.client.suggestions.getVoteEmojis(reaction.message.guild)
     
-    const suggestion = reaction.client.database.suggestions.cache.find({ message_id: reaction.message.id })[0]
+    const suggestion = reaction.client.database.suggestions.cache.get({ message_id: reaction.message.id })[0]
     if (!suggestion) return false;
 
     const upVotes = reaction.message.reactions.cache.get(suggestionUpVote.id ?? suggestionUpVote)?.count || 1;

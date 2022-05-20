@@ -81,7 +81,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
     static getUserPositionsMessage(user, userPositions) {
 
         const userName = user.username.endsWith('s') ? user.username : `${user.username}'s`;
-        const getUserPositionExpiration = userPos => (userPos.expires_at === null) ? `never expires` : `expires <t:${userPos.expires_at}:R>`;
+        const getUserPositionExpiration = userPos => (!userPos.expires_at) ? `never expires` : `expires <t:${userPos.expires_at}:R>`;
         return { 
 
             ephemeral: true,

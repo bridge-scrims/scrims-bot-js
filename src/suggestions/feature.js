@@ -5,7 +5,7 @@ const onReactionUpdate = require("./reactions");
 const { interactionHandler, listeners, contextMenus } = require("./interactions");
 const { commandHandler, eventListeners, commands } = require("./commands");
 
-const { Message } = require("discord.js");
+const { Message, TextChannel } = require("discord.js");
 const DynamicallyConfiguredValueUpdater = require("../lib/configed_value_updater");
 const AsyncFunctionBuffer = require("../lib/buffer");
 
@@ -29,6 +29,10 @@ class SuggestionsFeature {
         
         this.suggestionInfoMessageReloads = {}
         this.suggestionInfoMessages = {}
+
+        /**
+         * @type { Object.<string, TextChannel> }
+         */
         this.suggestionChannels = {}
 
         this.configChangeBuffer = new AsyncFunctionBuffer((guildId) => this.onConfigurationChange(guildId))
@@ -110,9 +114,25 @@ class SuggestionsFeature {
         await this.logSuccess(`Suggestions channel found and is initializing with a critical vote ratio of ${this.getVoteConst(guildId)}.`, context)
 
         const messages = await channel.messages.fetch()
-        await Promise.all(messages.filter(msg => (msg.components.length > 0)).map(msg => msg.delete()))
+        await Promise.all(messages.filter(msg => (msg.components.length > 0) && msg.author.id === this.bot.user.id).map(msg => msg.delete()))
 
         await this.sendSuggestionInfoMessage(channel, true)
+
+    }
+
+    async removeOldMessages() {
+
+        await Promise.all(
+            Object.values(this.suggestionChannels).map(async channel => {
+                const messages = await channel.messages.fetch({ limit: 10 }).then(msgs => msgs.sort((a, b) => a.createdTimestamp - b.createdTimestamp))
+                await Promise.all(
+                    [...messages.values()]
+                        .filter(msg => (msg.components.length > 0) && msg.author.id === this.bot.user.id)
+                        .slice(1)
+                        .map(msg => msg.delete())
+                )
+            })
+        )
 
     }
 
@@ -162,6 +182,7 @@ class SuggestionsFeature {
         this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel))
 
         this.addEventHandlers()
+        setInterval(() => this.removeOldMessages().catch(console.error), 10*60*1000)
 
     }
 
@@ -189,14 +210,14 @@ class SuggestionsFeature {
 
         const suggestionsChannel = this.suggestionChannels[message.guild.id]
         // Message was not created in the suggestions channel so we ignore it
-        if (message.channel.id != suggestionsChannel?.id) return false;
+        if (message.channel.id !== suggestionsChannel?.id) return false;
 
         // Messages like CHANNEL_PINNED_MESSAGE & THREAD_CREATED should get deleted
         const badMessageTypes = ['CHANNEL_PINNED_MESSAGE', 'THREAD_STARTER_MESSAGE']
         if (badMessageTypes.includes(message.type)) return message.delete().catch(console.error);
     
         // This bot sent the message so don't worry about it
-        if (message.author.id == this.bot.user.id) return false;
+        if (message.author.id === this.bot.user.id) return false;
     
         // Recreate the suggestions info message so that it is displayed at the bottom of the channel
         await this.sendSuggestionInfoMessage(message.channel, false)
@@ -205,7 +226,7 @@ class SuggestionsFeature {
 
     async onMessageDelete(message) {
 
-        const suggestion = this.database.suggestions.cache.find({ message_id: message.id })[0]
+        const suggestion = this.database.suggestions.cache.get({ message_id: message.id })[0]
 
         // If a suggestion message was delted it should also be deleted in the database
         await this.database.suggestions.remove({ message_id: message.id }).catch(console.error);
@@ -243,8 +264,11 @@ class SuggestionsFeature {
         clearTimeout(this.suggestionInfoMessageReloads[channel.guild.id])
 
         await this.suggestionInfoMessages[channel.guild.id]?.delete()?.catch(() => null);
-        this.suggestionInfoMessages[channel.guild.id] = await channel.send(SuggestionsResponseMessageBuilder.suggestionsInfoMessage(channel.guild.name))
+        const message = await channel.send(SuggestionsResponseMessageBuilder.suggestionsInfoMessage(channel.guild.name))
             .catch(error => this.logError(`Suggestions message could not be sent!`, { ...context, error }))
+        
+        await this.suggestionInfoMessages[channel.guild.id]?.delete()?.catch(() => null);
+        this.suggestionInfoMessages[channel.guild.id] = message;
 
         if (resend) this.suggestionInfoMessageReloads[channel.guild.id] = setTimeout(() => this.sendSuggestionInfoMessage(channel, false).catch(console.error), 7*60*1000)
 

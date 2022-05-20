@@ -8,12 +8,35 @@ class StatusChannel {
     constructor(channel) {
 
         /**
+         * @type { string }
+         */
+        this.id = channel.id
+
+        /**
          * @type { GuildChannel }
          */
         this.channel = channel
 
+        this.channelDeleteCall = (channel) => {
+            if (channel.id === this.id) this.destroy();
+        }
+
+        this.channel.client.on('channelDelete', this.channelDeleteCall)
+
         this.recentRequests = []
         this.waitTimer = null
+
+    }
+
+    get guildId() {
+        return this.channel?.guildId ?? null;
+    }
+
+    destroy() {
+
+        this.channel?.client?.off('channelDelete', this.channelDeleteCall)
+        this.channel = null
+        if (this.waitTimer) clearTimeout(this.waitTimer)
 
     }
 
@@ -37,12 +60,13 @@ class StatusChannel {
     async setName(name) {
 
         this.recentRequests.push(Date.now())
-        await this.channel.setName(name)
+        if (this.channel) await this.channel.setName(name)
 
     }
 
     async update(name) {
 
+        if (!this.channel) return false;
         if (this.channel.name === name) return true;
 
         const timeout = this.getTimeout()

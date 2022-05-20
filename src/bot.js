@@ -16,8 +16,9 @@ class ScrimsJSBot extends ScrimsBot {
 
         const intents = [ "GUILD_MEMBERS", "GUILDS", "GUILD_MESSAGE_REACTIONS", "GUILD_MESSAGES", "GUILD_VOICE_STATES" ]
         const partials = [ 'GUILD_MEMBER', 'USER', 'MESSAGE', 'CHANNEL', 'REACTION' ]
+        const presence = { activities: [{ name: 'Bridge Scrims', type: 'PLAYING' }] }
 
-        super(intents, partials, config);
+        super(intents, partials, presence, config);
 
         /**
          * @type { ScrimsJSBotDBClient }
@@ -30,8 +31,6 @@ class ScrimsJSBot extends ScrimsBot {
         this.syncHost = new ScrimsSyncHostFeature(this, config)
 
         this.logging = new LoggingFeature(this, config)
-
-        this.on('ready', () => this.user.setPresence({ activities: [{ type: 'PLAYING', name: 'Bridge Scrims' }] }))
 
     }
     

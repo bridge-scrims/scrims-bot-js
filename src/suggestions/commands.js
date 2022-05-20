@@ -131,7 +131,7 @@ async function suggestionAttachCommand(interaction) {
  async function suggestionDeattachComponent(interaction) {
 
     const id_suggestion = interaction.args.shift()
-    const suggestion = interaction.client.database.suggestions.cache.get(id_suggestion)
+    const suggestion = interaction.client.database.suggestions.cache.resolve(id_suggestion)
     if (!suggestion) 
         return interaction.update(SuggestionsResponseMessageBuilder.errorMessage('Unknown Suggestion', `That suggestion does not exist anymore.`));
 
@@ -150,16 +150,16 @@ async function suggestionAttachCommand(interaction) {
 async function suggestionAttachComponent(interaction) {
 
     const id_suggestion = interaction.args.shift()
-    const suggestion = interaction.client.database.suggestions.cache.get(id_suggestion)
+    const suggestion = interaction.client.database.suggestions.cache.resolve(id_suggestion)
     if (!suggestion) 
         return interaction.update(SuggestionsResponseMessageBuilder.errorMessage('Unknown Suggestion', `That suggestion does not exist anymore.`));
 
     const attachment_id = interaction.args.shift()
-    const attachment = interaction.client.database.attachments.cache.get(`_${attachment_id}`)
+    const attachment = interaction.client.database.attachments.cache.resolve(`_${attachment_id}`)
     if (!attachment) 
         return interaction.update(SuggestionsResponseMessageBuilder.errorMessage('Unknown Attachment', `That attachment does not exist anymore.`));
 
-    if (!interaction.client.database.attachments.cache.get(attachment_id))
+    if (!interaction.client.database.attachments.cache.resolve(attachment_id))
         await interaction.client.database.attachments.create({ ...attachment.toMinimalForm(), attachment_id })
     
     await interaction.client.database.suggestions.update({ id_suggestion }, { attachment_id })

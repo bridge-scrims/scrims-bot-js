@@ -38,7 +38,7 @@ class ScrimsPermissionsClient {
      */
     getGuildPositionRoles(guild_id) {
 
-        return this.database.positionRoles.cache.find({ guild_id });
+        return this.database.positionRoles.cache.get({ guild_id });
         
     }
 
@@ -97,7 +97,7 @@ class ScrimsPermissionsClient {
     async hasRequiredPosition(permissible, positionResolvable) {
 
         const positionSelector = (validateUUID(positionResolvable)) ? { id_position: positionResolvable } : { position: { name: positionResolvable } };
-        const userPositions = this.database.userPositions.cache.find({ user: { discord_id: permissible.id }, ...positionSelector })
+        const userPositions = this.database.userPositions.cache.get({ user: { discord_id: permissible.id }, ...positionSelector })
         
         return (userPositions.length > 0 && this.hasRequiredPositionRoles(permissible, positionResolvable));
 
