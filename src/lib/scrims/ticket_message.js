@@ -34,7 +34,8 @@ class ScrimsTicketMessage extends TableRow {
 
         const references = [
             ['ticket', ['id_ticket'], ['id_ticket'], table.client.tickets], 
-            ['author', ['id_author'], ['id_user'], table.client.users]
+            ['author', ['id_author'], ['id_user'], table.client.users],
+            ['reference', ['reference_id'], ['message_id'], table]
         ]
 
         super(table, messageData, references)

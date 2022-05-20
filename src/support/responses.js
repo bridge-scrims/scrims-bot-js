@@ -1,4 +1,4 @@
-const { MessageEmbed, MessageActionRow, MessageButton, Role, User, TextInputComponent, Modal } = require("discord.js");
+const { MessageEmbed, MessageActionRow, MessageButton, Role, User, TextInputComponent, Modal, GuildMember } = require("discord.js");
 const MemoryMessageButton = require("../lib/memory_button");
 const ScrimsMessageBuilder = require("../lib/responses");
 const ScrimsTicket = require("../lib/scrims/ticket");
@@ -6,11 +6,14 @@ const ScrimsTicketType = require("../lib/scrims/ticket_type");
 
 class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
+    /**
+     * @param { Role } supportRole 
+     */
     static supportInfoEmbed(supportRole) {
         
         return new MessageEmbed()
             .setColor(supportRole.hexColor)
-            .setTitle("Bridge Scrims Support and Report")
+            .setTitle(`${supportRole.guild.name} Support and Report`)
             .setDescription(`Get in contact with the ${supportRole} team here.`)
             .addField(`Report Tickets`, `Report user(s) for breaking in-game rules, discord rules, or being troublemakers.`)
             .addField(`Support Tickets`, `Ask questions, post tournaments, post overlays, etc.`)
@@ -136,7 +139,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
                         .setCustomId('targets')
                         .setLabel('Who are you reporting?')
                         .setStyle('SHORT')
-                        .setMinLength(8)
+                        .setMinLength(4)
                         .setMaxLength(100)
                         .setPlaceholder('first#1011 second#2022 third#3033 ...')
                         .setRequired(true)
@@ -174,6 +177,8 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
             )
 
         const test = (ticketData.reason === "testing the ticket system without pinging the bridge scrims support team") 
+            || (ticketData.reason === "testing the ticket system without pinging support") 
+
         const reasonLabel = (ticketData.type.name !== 'report') ? 'Why are you opening a ticket?' : 'What are you reporting these people for?'
         const embed = new MessageEmbed()
             .setTitle(`Ticket Create Confirmation`)
@@ -188,14 +193,19 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
+    /**
+     * @param { GuildMember } member 
+     */
     static ticketInfoMessage(member, mentionRoles, supportRole, ticketData) {
 
         const test = (ticketData.reason === "testing the ticket system without pinging the bridge scrims support team") 
+            || (ticketData.reason === "testing the ticket system without pinging support") 
+
         const reasonLabel = (ticketData.type.name !== 'report') ? 'Why are you opening a ticket?' : 'What are you reporting these people for?'
 
         const embed = new MessageEmbed()
             .setTitle(`${ticketData.type.capitalizedName} Ticket`)
-            .setDescription(`👋 **Welcome** ${member} to your ticket channel. The bridge scrims ${supportRole ?? 'support'} team have been alerted and will be with you shortly.`)
+            .setDescription(`👋 **Welcome** ${member} to your ticket channel. The ${member.guild.name.toLowerCase()} ${supportRole ?? '**@support**'} team have been alerted and will be with you shortly.`)
             .setColor(supportRole?.hexColor || '#ff9d00')
             .setFooter({ text: `Managed by the support team`, iconURL: supportRole?.iconURL() })
             .setTimestamp()

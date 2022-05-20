@@ -67,7 +67,7 @@ class SupportFeature {
         this.addEventHandlers()
 
         await this.deleteGhostTickets().catch(console.error)
-        setInterval(() => this.deleteGhostTickets().catch(console.error), 10*60*1000)
+        setInterval(() => this.deleteGhostTickets().catch(console.error), 5*60*1000)
 
     }
 

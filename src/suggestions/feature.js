@@ -124,7 +124,7 @@ class SuggestionsFeature {
 
         await Promise.all(
             Object.values(this.suggestionChannels).map(async channel => {
-                const messages = await channel.messages.fetch({ limit: 10 }).then(msgs => msgs.sort((a, b) => a.createdTimestamp - b.createdTimestamp))
+                const messages = await channel.messages.fetch({ limit: 10 }).then(msgs => msgs.sort((a, b) => b.createdTimestamp - a.createdTimestamp))
                 await Promise.all(
                     [...messages.values()]
                         .filter(msg => (msg.components.length > 0) && msg.author.id === this.bot.user.id)
@@ -182,7 +182,9 @@ class SuggestionsFeature {
         this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel))
 
         this.addEventHandlers()
-        setInterval(() => this.removeOldMessages().catch(console.error), 10*60*1000)
+
+        await this.removeOldMessages().catch(console.error)
+        setInterval(() => this.removeOldMessages().catch(console.error), 5*60*1000)
 
     }
 

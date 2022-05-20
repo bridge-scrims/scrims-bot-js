@@ -207,7 +207,7 @@ async function onModalSubmit(interaction) {
     const message = await interaction.channel.send({ embeds: [embed] }).catch(error => onError(interaction, `send suggestions message`, error, true))
     if (message === false) return false;
 
-    const result = Promise.all(interaction.client.suggestions.getVoteEmojis(interaction.guild).map(emoji => message.react(emoji)))
+    const result = await Promise.all(interaction.client.suggestions.getVoteEmojis(interaction.guild).map(emoji => message.react(emoji)))
         .catch(error => onError(interaction, `react to suggestions message`, error, true))
 
     if (result === false) return message.delete().catch(error => onError(interaction, `delete suggestion message after aborting command`, error, false));
