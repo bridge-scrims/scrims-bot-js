@@ -311,7 +311,7 @@ class TableRow {
                 if (uniqueLocalKeys.some(key => this[key] === undefined)) {
                     
                     uniqueLocalKeys.forEach(key => delete columns[key])
-                    columns[objKey] = this[objKey].toMinimalForm() 
+                    columns[objKey] = this[objKey]?.toMinimalForm() ?? null 
 
                 }
 
