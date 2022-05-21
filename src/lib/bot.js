@@ -4,7 +4,7 @@ const {
     ModalSubmitInteraction, Modal, TextInputComponent 
 } = require("discord.js");
 
-const ScrimsCommandInstaller = require("./command_installer");
+const ScrimsCommandInstaller = require("./tools/command_installer");
 const ScrimsPermissionsClient = require("./permissions");
 const HypixelClient = require("./middleware/hypixel");
 const ScrimsMessageBuilder = require("./responses");
@@ -13,8 +13,8 @@ const DBClient = require("./postgresql/database");
 const auditEvents = require("./audited_events");
 
 const { interactionHandler, eventHandlers, commands } = require("./commands");
-const MemoryMessageButton = require("./memory_button");
-const ScrimsUserUpdater = require("./user_updater");
+const MemoryMessageButton = require("./components/memory_button");
+const ScrimsUserUpdater = require("./tools/user_updater");
 const I18n = require("./Internationalization");
 
 class ScrimsBot extends Client {

@@ -6,8 +6,8 @@ const { interactionHandler, listeners, contextMenus } = require("./interactions"
 const { commandHandler, eventListeners, commands } = require("./commands");
 
 const { Message, TextChannel } = require("discord.js");
-const DynamicallyConfiguredValueUpdater = require("../lib/configed_value_updater");
-const AsyncFunctionBuffer = require("../lib/buffer");
+const DynamicallyConfiguredValueUpdater = require("../lib/tools/configed_value_updater");
+const AsyncFunctionBuffer = require("../lib/tools/buffer");
 
 class SuggestionsFeature {
 

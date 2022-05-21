@@ -1,5 +1,5 @@
 const { MessageEmbed, MessageActionRow, MessageButton, Role, User, TextInputComponent, Modal, GuildMember } = require("discord.js");
-const MemoryMessageButton = require("../lib/memory_button");
+const MemoryMessageButton = require("../lib/components/memory_button");
 const ScrimsMessageBuilder = require("../lib/responses");
 const ScrimsTicket = require("../lib/scrims/ticket");
 const ScrimsTicketType = require("../lib/scrims/ticket_type");

@@ -4,8 +4,8 @@ const ScrimsMessageBuilder = require("../lib/responses");
 const { commandHandler, eventHandlers, commands } = require("./interactions");
 const SupportResponseMessageBuilder = require("./responses");
 const { SnowflakeUtil } = require("discord.js");
-const StatusChannel = require("../lib/status_channel");
-const DynamicallyConfiguredValueUpdater = require("../lib/configed_value_updater");
+const StatusChannel = require("../lib/components/status_channel");
+const DynamicallyConfiguredValueUpdater = require("../lib/tools/configed_value_updater");
 
 class SupportFeature {
 

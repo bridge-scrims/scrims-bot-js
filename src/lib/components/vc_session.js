@@ -1,8 +1,8 @@
 const { VoiceBasedChannel, GuildMember, VoiceState } = require("discord.js");
-const ScrimsSession = require("./scrims/session");
-const ScrimsSessionParticipant = require("./scrims/session_participant");
-const ScrimsSessionType = require("./scrims/session_type");
-const ScrimsUser = require("./scrims/user");
+const ScrimsSession = require("../scrims/session");
+const ScrimsSessionParticipant = require("../scrims/session_participant");
+const ScrimsSessionType = require("../scrims/session_type");
+const ScrimsUser = require("../scrims/user");
 
 class VCSessionParticipant extends ScrimsSessionParticipant {
 
@@ -93,7 +93,7 @@ class VoiceChannelBasedSession extends ScrimsSession {
 
         /**
          * @readonly
-         * @type { import("../bot") }
+         * @type { import("../../bot") }
          */
         this.bot
 

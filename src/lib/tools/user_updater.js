@@ -1,5 +1,5 @@
 const { OAuth2Guild, Guild, User, PartialUser, GuildMember, Collection } = require("discord.js")
-const ScrimsUser = require("./scrims/user")
+const ScrimsUser = require("../scrims/user")
 
 class ScrimsUserUpdater {
 
@@ -8,7 +8,7 @@ class ScrimsUserUpdater {
         Object.defineProperty(this, 'bot', { value: bot })
         
         /**
-         * @type { import("./bot") }
+         * @type { import("../bot") }
          * @readonly
          */
         this.bot

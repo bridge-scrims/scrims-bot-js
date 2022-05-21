@@ -1,5 +1,5 @@
 const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent } = require("discord.js");
-const MemoryMessageButton = require("../lib/memory_button");
+const MemoryMessageButton = require("../lib/components/memory_button");
 const ScrimsMessageBuilder = require("../lib/responses");
 
 function hsv2rgb(h, s, v) {                              
