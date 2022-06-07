@@ -1,11 +1,12 @@
+const { SnowflakeUtil, GuildChannel } = require("discord.js");
+
+const DynamicallyConfiguredValueUpdater = require("../lib/tools/configed_value_updater");
+const StatusChannel = require("../lib/components/status_channel");
+const SupportResponseMessageBuilder = require("./responses");
 const TicketTranscriber = require("./ticket-transcriber");
 const ScrimsMessageBuilder = require("../lib/responses");
 
 const { commandHandler, eventHandlers, commands } = require("./interactions");
-const SupportResponseMessageBuilder = require("./responses");
-const { SnowflakeUtil } = require("discord.js");
-const StatusChannel = require("../lib/components/status_channel");
-const DynamicallyConfiguredValueUpdater = require("../lib/tools/configed_value_updater");
 
 class SupportFeature {
 
@@ -16,13 +17,16 @@ class SupportFeature {
          */
         this.bot = bot
 
-        commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
+        commands.forEach(([ cmdData, cmdPerms, cmdOptions ]) => this.bot.commands.add(cmdData, cmdPerms, cmdOptions))
 
         this.modalResponses = {}
         this.transcriptChannels = {}
         this.ticketCategorys = {}
 
-        this.statusChannel = null
+        /**
+         * @type { Object.<string, StatusChannel> }
+         */
+        this.statusChannels = {}
 
         bot.on('databaseConnected', () => this.onReady())
 
@@ -39,25 +43,25 @@ class SupportFeature {
         this.transcriber = new TicketTranscriber(this.database)
 
         new DynamicallyConfiguredValueUpdater(
-            this.database, `tickets_transcript_channel`, 
+            this.bot, `tickets_transcript_channel`, 
             (...args) => this.setTranscriptChannel(...args), 
             (guildId) => this.onTranscriptChannelDelete(guildId)
         )
 
         new DynamicallyConfiguredValueUpdater(
-            this.database, `tickets_report_category`, 
+            this.bot, `tickets_report_category`, 
             (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'report'), 
             (guildId) => this.onTicketCategoryDelete(guildId, 'report')
         )
 
         new DynamicallyConfiguredValueUpdater(
-            this.database, `tickets_support_category`, 
+            this.bot, `tickets_support_category`, 
             (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'support'), 
             (guildId) => this.onTicketCategoryDelete(guildId, 'support')
         )
 
         new DynamicallyConfiguredValueUpdater(
-            this.database, `tickets_status_channel`, 
+            this.bot, `tickets_status_channel`, 
             (...args) => this.setTicketStatusChannel(...args), 
             (guildId) => this.onStatusChannelDelete(guildId)
         )
@@ -76,11 +80,11 @@ class SupportFeature {
         const existingTickets = this.database.tickets.cache.filter(ticket => ticket.status.name !== 'deleted')
         for (const ticket of existingTickets) {
 
-            if (ticket.discordGuild && (!ticket.channel_id || !ticket.discordGuild.channels.cache.has(ticket.channel_id))) {
+            if (!(await ticket.fetchChannel())) {
 
                 await this.closeTicket(
-                    { guild: ticket.discordGuild }, ticket, null, 
-                    this.bot.user, `closed this ticket because of the channel no longer existing`
+                    ticket, null, this.bot.user, 
+                    `closed this ticket because of the channel no longer existing`
                 ).catch(console.error)
 
             }
@@ -91,19 +95,23 @@ class SupportFeature {
 
     async onTicketStatusUpdate(ticket) {
 
-        if (['support', 'report'].includes(ticket.type.name) && this.statusChannel) {
+        if (['support', 'report'].includes(ticket.type.name)) {
 
-            await this.updateTicketStatusChannel()
+            await this.updateTicketStatusChannel(ticket.guild_id)
 
         }
 
     }
 
-    async updateTicketStatusChannel() {
+    async updateTicketStatusChannel(guildId) {
 
-        const tickets = this.database.tickets.cache.filter(ticket => ticket.guild_id === this.statusChannel.guildId)
-        const status = `${tickets.filter(t => t.status.name !== 'open').length}/${tickets.length} Tickets`
-        await this.statusChannel.update(status).catch(console.error)
+        const statusChannel = this.statusChannels[guildId]
+        if (!statusChannel) return false;
+
+        const totalTickets = await this.database.tickets.count({ guild_id: guildId }) 
+        const finishedTickets = await this.database.tickets.count([{ guild_id: guildId, status: { name: "closed" } }, { guild_id: guildId, status: { name: "deleted" } }])
+        const status = `${finishedTickets}/${totalTickets} Tickets`
+        await statusChannel.update(status).catch(console.error)
 
     }
 
@@ -145,11 +153,11 @@ class SupportFeature {
 
     async onStatusChannelDelete(guild_id) {
 
-        if (this.statusChannel) {
+        if (this.statusChannels[guild_id]) {
 
             this.logError(`Ticket status channel unconfigured!`, { guild_id })
-            this.statusChannel.destroy()
-            this.statusChannel = null
+            this.statusChannels[guild_id].destroy()
+            delete this.statusChannels[guild_id]
             
         }
 
@@ -188,8 +196,9 @@ class SupportFeature {
 
         if (channel) {
 
-            this.statusChannel = new StatusChannel(channel)
-            await this.updateTicketStatusChannel()
+            if (this.statusChannels[guild_id]) this.statusChannels[guild_id].destroy()
+            this.statusChannels[guild_id] = new StatusChannel(channel)
+            await this.updateTicketStatusChannel(guild_id)
 
         }
 
@@ -210,7 +219,7 @@ class SupportFeature {
 
     async onMessageCreate(message) {
 
-        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
+        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0] ?? null
         if (!ticket) return false;
 
         if (message.author.id === this.bot.user.id) return false;
@@ -230,7 +239,7 @@ class SupportFeature {
 
     async onMessageDelete(message) {
 
-        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0]
+        const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })
         if (!ticket) return false;
 
         await this.database.ticketMessages.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })
@@ -244,23 +253,21 @@ class SupportFeature {
 
     }
 
-    async verifyTicketRequest(interaction, typeName) {
+    async verifyTicketRequest(scrimsUser, guild_id, typeName) {
 
-        if (!interaction.scrimsUser) return ScrimsMessageBuilder.scrimsUserNeededMessage()
+        if (!scrimsUser) return ScrimsMessageBuilder.scrimsUserNeededMessage()
 
-        const bannedPosition = await interaction.client.database.userPositions.get({ id_user: interaction.scrimsUser.id_user, position: { name: "support_blacklisted" } })
-        if (bannedPosition.length > 0) {
+        const bannedPosition = await this.database.userPositions.find({ id_user: scrimsUser.id_user, position: { name: "support_blacklisted" } })
+        if (bannedPosition) {
 
-            const length = bannedPosition[0].expires_at ? `until <t:${bannedPosition[0].expires_at}:f>` : `permanently`;
-            
-            return ScrimsMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to create tickets ${length} since you didn't follow the rules.`)
+            return ScrimsMessageBuilder.errorMessage(`Blacklisted`, `You are not allowed to create tickets ${bannedPosition.getDuration()} since you didn't follow the rules.`)
 
         }
 
-        const existing = await this.database.tickets.get({ guild_id: interaction.guild.id, type: { name: typeName }, id_user: interaction.scrimsUser.id_user, status: { name: "open" } })
-        if (existing.length > 0) {
+        const existing = await this.database.tickets.find({ guild_id, type: { name: typeName }, id_user: scrimsUser.id_user, status: { name: "open" } })
+        if (existing) {
             
-            const channel = await this.bot.channels.fetch(existing[0].channel_id).catch(() => null)
+            const channel = await this.bot.channels.fetch(existing.channel_id).catch(() => null)
             if (channel) {
                 
                 return ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (${channel})!`)
@@ -268,7 +275,7 @@ class SupportFeature {
             }
 
             // Ticket is open, but the channel does not exist
-            await this.closeTicket({ guild: interaction.guild }, existing[0], null, this.bot.user, `closed this ticket because of the channel no longer existing`)
+            await this.closeTicket(existing, null, this.bot.user, `closed this ticket because of the channel no longer existing`)
         
         }
 
@@ -278,22 +285,32 @@ class SupportFeature {
 
     async getSupportRole(guild) {
 
-        const positionRoles = await this.database.positionRoles.get({ guild_id: guild.id, position: { name: 'support' } })
-        if (positionRoles.length === 0) return null;
+        const positionRole = await this.database.positionRoles.find({ guild_id: guild.id, position: { name: 'support' } })
+        if (!positionRole) return null;
     
-        const role = guild.roles.resolve(positionRoles[0].role_id)
+        const role = guild.roles.resolve(positionRole.role_id)
         return role ?? null;
     
     }
 
-    async getTicketInfoPayload(member, mentionRoles, ticketData) {
+    async getMentionRoles(guild) {
 
-        const supportRole = await this.getSupportRole(member.guild)
-
-        return SupportResponseMessageBuilder.ticketInfoMessage(member, mentionRoles, supportRole, ticketData);
+        const positionRoles = await guild.client.database.positionRoles.fetch({ guild_id: guild.id, position: { name: "ticket_open_mention" } })
+        return positionRoles.map(posRole => guild.roles.resolve(posRole.role_id)).filter(role => role);
     
     }
 
+    async getTicketInfoPayload(exchange) {
+
+        const mentionRoles = await this.getMentionRoles(exchange.guild)
+        const supportRole = await this.getSupportRole(exchange.guild)
+        return SupportResponseMessageBuilder.ticketInfoMessage(exchange, mentionRoles, supportRole);
+    
+    }
+
+    /**
+     * @param { GuildChannel } channel 
+     */
     async onChannelDelete(channel) {
 
         const transcriptChannel = this.getTranscriptChannel(channel.guild.id)
@@ -320,25 +337,26 @@ class SupportFeature {
         const types = [ 'tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category' ]
         await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name }, value: channel.id }))).catch(console.error)
 
-        if (this.statusChannel?.id === channel.id) {
+        if (this.statusChannels[channel.guild.id]?.id === channel.id) {
 
-            this.statusChannel = null
+            this.statusChannels[channel.guild.id].destroy()
+            delete this.statusChannels[channel.guild.id]
             this.logError(`Deleted the tickets status channel!`, { guild_id: channel.guild.id, executor_id: channel?.executor?.id })
             this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name: "tickets_status_channel" }, value: channel.id })
 
         }
 
-        const tickets = await this.database.tickets.get({ channel_id: channel.id }).catch(console.error)
+        const tickets = await this.database.tickets.fetch({ channel_id: channel.id }).catch(console.error)
         if (tickets) {
             
             const openTickets = tickets.filter(ticket => ticket.status.name !== "deleted")
-            await Promise.all(openTickets.map(ticket => this.closeTicket(channel, ticket, channel?.executor, channel?.executor, `deleted the ticket channel`))).catch(console.error)
+            await Promise.all(openTickets.map(ticket => this.closeTicket(ticket, channel?.executor, channel?.executor, `deleted the ticket channel`))).catch(console.error)
 
         }
 
     }
 
-    async closeTicket(channel, ticket, ticketCloser, executor, content) {
+    async closeTicket(ticket, ticketCloser, executor, content) {
 
         const statusName = ticket?.status?.name
         const closer = (ticketCloser?.id) ? { closer: { discord_id: ticketCloser.id } } : { id_closer: null }
@@ -351,12 +369,25 @@ class SupportFeature {
                 await this.transcriber.transcribe(ticket.id_ticket, message)
             }
             
-            this.database.ipc.notify('ticket_closed', { guild_id: channel.guild.id, ticket, executor_id: (ticketCloser?.id ?? null) })
-            await this.transcriber.send(channel.guild, ticket)
+            this.database.ipc.notify('ticket_closed', { guild_id: ticket.guild_id, ticket, executor_id: (ticketCloser?.id ?? null) })
+            await this.transcriber.send(ticket.discordGuild, ticket)
       
-            if (typeof channel.delete === "function") await channel.delete().catch(() => { /* Channel could already be deleted. */ })
+            if (ticket.channel) await ticket.channel.delete().catch(() => { /* Channel could already be deleted. */ })
 
         }
+
+    }
+
+    /**
+     * @param { import("discord.js").PartialGuildMember } member 
+     */
+    async onMemberRemove(member) {
+
+        const tickets = this.database.tickets.cache.get({ user: { discord_id: member.id } })
+        await Promise.allSettled(tickets.map(
+            ticket => this.closeTicket(ticket, this.bot.user, this.bot.user, `closed this ticket because of the person leaving the server`)
+                .catch(error => console.error(`Error while automatically closing ticket: ${error}!`))
+        ))
 
     }
 
@@ -367,6 +398,8 @@ class SupportFeature {
         this.bot.on('messageDeleteBulk', messages => this.onMessageDeleteBulk(messages).catch(console.error))
         this.bot.on('messageUpdate', (oldMessage, newMessage) => this.onMessageUpdate(oldMessage, newMessage).catch(console.error))
         this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel).catch(console.error))
+
+        this.bot.on('guildMemberRemove', member => this.onMemberRemove(member).catch(console.error))
 
         commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
         eventHandlers.forEach(eventName => this.bot.addEventHandler(eventName, commandHandler))

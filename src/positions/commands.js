@@ -32,7 +32,7 @@ async function getUserPositions(interaction, userId) {
 
     if (userId) {
 
-        const userPositions = await interaction.client.database.userPositions.get({ user: { discord_id: userId } }).catch(error => error)
+        const userPositions = await interaction.client.database.userPositions.fetch({ user: { discord_id: userId } }, false).catch(error => error)
         if (userPositions instanceof Error) {
     
             console.error(`Unable to get user positions for autocomplete because of ${userPositions}!`)
@@ -64,13 +64,7 @@ async function onPositionAutoComplete(interaction) {
 
     }
     
-    const positions = await interaction.client.database.positions.get({ }).catch(error => error)
-    if (positions instanceof Error) {
-
-        console.error(`Unable to get positions for autocomplete because of ${positions}!`)
-        return false;
-
-    }
+    const positions = interaction.client.database.positions.cache.values()
 
     await interaction.respond(
         positions
@@ -93,25 +87,7 @@ async function onInteraction(interaction) {
 
 }
 
-async function membersInitialized(interaction) {
-
-    const members = await interaction.guild.members.fetch()
-    const scrimsMembers = await Promise.all(members.map(member => interaction.client.database.users.get({ discord_id: member.id })))
-    return (scrimsMembers.every(scrimsMembers => scrimsMembers.length > 0));
-
-}
-
-function getNonInitializedErrorPayload() {
-
-    return PositionsResponseMessageBuilder.errorMessage(
-        `Not Ready`, `This servers members have not yet all been added to the scrims user database. Please try again later.`
-    );
-
-}
-
 async function syncMembersCommandHandler(interaction) {
-
-    if (!(await membersInitialized(interaction))) return interaction.reply( getNonInitializedErrorPayload() );
 
     await interaction.deferReply({ ephemeral: true })
 
@@ -148,7 +124,7 @@ async function onSyncMembersComponent(interaction) {
     await interaction.deferUpdate()
     await interaction.editReply({ content: `Syncing...`, embeds: [], components: [] })
 
-    const result = await interaction.client.positions.syncPositionsForMember(interaction.member).catch(error => error)
+    const result = await interaction.client.positions.syncPositions(interaction.guild).catch(error => error)
     if (result instanceof Error) {
 
         console.error(`Sync failed!`, result)
@@ -310,7 +286,7 @@ function getPositionsCommandGroup() {
         .addSubcommand( getPositionsTakeSubcommand() )
         .addSubcommand( getPositionsInfoSubcommand() )
 
-    return [ positionsCommandGroup, { permissionLevel: "support" }, { forceGuild: false, bypassBlock: false, forceScrimsUser: false } ];
+    return [ positionsCommandGroup, { permissionLevel: "support" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
 
 }
 

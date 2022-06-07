@@ -1,75 +1,30 @@
 const TableRow = require("../postgresql/row");
-const DBTable = require("../postgresql/table");
-const ScrimsGuild = require("./guild");
+
 const ScrimsGuildEntryType = require("./guild_entry_type");
-
-/**
- * @extends DBTable<ScrimsGuildEntry>
- */
-class ScrimsGuildEntrysTable extends DBTable {
-
-    constructor(client) {
-
-        const foreigners = [
-            [ "type", "id_type", "get_guild_entry_type_id" ]
-        ]
-
-        super(client, "scrims_guild_entry", "get_guild_entrys", foreigners, ['guild_id', 'id_type'], ScrimsGuildEntry);
-
-    }
-
-    /**
-     * @override
-     */
-    initializeListeners() {
-
-        this.ipc.on('guild_entry_remove', message => this.cache.filterOut(message.payload))
-        this.ipc.on('guild_entry_update', message => this.cache.update(message.payload.data, message.payload.selector))
-        this.ipc.on('guild_entry_create', message => this.cache.push(this.getRow(message.payload)))
-
-    }
-
-}
+const ScrimsGuild = require("./guild");
 
 class ScrimsGuildEntry extends TableRow {
 
-    /**
-     * @type { ScrimsGuildEntrysTable }
-     */
-    static Table = ScrimsGuildEntrysTable
-    
-    constructor(table, entryData) {
+    static uniqueKeys = ['guild_id', "id_type"]
+    static columns = ['guild_id', 'id_type', 'value']
 
-        const references = [
-            ['guild', ['guild_id'], ['guild_id'], table.client.guilds], 
-            ['type', ['id_type'], ['id_type'], table.client.guildEntryTypes]
-        ]
+    constructor(client, entryData) {
 
-        super(table, entryData, references);
+        super(client, entryData);
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.guild_id
 
-        /**
-         * @type { ScrimsGuild }
-         */
+        /** @type {ScrimsGuild} */
         this.guild
 
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.id_type
 
-        /**
-         * @type { ScrimsGuildEntryType }
-         */
+        /** @type {ScrimsGuildEntryType} */
         this.type
  
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.value
 
     }
@@ -78,6 +33,55 @@ class ScrimsGuildEntry extends TableRow {
 
         if (!this.guild) return null;
         return this.guild.discordGuild;
+
+    }
+
+    /**
+     * @param {string|Object.<string, any>|ScrimsGuild|import("discord.js").BaseGuild} guildResolvable 
+     */
+    setGuild(guildResolvable) {
+
+        guildResolvable = guildResolvable?.id ?? guildResolvable
+
+        this._setForeignObjectReference(this.client.guilds, 'guild', ['guild_id'], ['guild_id'], guildResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {number|string|Object.<string, any>|ScrimsGuildEntryType} statusResolvable 
+     */
+    setType(typeResolvable) {
+
+        if (typeof typeResolvable === "string") typeResolvable = { name: typeResolvable }
+        
+        this._setForeignObjectReference(this.client.guildEntryTypes, 'type', ['id_type'], ['id_type'], typeResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {string} value 
+     */
+    setValue(value) {
+
+        this.value = value
+        return this;
+
+    }
+
+    /** 
+     * @override
+     * @param {Object.<string, any>} guildEntryData 
+     */
+    update(guildEntryData) {
+        
+        super.update(guildEntryData);
+
+        this.setGuild(guildEntryData.guild)
+        this.setType(guildEntryData.type)
+
+        return this;
 
     }
 

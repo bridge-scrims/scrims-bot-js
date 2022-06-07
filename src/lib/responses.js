@@ -1,5 +1,6 @@
 const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent, GuildMember, Guild } = require("discord.js");
-const I18n = require("./Internationalization");
+const I18n = require("./tools/internationalization");
+const ScrimsUser = require("./scrims/user");
 
 class ScrimsMessageBuilder {
 
@@ -10,6 +11,38 @@ class ScrimsMessageBuilder {
     static intrestingAqua = "#15EFFF"
 
     /**
+     * @param {string} resolvable 
+     * @param {ScrimsUser[]} scrimsUsers 
+     * @param {Guild} guild 
+     * @returns {ScrimsUser|GuildMember|null}
+     */
+    static parseUser(resolvable, scrimsUsers, guild) {
+
+        resolvable = resolvable.replace(/```|:|discord|\n|@|everyone|here/g, '')
+
+        let matches = scrimsUsers.filter(user => user.id_user === resolvable || user.discord_id === resolvable || user.tag === resolvable)
+        if (matches.length === 1) return matches[0];
+
+        if (guild) {
+
+            const members = [...guild.members.cache.values()]
+
+            matches = members.filter(user => user.displayName === resolvable)
+            if (matches.length === 1) return matches[0].user;
+
+        }
+
+        matches = scrimsUsers.filter(user => user.discord_username === resolvable)
+        if (matches.length === 1) return matches[0];
+
+        matches = scrimsUsers.filter(user => user.tag.toLowerCase() === resolvable.toLowerCase())
+        if (matches.length === 1) return matches[0];
+
+        return null;
+
+    }
+    
+    /**
      * @param { string } text 
      */
     static stripText(text) {
@@ -17,11 +50,11 @@ class ScrimsMessageBuilder {
         while (text.includes("\n\n\n")) 
             text = text.replace("\n\n\n", "\n\n");
 
-        const lines = text.split("\n")
+        const lines = text.split("\n").map(v => v.trim())
         if (lines.length > 10)
-            text = lines.slice(0, lines.length-(lines.length-10)).join("\n") + lines.slice(lines.length-(lines.length-10)).join(" ")
+            text = lines.slice(0, lines.length-(lines.length-10)).join("\n") + lines.slice(lines.length-(lines.length-10)).map(v => v.trim()).join(" ")
 
-        return text;
+        return text.trim();
 
     }
 
@@ -43,41 +76,6 @@ class ScrimsMessageBuilder {
     
         return values.map(v => v*255);
     
-    }
-    
-    /**
-     * @param { Guild } guild 
-     * @param { string } text
-     * @returns { Promise<(GuildMember | string)[]> }
-     */
-    static async parseDiscordUsers(guild, text) {
-
-        if (!text) return [];
-        text = text.replace(/\n/g, ' ')
-
-        const members = await guild.members.fetch()
-        const userResolvables = text.split(' ')
-
-        return userResolvables.map(resolvable => {
-
-            if (members.get(resolvable)) return members.get(resolvable);
-
-            let matches = members.filter(member => member.displayName.toLowerCase() === resolvable.toLowerCase())
-            if (matches.size === 1) return matches.first();
-
-            matches = members.filter(member => member.displayName === resolvable)
-            if (matches.size === 1) return matches.first();
-
-            matches = members.filter(member => member.user.tag.toLowerCase() === resolvable.toLowerCase())
-            if (matches.size === 1) return matches.first();
-
-            matches = members.filter(member => member.user.tag === resolvable)
-            if (matches.size === 1) return matches.first();
-
-            return `**${resolvable}**`;
-
-        })
-
     }
 
     /**
@@ -175,7 +173,7 @@ class ScrimsMessageBuilder {
                 new MessageEmbed()
                     .setTitle("Guild Config")
                     .setColor(this.intrestingAqua)
-                    .setDescription(configEntrys.map(config => `\`•\`**${config.type.name}:** \`${config.value}\``).join("\n"))
+                    .setDescription(configEntrys.map(config => `\`•\` **${config.type.name}:** \`${config.value}\``).join("\n"))
                     .setFooter({ text: `Page ${idx+1}/${containers.length}` })
                     .setTimestamp(Date.now())
             ))

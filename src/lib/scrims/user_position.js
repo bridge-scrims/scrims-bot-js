@@ -1,146 +1,120 @@
-const DBCache = require("../postgresql/cache");
-const DBTable = require("../postgresql/table");
 const TableRow = require("../postgresql/row");
 const ScrimsPosition = require("./position");
-const ScrimsUser = require("./user");
 
-/**
- * @extends DBCache<ScrimsUserPosition>
- */
-class ScrimsUserPositionCache extends DBCache {
+class ScrimsUserPosition extends TableRow {
 
-    /**
-     * @override
-     * @param { string[] } ids
-     * @returns { ScrimsUserPosition }
-     */
-    get( ...ids ) {
+    static uniqueKeys = ['id_user', 'id_position']
+    static columns = ['id_user', 'id_position', 'id_executor', 'given_at', 'expires_at']
 
-        const expired = this.values().filter(userPos => userPos.expires_at !== null && userPos.expires_at <= (Date.now()/1000))
+    static sortByLevel(a, b) {
+
+        return ((a?.positions?.level ?? 100) - (b?.position?.level ?? 100));
         
-        expired.forEach(value => this.remove(value.id))
-        expired.forEach(value => this.emit('remove', value))
-
-        return super.get(...ids);
-
     }
 
-}
+    constructor(client, userPositionData) {
 
-/**
- * @extends DBTable<ScrimsUserPosition>
- */
-class ScrimsUserPositionsTable extends DBTable {
+        super(client, userPositionData)
 
-    constructor(client) {
-
-        const foreigners = [
-            [ "executor", "id_executor", "get_user_id" ], 
-            [ "user", "id_user", "get_user_id" ], 
-            [ "position", "id_position", "get_position_id" ] 
-        ]
-
-        const uniqueKeys = [ 'id_user', 'id_position' ]
-
-        super(client, "scrims_user_position", "get_user_positions", foreigners, uniqueKeys, ScrimsUserPosition, ScrimsUserPositionCache);
+        /** @type {string} */
+        this.id_user
         
-        /**
-         * @type { ScrimsUserPositionCache }
-         */
-        this.cache
+        /** @type {ScrimsUser} */
+        this.user
+
+        /** @type {number} */
+        this.id_position
+
+        /** @type {ScrimsPosition} */
+        this.position
+        
+        /** @type {string} */
+        this.id_executor
+
+        /** @type {ScrimsUser} */
+        this.executor
+
+        /** @type {number} */
+        this.given_at
+        if (!this.given_at) this.setGivenPoint()
+
+        /** @type {number} */
+        this.expires_at
 
     }
 
     /**
-     * @override
+     * @param {string|Object.<string, any>|ScrimsUser} userResolvable 
      */
-    initializeListeners() {
+    setUser(userResolvable) {
 
-        this.ipc.on('user_position_remove', message => this.cache.filterOut(message.payload))
-        this.ipc.on('user_position_update', message => this.cache.update(message.payload.data, message.payload.selector))
-        this.ipc.on('user_position_create', message => this.cache.push(this.getRow(message.payload)))
+        this._setForeignObjectReference(this.client.users, 'user', ['id_user'], ['id_user'], userResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {string|number|Object.<string, any>|ScrimsPosition} positionResolvable 
+     */
+    setPosition(positionResolvable) {
+
+        if (typeof positionResolvable === "string") positionResolvable = { name: positionResolvable }
+
+        this._setForeignObjectReference(this.client.positions, 'position', ['id_position'], ['id_position'], positionResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {string|Object.<string, any>|ScrimsUser} userResolvable 
+     */
+    setExecutor(userResolvable) {
+
+        this._setForeignObjectReference(this.client.users, 'executor', ['id_executor'], ['id_user'], userResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {number} [given_at] if falsley will use current time 
+     */
+    setGivenPoint(given_at) {
+
+        this.given_at = given_at ?? Math.floor(Date.now()/1000)
+        return this;
+
+    }
+
+    /**
+     * @param {number} [expires_at] if falsley will use null (no expiration)
+     */
+    setExpirationPoint(expires_at=null) {
+
+        this.expires_at = expires_at
+        return this;
 
     }
 
     /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsUserPosition> }
+     * @override
+     * @param {Object.<string, any>} userPositionData 
      */
-    async create(data) {
+    update(userPositionData) {
+        
+        super.update(userPositionData);
 
-        const obj = this.getRow(data)
+        this.setUser(userPositionData.user)
+        this.setPosition(userPositionData.position)
+        this.setExecutor(userPositionData.executor)
 
-        if (obj?.position?.name === "bridge_scrims_member") {
-
-            const [ formated, formatValues ] = this.format(obj.toMinimalForm())
-            await this.query( ...this.createInsertQuery(formated, formatValues) )
-            return obj;
-
-        }
-
-        return super.create(obj);
+        return this;
 
     }
 
-}
+    isCacheExpired(now) {
 
-class ScrimsUserPosition extends TableRow {
-
-    /**
-     * @type { ScrimsUserPositionsTable }
-     */
-    static Table = ScrimsUserPositionsTable
-
-    constructor(table, userPositionData) {
-
-        const references = [
-            ['user', ['id_user'], ['id_user'], table.client.users],
-            ['position', ['id_position'], ['id_position'], table.client.positions],
-            ['executor', ['id_executor'], ['id_user'], table.client.users]
-        ]
-
-        super(table, userPositionData, references)
-
-        /**
-         * @type { string }
-         */
-        this.id_user
+        return this.isExpired() || super.isCacheExpired(now);
         
-        /**
-         * @type { ScrimsUser }
-         */
-        this.user
-
-        /**
-         * @type { number }
-         */
-        this.id_position
-
-        /**
-         * @type { ScrimsPosition }
-         */
-        this.position
-        
-        /**
-         * @type { string }
-         */
-        this.id_executor
-
-        /**
-         * @type { ScrimsUser }
-         */
-        this.executor
-
-        /**
-         * @type { number }
-         */
-        this.given_at
-
-        /**
-         * @type { number }
-         */
-        this.expires_at
-
     }
 
     isExpired() {

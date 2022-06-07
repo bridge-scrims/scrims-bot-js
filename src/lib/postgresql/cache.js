@@ -3,31 +3,33 @@ const EventEmitter = require("events");
 /** @template [T=import("./row")] */
 class DBCache extends EventEmitter {
 
-    constructor() {
+    constructor(options={}) {
 
         super()
         this.setMaxListeners(0)
 
-        /**
-         * @type { number }
-         */
-        this.handleIndex = 1
+        /** @type {number} */
+        this.lifeTime = options.lifeTime ?? 60*60
 
-        /**
-         * @type { Object.<string, number[]> }
-         */
-        this.handles = {}
-
-        /**
-         * @type { Object.<string, T> }
-         */
+        /** @type {Object.<string, T>} */
         this.data = {}
 
         this.on('push', value => this.emit('change', value))
         this.on('update', value => this.emit('change', value))
         this.on('remove', value => this.emit('change', value))
 
+        setInterval(() => this.removeExpired(), 2*60*1000)
+
     }
+
+    removeExpired() {
+
+        const now = Date.now()/1000
+        Object.entries(this.data)
+            .filter(([_, value]) => value.isCacheExpired(now))
+            .forEach(([key, _]) => this.remove(key))
+
+    }   
 
     values() {
 
@@ -41,43 +43,12 @@ class DBCache extends EventEmitter {
 
     }
 
-    createHandle(id) {
-
-        const row = this.resolve(id)
-        if (!row) return [null, null];
-
-        return this.addHandle(row);
-
-    }
-
-    addHandle(row) {
-
-        const handleId = this.handleIndex
-        this.handleIndex += 1
-
-        if (this.handles[row.id]) this.handles[row.id].push(handleId)
-        else this.handles[row.id] = [handleId]
-
-        return [handleId, row];
-
-    }
-
-    releaseHandle(handleId) {
-
-        Object.keys(this.handles).forEach(key => {
-
-            this.handles[key] = this.handles[key].filter(value => value !== handleId)
-
-        })
-
-    }
-
     /**
-     * @param { import("./row") } value
-     * @param { Boolean } withHandle
-     * @returns { T }
+     * @param {T} value
+     * @param {T} [existing]
+     * @returns {T}
      */
-    push(value, existing=null, withHandle=false) {
+    push(value, existing=null) {
 
         if (value === null) return null;
 
@@ -85,28 +56,23 @@ class DBCache extends EventEmitter {
     
         if (existing) {
             
-            if (!existing.exactlyEquals(value)) {
-
-                existing.updateWith(value)
-                this.emit('update', existing)
-
-            }
+            this.updateWith(value, existing)
             
         }else {
 
-            value.cache()
             this.set(value.id, value)
+            this.setExpiration(value)
             this.emit('push', value)
 
         }
 
-        if (withHandle) return this.addHandle(existing ?? value);
         return existing ?? value;
 
     }
 
     /**
-     * @param { T } value 
+     * @param {string} id
+     * @param {T} value 
      */
     set(id, value) {
 
@@ -115,16 +81,15 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { T[] } values 
+     * @param {T[]} values 
      */
     setAll(values) {
 
-        const oldKeys = Object.keys(this.data)
+        const oldKeys = this.keys()
 
         const newData = Object.fromEntries(values.map(value => [value.id, value]))
         const newKeys = Object.keys(newData)
 
-        values.forEach(value => value.cache())
         const added = values.filter(value => value.id).filter(value => !(value.id in this.data))
         
         //If all of the new data is not yet added we do not need to emit all those push events
@@ -133,23 +98,26 @@ class DBCache extends EventEmitter {
         oldKeys.filter(key => !(key in newData)).forEach(key => this.remove(key))
         this.data = newData
 
+        values.forEach(value => this.setExpiration(value))
+        this.removeExpired()
+
     }
 
     /**
-     * @param { string[] } mapKeys
+     * @param {string[]} mapKeys
      * @returns { { [x: string]: T } }
      */
-    getMap( ...mapKeys ) {
+    getMap(...mapKeys) {
 
         return Object.fromEntries(this.values().map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value]));
 
     }
 
     /**
-     * @param { string[] } mapKeys
+     * @param {string[]} mapKeys
      * @returns { { [x: string]: T[] } }
      */
-    getArrayMap( ...mapKeys ) {
+    getArrayMap(...mapKeys) {
 
         const obj = {}
 
@@ -161,8 +129,8 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { string[] } ids
-     * @returns { T }
+     * @param {string[]} ids
+     * @returns {T}
      */ 
     resolve(...ids) {
 
@@ -171,14 +139,40 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } invert
-     * @returns { T[] }
+     * @param {Object.<string, any>|Array.<string>|Array.<Array.<string>>|T} [options] If fasley, gets all.
+     * @returns {T[]}
      */ 
-    get(filter, invert) {
+    get(options) {
 
-        if (invert) return this.values().filter(row => !row.equals(filter));
-        else return this.values().filter(row => row.equals(filter));
+        if (!options) return this.values();
+
+        if (options instanceof Array) {
+
+            const ids = options.map(id => (id instanceof Array) ? id.join("#") : id)
+            return ids.map(id => this.data[id]).filter(v => v);
+
+        }
+
+        return this.filter(v => v.equals(options));
+
+    }
+
+    /**
+     * @param {Object.<string, any>|Array.<string>|string|number|T} options
+     * @returns {T}
+     */ 
+    find(options) {
+
+        if (typeof options !== "object") options = [options]
+
+        if (options instanceof Array) {
+
+            const id = options.join("#")
+            return this.data[id];
+
+        }
+
+        return this.filter(v => v.equals(options))[0] ?? null;
 
     }
 
@@ -193,8 +187,8 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { Object.<string, any> } filter
-     * @returns { T[] }
+     * @param {Object.<string, any>|T} filter
+     * @returns {T[]}
      */
     filterOut(filter) {
 
@@ -205,18 +199,15 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { string } id
-     * @returns { T }
+     * @param {string} id
+     * @returns {T}
      */
     remove(id) {
 
         const remove = this.data[id]
         if (remove) {
             
-            if (id in this.handles) delete this.handles[id];
-
             delete this.data[id]
-            remove.uncache()
             this.emit('remove', remove)
             
         }
@@ -225,29 +216,49 @@ class DBCache extends EventEmitter {
     }
 
     /**
-     * @param { T } value
-     * @param { string } id
+     * @param {T} value
      */
-    updateWith(value, id) {
+    setExpiration(value) {
 
-        const existing = this.resolve(id ?? value.id)
+        if (this.lifeTime > 0) value.setCacheExpiration(Math.floor((Date.now()/1000) + this.lifeTime))
+        
+    }
+
+    /**
+     * @param {T|Object.<string, any>} value
+     * @param {T} existing
+     */
+    updateWith(value, existing) {
+
+        const oldId = existing.id
         if (existing && !existing.exactlyEquals(value)) {
 
-            existing.updateWith(value)
+            existing.update(value)
+            if (oldId !== existing.id) {
+
+                delete this.data[oldId]
+                this.set(existing.id, existing)
+
+            }
+
+            this.setExpiration(existing)
             this.emit('update', existing)
+            return true;
 
         }
+
+        return false;
 
     }
     
     /**
-     * @param { T } data
-     * @param { Object.<string, any> } selector
+     * @param {Object.<string, any>} selector
+     * @param {T|Object.<string, any>} data
      */
-    update(data, selector) {
+    update(selector, data) {
 
         const update = this.get(selector)
-        update.forEach(obj => this.updateWith(data, obj.id))
+        update.forEach(obj => this.updateWith(data, this.resolve(obj.id)))
 
     }
 

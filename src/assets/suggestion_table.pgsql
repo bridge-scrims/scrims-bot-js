@@ -82,19 +82,19 @@ DECLARE
 BEGIN
 
     IF (TG_OP = 'DELETE') THEN 
-        PERFORM pg_notify('suggestion_remove', to_json(OLD)::text);
+        PERFORM pg_notify('scrims_suggestion_remove', json_build_object('id_suggestion', OLD.id_suggestion)::text);
         RETURN OLD;
     END IF;
 
     EXECUTE 'SELECT get_suggestions( id_suggestion => $1 )' USING NEW.id_suggestion INTO suggestions;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
-        'suggestion_update', json_build_object(
+        'scrims_suggestion_update', json_build_object(
             'selector', json_build_object('id_suggestion', OLD.id_suggestion),
             'data', (suggestions->>0)::json
         )::text
     );
-    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('suggestion_create', suggestions->>0);
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('scrims_suggestion_create', suggestions->>0);
     END IF;
 
     return NEW;

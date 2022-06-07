@@ -1,88 +1,43 @@
-const DBTable = require("../postgresql/table");
-const ScrimsTicket = require("./ticket");
-const ScrimsUser = require("./user");
+const { User } = require("discord.js");
 const TableRow = require("../postgresql/row");
 
-/**
- * @extends DBTable<ScrimsTicketMessage>
- */
-class ScrimsTicketMessagesTable extends DBTable {
-
-    constructor(client) {
-
-        const foreigners = [
-            [ "ticket", "id_ticket", "get_ticket_id" ],
-            [ "author", "id_author", "get_user_id" ]
-        ]
-
-        const uniqueKeys = [ 'id_ticket', 'message_id', 'created_at' ]
-
-        super(client, "scrims_ticket_message", "get_ticket_messages", foreigners, uniqueKeys, ScrimsTicketMessage);
-
-    }
-    
-}
+const ScrimsTicket = require("./ticket");
+const ScrimsUser = require("./user");
 
 class ScrimsTicketMessage extends TableRow {
 
-    /**
-     * @type { ScrimsTicketMessagesTable }
-     */
-    static Table = ScrimsTicketMessagesTable
+    static uniqueKeys = ['message_id', 'created_at']
+    static columns = ['id_ticket', 'id_author', "message_id", "reference_id", "content", "deleted", "created_at"]
 
-    constructor(table, messageData) {
+    constructor(client, messageData) {
 
-        const references = [
-            ['ticket', ['id_ticket'], ['id_ticket'], table.client.tickets], 
-            ['author', ['id_author'], ['id_user'], table.client.users],
-            ['reference', ['reference_id'], ['message_id'], table]
-        ]
+        super(client, messageData)
 
-        super(table, messageData, references)
-
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.id_ticket
 
-        /**
-         * @type { ScrimsTicket }
-         */
+        /** @type {ScrimsTicket} */
         this.ticket
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.id_author
 
-        /**
-         * @type { ScrimsUser }
-         */
+        /** @type {ScrimsUser} */
         this.author
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.message_id
 
-        /**
-         * @type { string } 
-         */
+        /** @type {string} */
         this.reference_id
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.content
 
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.deleted
         
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.created_at
 
     }
@@ -112,6 +67,99 @@ class ScrimsTicketMessage extends TableRow {
 
         if (!this.channel || !this.message_id) return null;
         return this.channel.messages.resolve(this.message_id);
+
+    }
+
+    isCacheExpired(now) {
+
+        return (!this.ticket || this.ticket.status.name === "deleted") && super.isCacheExpired(now);
+        
+    }
+
+    /**
+     * @param {string|Object.<string, any>|ScrimsTicket} ticketResolvable 
+     */
+    setTicket(ticketResolvable) {
+
+        this._setForeignObjectReference(this.client.tickets, 'ticket', ['id_ticket'], ['id_ticket'], ticketResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {string|Object.<string, any>|ScrimsUser|User} userResolvable 
+     */
+    setAuthor(userResolvable) {
+
+        if (userResolvable instanceof User) userResolvable = { discord_id: userResolvable.id }
+        
+        this._setForeignObjectReference(this.client.users, 'author', ['id_author'], ['id_user'], userResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {import("discord.js").MessageResolvable} messageResolvable 
+     */
+    setMessage(messageResolvable) {
+
+        this.message_id = messageResolvable?.id ?? messageResolvable
+        return this;
+
+    }
+
+    /**
+     * @param {string} reference_id
+     */
+    setReferenceId(reference_id) {
+
+        this.reference_id = reference_id
+        return this;
+
+    }
+
+    /**
+     * @param {string} content
+     */
+    setContent(content) {
+
+        this.content = content
+        return this;
+
+    }
+
+    /**
+     * @param {number} [deleted] If undefined will use current timestamp 
+     */
+    setDeletedPoint(deleted) {
+
+        this.deleted = (deleted === undefined) ? Math.floor(Date.now()/1000) : deleted
+        return this;
+
+    }
+
+    /**
+     * @param {number} [created_at] If undefined will use current timestamp 
+     */
+    setCreatedPoint(created_at) {
+
+        this.created_at = (created_at === undefined) ? Math.floor(Date.now()/1000) : created_at
+        return this;
+
+    }
+
+    /** 
+     * @override
+     * @param {Object.<string, any>} messageData 
+     */
+    update(messageData) {
+        
+        super.update(messageData);
+
+        this.setTicket(messageData.ticket)
+        this.setAuthor(messageData.author)
+
+        return this;
 
     }
 

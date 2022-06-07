@@ -1,39 +1,29 @@
 const TableRow = require("../postgresql/row");
-const DBTable = require("../postgresql/table");
-
-/**
- * @extends DBTable<ScrimsTicketStatus>
- */
-class ScrimsTicketStatusTable extends DBTable {
-
-    constructor(client) {
-
-        super(client, "scrims_ticket_status", null, [], ['id_status'], ScrimsTicketStatus);
-
-    }
-
-}
 
 class ScrimsTicketStatus extends TableRow {
 
-    /**
-     * @type { ScrimsTicketStatusTable }
-     */
-    static Table = ScrimsTicketStatusTable
-    
+    static uniqueKeys = ['id_status']
+    static columns = ['id_status', 'name']
+
     constructor(client, statusData) {
 
-        super(client, statusData, []);
+        super(client, statusData);
 
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.id_status
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.name
+
+    }
+
+    /**
+     * @param {string} name 
+     */
+    setName(name) {
+        
+        this.name = name
+        return this;
 
     }
 

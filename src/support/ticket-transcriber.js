@@ -1,5 +1,8 @@
 const { MessageEmbed, MessageAttachment, Message } = require("discord.js");
 const { default: got } = require("got/dist/source");
+const ScrimsAttachment = require("../lib/scrims/attachment");
+const ScrimsTicketMessage = require("../lib/scrims/ticket_message");
+const ScrimsTicketMessageAttachment = require("../lib/scrims/ticket_message_attachment");
 
 class TicketTranscriber {
 
@@ -22,25 +25,17 @@ class TicketTranscriber {
             
             Promise.allSettled(notAddedAttachments.map(value => got(value.url).catch(console.error)))
             await Promise.allSettled(
-                notAddedAttachments.map(value => this.client.attachments.create({
-                
-                    attachment_id: value.id,
-                    filename: value.name,
-                    content_type: value.contentType,
-                    url: value.url
-    
-                }).catch(console.error))
+                notAddedAttachments.map(value => this.client.attachments.create(ScrimsAttachment.fromMessageAttachment(this.client, value)).catch(console.error))
             )
 
             await Promise.allSettled(
-                message.attachments.filter(value => this.client.ticketMessageAttachments.cache.get({ attachment_id: value.id }).length === 0)
-                    .map(value => this.client.ticketMessageAttachments.create({
-                
-                    id_ticket: ticketId, 
-                    message_id: message.id, 
-                    attachment_id: value.id
-
-                }).catch(console.error))
+                message.attachments.filter(value => !this.client.ticketMessageAttachments.cache.find({ id_ticket: ticketId, attachment_id: value.id }))
+                    .map(value => (
+                        this.client.ticketMessageAttachments.create(
+                            new ScrimsTicketMessageAttachment(this.client)
+                                .setTicket(ticketId).setMessage(message).setAttachment(value)
+                        ).catch(console.error)
+                    ))
             )
 
             if (!message.content && message.embeds?.length === 1) {
@@ -49,16 +44,12 @@ class TicketTranscriber {
             
         }
 
-        await this.client.ticketMessages.create({ 
-
-            id_ticket: ticketId, 
-            message_id: message.id, 
-            content: message.content, 
-            reference_id: message?.reference?.messageId ?? null,
-            author: { discord_id: message.author.id },
-            created_at: Math.round(Date.now()/1000)
-
-        })
+        await this.client.ticketMessages.create(
+            new ScrimsTicketMessage(this.client)
+                .setTicket(ticketId).setMessage(message).setContent(message.content)
+                .setReferenceId(message?.reference?.messageId ?? null)
+                .setAuthor(message.author).setCreatedPoint()
+        )
 
     }
 
@@ -98,8 +89,8 @@ class TicketTranscriber {
                             + `<td>\${getDate(${message.created_at*1000})}</td>`
                             + `<td>\${getTime(${message.created_at*1000})}</td>`
                             + `<td>${escape(message.author.discord_username + "#" + message.author.discord_discriminator)}</td>`
-                            + `<td class="last">${escape(message.content)}${getMessageAttachments(message)}${getMessageExtra(message)}</td>`
-                        + `</tr>`
+                            + `<td class="last">${escape(((message?.edits?.slice(-1) ?? [])[0] ?? message).content)}${getMessageAttachments(message)}${getMessageExtra(message)}</td>`
+                        + `</tr>` 
                     + `\`);`
                 )).join("")
             + `}`
@@ -147,8 +138,8 @@ class TicketTranscriber {
     async getTicketMessages(ticket) {
 
         const messageAttachments = this.client.ticketMessageAttachments.cache.getArrayMap('message_id')
-        const allMessages = await this.client.ticketMessages.get({ id_ticket: ticket.id_ticket }, false)
-        allMessages.sort((a, b) => b.created_at - a.created_at).forEach((v, idx, arr) => {
+        const allMessages = await this.client.ticketMessages.fetch({ id_ticket: ticket.id_ticket }, false)
+        allMessages.sort((a, b) => a.created_at - b.created_at).forEach((v, idx, arr) => {
             const existing = arr.filter(msg => msg.message_id === v.message_id)[0]
             if (existing && existing !== v) {
                 existing.edits = [ ...(existing.edits ?? []), v ]
@@ -200,10 +191,10 @@ class TicketTranscriber {
             if (channel) await channel.send({ embeds: [this.getLogMessageEmbed(ticket)], files: [file] });
             
             const user = await guild.client.users.fetch(ticket.user.discord_id)
-                .catch(error => this.onUserDMMissed(channel, ticket.user.discord_id, `${error}`).then(() => null))
+                .catch(error => this.onUserDMMissed(channel, ticket?.user?.discord_id, `${error}`).then(() => null))
             
             if (user !== null) 
-                await user.send({ embeds: [this.getUserMessageEmbed(ticket)], files: [file] }).catch(error => this.onUserDMMissed(channel, ticket.user.discord_id, `${error}`));
+                await user.send({ embeds: [this.getUserMessageEmbed(ticket)], files: [file] }).catch(error => this.onUserDMMissed(channel, ticket?.user?.discord_id, `${error}`));
 
         }catch(error) {
 

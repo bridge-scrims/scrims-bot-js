@@ -28,7 +28,7 @@ async function getSupportRole(interaction) {
 
     const errorMessage = `To send this message you first need to add a role connected to the support position!`
     
-    const positionRoles = await interaction.client.database.positionRoles.get({ guild_id: interaction.guild.id, position: { name: 'support' } })
+    const positionRoles = await interaction.client.database.positionRoles.fetch({ guild_id: interaction.guild.id, position: { name: 'support' } })
     if (positionRoles.length === 0) return interaction.reply(SupportResponseMessageBuilder.errorMessage(`No Support Role`, errorMessage)).then(() => false);
 
     const role = interaction.guild.roles.resolve(positionRoles[0].role_id)
@@ -58,7 +58,7 @@ async function requestTicketClosure(interaction) {
 
     const reason = interaction.options.getString('reason') ?? "no reason provided";
 
-    const ticket = await interaction.client.database.tickets.get({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
+    const ticket = await interaction.client.database.tickets.fetch({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
     if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage()); // This is no support channel (bruh moment)
 
     if (ticket.id_user === interaction.scrimsUser.id_user) {
@@ -88,7 +88,7 @@ async function closeTicket(interaction, ticket, content) {
 
     await interaction.reply({ content: `Support ticket closing...` })
     
-    await interaction.client.support.closeTicket(interaction.channel, ticket, interaction.user, interaction.user, content)
+    await interaction.client.support.closeTicket(ticket, interaction.user, interaction.user, content)
 
 }
 
@@ -97,7 +97,7 @@ async function closeTicket(interaction, ticket, content) {
  */
 async function supportTicket(interaction) {
 
-    const ticket = await interaction.client.database.tickets.get({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
+    const ticket = await interaction.client.database.tickets.fetch({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
     if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage()); // This is no support channel (bruh moment) (good commenting whatcats)
     
     // I know you like the const keyword :)

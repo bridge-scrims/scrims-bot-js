@@ -21,6 +21,9 @@ BEGIN
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_log_channel') THEN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_log_channel');
     END IF;
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'config_log_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('config_log_channel');
+    END IF;
 
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_transcript_channel') THEN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_transcript_channel');
@@ -179,19 +182,19 @@ DECLARE
 BEGIN
 
     IF (TG_OP = 'DELETE') THEN 
-        PERFORM pg_notify('guild_entry_remove', to_json(OLD)::text);
+        PERFORM pg_notify('scrims_guild_entry_remove', to_json(OLD)::text);
         RETURN OLD;
     END IF;
 
     EXECUTE 'SELECT get_guild_entrys( guild_id => $1, id_type => $2 )' USING NEW.guild_id, NEW.id_type INTO guild_entrys;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
-        'guild_entry_update', json_build_object(
+        'scrims_guild_entry_update', json_build_object(
             'selector', json_build_object('guild_id', OLD.guild_id, 'id_type', OLD.id_type), 
             'data', (guild_entrys->>0)::json
         )::text
     );
-    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('guild_entry_create', guild_entrys->>0);
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('scrims_guild_entry_create', guild_entrys->>0);
     END IF;
 
     return NEW;

@@ -1,24 +1,45 @@
 const SuggestionsResponseMessageBuilder = require('./responses');
 
 const maxHue = 120
+const cooldownTimer = {}
+const lastUpdate = {}
+
+function getTimeout(messageId) {
+
+    if (!lastUpdate[messageId]) return 0;
+    return (lastUpdate[messageId] + 5*1000) - Date.now();
+    
+}
 
 async function onReactionUpdate(reaction) {
 
+    if (getTimeout(reaction.message.id) > 0) {
+
+        const cooldown = cooldownTimer[reaction.message.id]
+        if (cooldown) clearTimeout(cooldown)
+
+        cooldownTimer[reaction.message.id] = setTimeout(() => onReactionUpdate(reaction).catch(console.error), getTimeout(reaction.message.id))
+        return false;
+        
+    }
+
+    lastUpdate[reaction.message.id] = Date.now()
+
     const voteConst = reaction.client.suggestions.getVoteConst(reaction.message.guild.id)
     if (!voteConst) return false;
-
-    const [suggestionUpVote, suggestionDownVote] = reaction.client.suggestions.getVoteEmojis(reaction.message.guild)
     
-    const suggestion = reaction.client.database.suggestions.cache.get({ message_id: reaction.message.id })[0]
+    const [suggestionUpVote, suggestionDownVote] = reaction.client.suggestions.getVoteEmojis(reaction.message.guild)
+
+    const suggestion = reaction.client.database.suggestions.cache.find({ message_id: reaction.message.id })
     if (!suggestion) return false;
 
     const upVotes = reaction.message.reactions.cache.get(suggestionUpVote.id ?? suggestionUpVote)?.count || 1;
     const downVotes = reaction.message.reactions.cache.get(suggestionDownVote.id ?? suggestionDownVote)?.count || 1;
-    suggestion.updateWith({ upVotes, downVotes })
+    const rating = { upVotes, downVotes }
 
-    if ((downVotes/upVotes) > voteConst) return onUnpopularSuggestion(reaction.client, reaction.message, suggestion);
+    if ((downVotes/upVotes) > voteConst) return onUnpopularSuggestion(reaction.client, reaction.message, suggestion, rating);
 
-    if ((upVotes/downVotes) > voteConst) return onPopularSuggestion(reaction.client, reaction.message, suggestion);
+    if ((upVotes/downVotes) > voteConst) return onPopularSuggestion(reaction.client, reaction.message, suggestion, rating);
 
     const ratio = (upVotes > downVotes) ? (upVotes / downVotes) : -(downVotes / upVotes)
     const hue = (ratio === -1) ? (maxHue/2) : (ratio * ((maxHue/2) / voteConst)) + (maxHue/2)
@@ -29,7 +50,7 @@ async function onReactionUpdate(reaction) {
     
 }
 
-async function onUnpopularSuggestion(client, message, suggestion) {
+async function onUnpopularSuggestion(client, message, suggestion, rating) {
 
     if (suggestion.epic) return false;
 
@@ -44,27 +65,27 @@ async function onUnpopularSuggestion(client, message, suggestion) {
     // Remove from cache so that when the message delete event arrives it will not trigger anything
     const removed = client.database.suggestions.cache.remove(suggestion.id_suggestion)
 
-    const response = await message.delete().catch(error => error)
-    if (response === false) {
+    const response = await message.delete().then(() => true).catch(error => error)
+    if (response !== true) {
 
         // Deleting the message failed so add the suggestion back to cache
         client.database.suggestions.cache.push(removed)
 
-        await client.suggestions.logError(`Failed to remove suggestion after it getting ${suggestion.downVotes} down vote(s).`, { context, error: response })
+        await client.suggestions.logError(`Failed to remove suggestion after it getting ${rating.downVotes} down vote(s).`, { context, error: response })
         return false;
 
     }
     
-    await client.suggestions.logError(`Removed a suggestion because of it getting **${suggestion.downVotes}** \`down vote(s)\` with only **${suggestion.upVotes}** \`up vote(s)\`.`, context)
+    await client.suggestions.logError(`Removed a suggestion because of it getting **${rating.downVotes}** \`down vote(s)\` with only **${rating.upVotes}** \`up vote(s)\`.`, context)
 
     await client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion })
         .catch(error => console.error(`Unable to remove suggestion from database because of ${error}!`, suggestion))
 
 }
 
-async function onPopularSuggestion(client, message, suggestion) {
+async function onPopularSuggestion(client, message, suggestion, rating) {
     
-    const { upVotes, downVotes } = suggestion
+    const { upVotes, downVotes } = rating
     const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(-1, suggestion)
         
     //if (!message.pinned) await message.pin().catch(console.error)

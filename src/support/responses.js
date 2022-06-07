@@ -3,6 +3,7 @@ const MemoryMessageButton = require("../lib/components/memory_button");
 const ScrimsMessageBuilder = require("../lib/responses");
 const ScrimsTicket = require("../lib/scrims/ticket");
 const ScrimsTicketType = require("../lib/scrims/ticket_type");
+const TicketCreateExchange = require("./ticket_create_exchange");
 
 class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
@@ -148,7 +149,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
         }
 
-        const reasonLabel = (type.name !== 'report') ? 'Why are you opening a ticket?' : 'What are you reporting these people for?'
+        const reasonLabel = (type.name !== 'report') ? 'Why are you opening a ticket?' : 'Why are you creating this report?'
 
         modal.addComponents(
             new MessageActionRow().addComponents(
@@ -167,6 +168,14 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
+    static ticketTargetsMissingContent() {
+        return '⛔ **Please let us know who you are reporting!**';
+    }
+
+    static ticketReasonMissingContent() {
+        return '⛔ **Please let us know why you are creating this ticket!**';
+    }
+
     static ticketConfirmMessage(i18n, client, ticketData) {
 
         const actions = new MessageActionRow()
@@ -179,14 +188,14 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
         const test = (ticketData.reason === "testing the ticket system without pinging the bridge scrims support team") 
             || (ticketData.reason === "testing the ticket system without pinging support") 
 
-        const reasonLabel = (ticketData.type.name !== 'report') ? 'Why are you opening a ticket?' : 'What are you reporting these people for?'
+        const reasonLabel = (ticketData.type.name !== 'report') ? 'Why are you opening a ticket?' : 'Why are you creating this report?'
         const embed = new MessageEmbed()
             .setTitle(`Ticket Create Confirmation`)
             .setDescription(`Please verify that all fields are filled to your liking, then create this ticket using the button below.`)
             .setColor('#ffffff')
 
-        if (ticketData.targets && ticketData.targets.length > 0) embed.addField('Who are you reporting?', this.stringifyArray(ticketData.targets.map(v => v?.id ? `${v} (${v.id})` : v)))
-        if (ticketData.reason) embed.addField(reasonLabel, `\`\`\`${ticketData.reason}\`\`\``)
+        if (ticketData.targets) embed.addField('Who are you reporting?', (ticketData.targets.length > 0) ? this.stringifyArray(ticketData.targets.map(v => v?.id ? `${v} (${v.id})` : v)) : '``` ```'+this.ticketTargetsMissingContent())
+        if (ticketData.reason) embed.addField(reasonLabel, (ticketData.reason.length > 0) ? `\`\`\`${ticketData.reason}\`\`\`` : '``` ```'+this.ticketReasonMissingContent())
 
         const content = (test ? ' *(Test ticket detected)*' : null)
         return { content, embeds: [embed], components: [actions], ephemeral: true };
@@ -194,27 +203,20 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
     }
 
     /**
-     * @param { GuildMember } member 
+     * @param { TicketCreateExchange } exchange 
      */
-    static ticketInfoMessage(member, mentionRoles, supportRole, ticketData) {
-
-        const test = (ticketData.reason === "testing the ticket system without pinging the bridge scrims support team") 
-            || (ticketData.reason === "testing the ticket system without pinging support") 
-
-        const reasonLabel = (ticketData.type.name !== 'report') ? 'Why are you opening a ticket?' : 'What are you reporting these people for?'
+    static ticketInfoMessage(exchange, mentionRoles, supportRole) {
 
         const embed = new MessageEmbed()
-            .setTitle(`${ticketData.type.capitalizedName} Ticket`)
-            .setDescription(`👋 **Welcome** ${member} to your ticket channel. The ${member.guild.name.toLowerCase()} ${supportRole ?? '**@support**'} team have been alerted and will be with you shortly.`)
+            .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
+            .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? '**@support**'} team have been alerted and will be with you shortly.`)
             .setColor(supportRole?.hexColor || '#ff9d00')
             .setFooter({ text: `Managed by the support team`, iconURL: supportRole?.iconURL() })
+            .setFields(exchange.getEmbedFields())
             .setTimestamp()
 
-        if (ticketData.targets && ticketData.targets.length > 0) embed.addField('Who are you reporting?', this.stringifyArray(ticketData.targets.map(v => v?.id ? `${v} (${v.id})` : v)))
-        if (ticketData.reason) embed.addField(reasonLabel, `\`\`\`${ticketData.reason}\`\`\``)
-
-        const content = (mentionRoles.length > 0 ? `||${member} ${mentionRoles.join(' ')}||\n` : `||${member}||`)
-        return { content, embeds: [embed], allowedMentions: { roles: (test ? [] : mentionRoles.map(v => v.id)), users: [member.id] } };
+        const content = (mentionRoles.length > 0 ? `||${exchange.creator} ${mentionRoles.join(' ')}||\n` : `||${exchange.creator}||`)
+        return { content, embeds: [embed], allowedMentions: { roles: (exchange.isTest() ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
 
     }
     

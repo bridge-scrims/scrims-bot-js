@@ -35,6 +35,9 @@ BEGIN
     if NOT EXISTS (select * FROM scrims_ticket_type WHERE name = 'report') THEN
         INSERT INTO scrims_ticket_type (name) VALUES ('report');
     END IF;
+    if NOT EXISTS (select * FROM scrims_ticket_type WHERE name = 'prime_app') THEN
+        INSERT INTO scrims_ticket_type (name) VALUES ('prime_app');
+    END IF;
 END
 $$;
 
@@ -106,7 +109,7 @@ CREATE OR REPLACE FUNCTION is_expired( expires_at bigint )
 RETURNS boolean
 AS $$ BEGIN
 
-RETURN (select extract(epoch from current_timestamp)) >= expires_at;
+RETURN expires_at <= (select extract(epoch from now()));
 
 END $$ 
 LANGUAGE plpgsql;
@@ -235,19 +238,19 @@ DECLARE
 BEGIN
 
     IF (TG_OP = 'DELETE') THEN 
-        PERFORM pg_notify('ticket_remove', to_json(OLD)::text);
+        PERFORM pg_notify('scrims_ticket_remove', json_build_object('id_ticket', OLD.id_ticket)::text);
         RETURN OLD;
     END IF;
 
     EXECUTE 'SELECT get_tickets( id_ticket => $1 )' USING NEW.id_ticket INTO tickets;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
-        'ticket_update', json_build_object(
+        'scrims_ticket_update', json_build_object(
             'selector', json_build_object('id_ticket', OLD.id_ticket), 
             'data', (tickets->>0)::json
         )::text
     );
-    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('ticket_create', tickets->>0);
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('scrims_ticket_create', tickets->>0);
     END IF;
 
     return NEW;

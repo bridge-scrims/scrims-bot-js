@@ -1,81 +1,105 @@
-const DBCache = require("../postgresql/cache");
-const DBTable = require("../postgresql/table");
 const TableRow = require("../postgresql/row");
 
 const ScrimsSessionType = require("./session_type");
 const ScrimsUser = require("./user");
 
-/**
- * @extends DBTable<ScrimsSession>
- */
-class ScrimsSessionTable extends DBTable {
-
-    constructor(client) {
-
-        const foreigners = [
-            [ "type", "id_type", "get_session_type_id" ],
-            [ "creator", "id_creator", "get_user_id" ]
-        ]
-
-        const uniqueKeys = ['id_session']
-
-        super(client, "scrims_session", "get_sessions", foreigners, uniqueKeys, ScrimsSession);
-
-    }
-    
-}
-
 class ScrimsSession extends TableRow {
 
-    /**
-     * @type { ScrimsSessionTable }
-     */
-    static Table = ScrimsSessionTable
+    static uniqueKeys = ['id_session']
+    static columns = ['id_session', 'id_type', "id_creator", "started_at", "ended_at"]
 
-    constructor(table, sessionData) {
+    constructor(client, sessionData) {
 
-        const references = [
-            ['type', ['id_type'], ['id_type'], table.client.sessionTypes],
-            ['creator', ['id_creator'], ['id_user'], table.client.users]
-        ]
+        super(client, sessionData)
 
-        super(table, sessionData, references)
-
-        /**
-         * @type { string } 
-         */
+        /** @type {string} */
         this.id_session
 
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.id_type
 
-        /**
-         * @type { ScrimsSessionType } 
-         */
+        /** @type {ScrimsSessionType} */
         this.type
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.id_creator
 
-        /**
-         * @type { ScrimsUser }
-         */
+        /** @type {ScrimsUser} */
         this.creator
 
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.started_at
 
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.ended_at
         
+    }
+
+    /**
+     * @param {string} [id_session] if falsley will use a random uuid
+     */
+    setId(id_session) {
+
+        this.id_session = id_session ?? this.client.generateUUID()
+        return this;
+
+    }
+
+    /**
+     * @param {number|string|Object.<string, any>|ScrimsSessionType} typeResolvable 
+     */
+    setType(typeResolvable) {
+
+        if (typeof typeResolvable === "string") typeResolvable = { name: typeResolvable }
+
+        this._setForeignObjectReference(this.client.sessionTypes, 'type', ['id_type'], ['id_type'], typeResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {string|Object.<string, any>|ScrimsUser} userResolvable 
+     */
+    setCreator(userResolvable) {
+
+        this._setForeignObjectReference(this.client.users, 'creator', ['id_creator'], ['id_user'], userResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {number} [started_at] If undefined will use current timestamp 
+     */
+    setStartPoint(started_at) {
+
+        this.started_at = (started_at === undefined) ? Math.floor(Date.now()/1000) : started_at
+        return this;
+        
+    }
+
+    /**
+     * @param {number} [ended_at] If undefined will use current timestamp 
+     */
+    setEndPoint(ended_at) {
+
+        this.ended_at = (ended_at === undefined) ? Math.floor(Date.now()/1000) : ended_at
+        return this;
+
+    }
+
+    /** 
+     * @override
+     * @param {Object.<string, any>} sessionData 
+     */
+    update(sessionData) {
+        
+        super.update(sessionData);
+
+        this.setType(sessionData.type)
+        this.setCreator(sessionData.creator)
+
+        return this;
+
     }
 
 }

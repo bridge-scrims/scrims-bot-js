@@ -54,7 +54,7 @@ DECLARE
 BEGIN
 
     IF (TG_OP = 'DELETE') THEN 
-        PERFORM pg_notify('position_role_remove', row_to_json(OLD)::text);
+        PERFORM pg_notify('scrims_position_role_remove', row_to_json(OLD)::text);
         RETURN OLD;
     END IF;
 
@@ -63,12 +63,12 @@ BEGIN
     INTO position_roles;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
-        'position_role_update', json_build_object(
+        'scrims_position_role_update', json_build_object(
             'selector', row_to_json(OLD), 
             'data', (position_roles->>0)::json
         )::text
     );
-    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('position_role_create', position_roles->>0);
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('scrims_position_role_create', position_roles->>0);
     END IF;
 
     return NEW;

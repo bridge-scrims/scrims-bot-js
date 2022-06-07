@@ -1,0 +1,232 @@
+CREATE TABLE IF NOT EXISTS scrims_user (
+
+    id_user uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    joined_at bigint NOT NULL,
+
+    discord_id text NULL,
+    discord_username text NULL,
+    discord_discriminator int NULL,
+    discord_accent_color int NULL,
+    discord_avatar text NULL,
+    
+    mc_uuid text NULL,
+    mc_name text NULL,
+    mc_verified boolean DEFAULT false,
+
+    country text NULL,
+    timezone text NULL
+    
+);
+
+CREATE TABLE IF NOT EXISTS scrims_position (
+
+    id_position SERIAL PRIMARY KEY,
+    name text NOT NULL UNIQUE,
+    sticky boolean NOT NULL,
+    level INT NULL
+    
+);
+
+CREATE TABLE IF NOT EXISTS scrims_user_position (
+
+    id_user uuid NOT NULL,
+    id_position bigint NOT NULL,
+
+    id_executor uuid NULL,
+    given_at BIGINT NOT NULL,
+    expires_at BIGINT NULL,
+
+    PRIMARY KEY (id_user, id_position),
+    FOREIGN KEY (id_user) REFERENCES scrims_user(id_user),
+    FOREIGN KEY (id_executor) REFERENCES scrims_user(id_user),
+    FOREIGN KEY (id_position) REFERENCES scrims_position(id_position)
+        
+);
+
+CREATE TABLE IF NOT EXISTS scrims_guild_entry_type (
+
+    id_type SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+        
+);
+
+CREATE TABLE IF NOT EXISTS scrims_guild (
+
+    guild_id TEXT UNIQUE,
+    name TEXT NOT NULL,
+    icon TEXT NULL
+        
+);
+
+CREATE TABLE IF NOT EXISTS scrims_guild_entry (
+
+    guild_id TEXT NULL,
+    id_type bigint NOT NULL,
+
+    value TEXT NULL,
+
+    UNIQUE(guild_id, id_type),
+    FOREIGN KEY(id_type) REFERENCES scrims_guild_entry_type(id_type)
+        
+);
+
+
+CREATE TABLE IF NOT EXISTS scrims_attachment (
+
+    attachment_id text NOT NULL,
+
+    filename text NULL,
+    content_type text NULL,
+    url text NOT NULL,
+
+    UNIQUE(attachment_id)
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_position_role (
+
+    id_position bigint,
+    role_id text,
+    guild_id text,
+
+    PRIMARY KEY (id_position, role_id, guild_id),
+    FOREIGN KEY(id_position) REFERENCES scrims_position(id_position)
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_session_type (
+ 
+    id_type SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_session (
+ 
+    id_session uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    id_type bigint NOT NULL,
+
+    id_creator uuid NULL,
+    started_at bigint NOT NULL,
+    ended_at bigint NULL,
+
+    FOREIGN KEY (id_type) REFERENCES scrims_session_type(id_type),
+    FOREIGN KEY (id_creator) REFERENCES scrims_user(id_user)
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_suggestion (
+
+    id_suggestion uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+
+    guild_id text null,
+    channel_id text NULL,
+    message_id text NULL,
+    suggestion text NULL,
+
+    attachment_id text NULL,
+    created_at bigint NOT NULL,
+    id_creator uuid NOT NULL,
+    epic bigint NULL,
+
+    FOREIGN KEY(id_creator) REFERENCES scrims_user(id_user),
+    FOREIGN KEY(attachment_id) REFERENCES scrims_attachment(attachment_id)
+        
+);
+
+CREATE TABLE IF NOT EXISTS scrims_ticket_type (
+
+    id_type SERIAL PRIMARY KEY,
+    name text NOT NULL UNIQUE
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_ticket_status (
+
+    id_status SERIAL PRIMARY KEY,
+    name text NOT NULL UNIQUE
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_ticket (
+
+    id_ticket uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    id_type bigint NOT NULL,
+    id_status bigint NOT NULL,
+    id_user uuid NOT NULL,
+
+    guild_id text NOT NULL,
+    channel_id text NOT NULL,
+    created_at bigint NOT NULL,
+
+    id_closer uuid NULL,
+
+    FOREIGN KEY (id_user) REFERENCES scrims_user(id_user),
+    FOREIGN KEY (id_type) REFERENCES scrims_ticket_type(id_type),
+    FOREIGN KEY (id_status) REFERENCES scrims_ticket_status(id_status),
+    FOREIGN KEY (id_closer) REFERENCES scrims_user(id_user)
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_ticket_message (
+
+    id_ticket uuid NOT NULL,
+    id_author uuid NOT NULL,
+
+    message_id text NOT NULL,
+    content text NOT NULL,
+    deleted bigint NULL,
+    created_at bigint NOT NULL,
+
+    PRIMARY KEY (id_ticket, message_id, created_at),
+    FOREIGN KEY (id_ticket) REFERENCES scrims_ticket(id_ticket),
+    FOREIGN KEY (id_author) REFERENCES scrims_user(id_user)
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_ticket_message_attachment (
+
+    id_ticket uuid NOT NULL,
+    message_id text NOT NULL,
+    attachment_id text NOT NULL,
+
+    PRIMARY KEY (id_ticket, message_id, attachment_id),
+    FOREIGN KEY(id_ticket) REFERENCES scrims_ticket(id_ticket),
+    FOREIGN KEY(attachment_id) REFERENCES scrims_attachment(attachment_id)
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_vouch (
+
+    id_vouch uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    
+    id_user uuid NOT NULL,
+    id_position bigint NOT NULL,
+    id_executor uuid NULL,
+
+    given_at bigint NOT NULL,
+    worth int NOT NULL,
+
+    comment text NULL,
+
+    FOREIGN KEY (id_user) REFERENCES scrims_user(id_user),
+    FOREIGN KEY (id_position) REFERENCES scrims_position(id_position),
+    FOREIGN KEY (id_executor) REFERENCES scrims_user(id_user)
+
+);
+
+CREATE TABLE IF NOT EXISTS scrims_vouch_duel (
+
+    duel_start bigint NOT NULL,
+
+    id_user uuid NOT NULL,
+    id_position bigint NOT NULL,
+    id_executor uuid NOT NULL,   
+
+    FOREIGN KEY (id_user) REFERENCES scrims_user(id_user),
+    FOREIGN KEY (id_position) REFERENCES scrims_position(id_position),
+    FOREIGN KEY (id_executor) REFERENCES scrims_user(id_user),
+
+    PRIMARY KEY (duel_start, id_user)
+
+);

@@ -1,19 +1,33 @@
 import { 
     CommandInteraction, CommandInteractionOptionResolver, ContextMenuInteraction,
-    ModalSubmitInteraction, GuildMember, Interaction, MessageComponentInteraction, PartialTextInputData, Modal, AutocompleteInteraction 
+    ModalSubmitInteraction, GuildMember, Interaction, MessageComponentInteraction, 
+    PartialTextInputData, Modal, AutocompleteInteraction, TextInputComponentOptions,
+    MessageOptions, User
 } from "discord.js";
 
 import { SlashCommandBuilder } from "@discordjs/builders";
 
+import ScrimsUserPosition from "./scrims/user_position";
+import I18n from "./tools/internationalization";
+import ScrimsPosition from "./scrims/position";
+import DBClient from "./postgresql/database";
 import ScrimsUser from "./scrims/user";
-import ScrimsCouncilBot from "./bot";
-import I18n from "./Internationalization";
+import ScrimsBot from "./bot";
 
 export interface ScrimsGuildMember extends GuildMember {
 
-    hasPermission(permissionLevel: string, allowedPositions: string[], requiredPositions: string[]): Promise<boolean>;
+    client: ScrimsBot;
+    scrimsUser: ScrimsUser;
+    id_user: string;
 
 } 
+
+export interface InteractionScrimsGuildMember extends ScrimsGuildMember {
+
+    hasPermission(permissionLevel: string, allowedPositions: string[], requiredPositions: string[]): boolean;
+    userPositions: { [id_position: number]: ScrimsUserPosition };
+
+}
 
 export interface ScrimsPermissions {
 
@@ -38,8 +52,9 @@ export interface ScrimsInteraction extends Interaction {
 
     i18n: I18n;
     scrimsUser: ScrimsUser;
-    client: ScrimsCouncilBot; 
-    member: ScrimsGuildMember;
+    client: ScrimsBot; 
+    database: DBClient;
+    member: InteractionScrimsGuildMember;
 
     commandName: string;
 
@@ -68,4 +83,30 @@ export interface ScrimsModalSubmitInteraction extends ScrimsInteraction, ModalSu
 
     args: string[];
 
+}
+
+export interface EphemeralExchangeInputField extends TextInputComponentOptions {
+
+    type: InputType;
+
+}
+
+export interface EphemeralExchangeResponse extends MessageOptions {
+
+    nextOption?: string;
+    backOption?: string;
+    cancelOption?: string;
+
+}
+
+export type PositionResolvable = string | number | ScrimsPosition;
+export type ScrimsUserResolvable = string | ScrimsUser | GuildMember | User;
+
+export type InputType = keyof typeof InputTypes;
+export const enum InputTypes {
+    TEXT = 1,
+    USERS = 2,
+    COUNTRY = 3,
+    TIME = 4,
+    MCACCOUNT = 5
 }

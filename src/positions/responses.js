@@ -81,7 +81,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
     static getUserPositionsMessage(user, userPositions) {
 
         const userName = user.username.endsWith('s') ? user.username : `${user.username}'s`;
-        const getUserPositionExpiration = userPos => (!userPos.expires_at) ? `never expires` : `expires <t:${userPos.expires_at}:R>`;
+        const getUserPositionExpiration = userPos => (userPos.expires_at === null) ? `never expires` : `expires <t:${userPos.expires_at}:R>`;
         return { 
 
             ephemeral: true,
@@ -90,7 +90,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
                 new MessageEmbed()
                     .setTitle(`${userName} Positions`)
                     .setColor(this.syncViolet)
-                    .setDescription(userPositions.map(userPos => `\`•\` **${userPos.position.name}** (${getUserPositionExpiration(userPos)})`).join("\n"))
+                    .setDescription(userPositions.map(userPos => `\`•\` **${userPos.position?.name}** (${getUserPositionExpiration(userPos)})`).join("\n"))
                     .setFooter({ text: `Page ${idx+1}/${containers.length}` })
                     .setTimestamp(Date.now())
             ))

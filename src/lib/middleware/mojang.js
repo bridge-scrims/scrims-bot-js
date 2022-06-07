@@ -1,4 +1,4 @@
-const BridgeScrimsCache = require("../cache");
+const BridgeScrimsCache = require("./cache");
 const got = require('got');
 
 class MojangAPIError extends Error {

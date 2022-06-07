@@ -1,9 +1,9 @@
-const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
-const { SlashCommandBuilder, SlashCommandSubcommandGroupBuilder, SlashCommandSubcommandBuilder } = require("@discordjs/builders");
+const { SlashCommandSubcommandGroupBuilder, SlashCommandSubcommandBuilder } = require("@discordjs/builders");
 
 const SuggestionsResponseMessageBuilder = require("./responses");
 const ScrimsMessageBuilder = require("../lib/responses");
-const ScrimsSuggestion = require("./suggestion");
+const ScrimsSuggestion = require("../lib/scrims/suggestion");
+const ScrimsAttachment = require("../lib/scrims/attachment");
 
 const commandHandlers = {
 
@@ -40,11 +40,9 @@ async function onSuggestionCommand(interaction) {
 
 async function getBlacklisted(interaction) {
 
-    const blacklistedPositions = await interaction.client.database.userPositions.get(
+    return interaction.client.database.userPositions.find(
         { id_user: interaction.scrimsUser.id_user, position: { name: "suggestion_blacklisted" } }
-    )
-
-    return blacklistedPositions[0];
+    );
 
 }
 
@@ -66,7 +64,7 @@ async function getSuggestions(interaction) {
 
     }
 
-    return interaction.client.database.suggestions.get({ id_creator: interaction.scrimsUser.id_user })
+    return interaction.client.database.suggestions.fetch({ id_creator: interaction.scrimsUser.id_user })
         .then(suggestions => suggestions.sort((a, b) => b.created_at - a.created_at));
 
 }
@@ -82,14 +80,14 @@ async function suggestionDetachCommand(interaction) {
     const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
 
     if (suggestions.length === 0) 
-        return interaction.reply( ScrimsMessageBuilder.errorMessage(
+        return interaction.reply(ScrimsMessageBuilder.errorMessage(
             'No Suggestions', `You currently have no suggestions created. `
             + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
         ));
 
     const attachedSuggestions = suggestions.filter(suggestion => suggestion.attachmentURL)
     if (attachedSuggestions.length === 0) {
-        return interaction.reply( ScrimsMessageBuilder.errorMessage(
+        return interaction.reply(ScrimsMessageBuilder.errorMessage(
             'No Suggestions', `You currently have no suggestions with an attachment. `
                 + `To add a attachment run this command again, but pass through a file you would like to add.`
         ));
@@ -117,8 +115,8 @@ async function suggestionAttachCommand(interaction) {
 
     const attachment = interaction.options.getAttachment('attachment')
 
-    const scrimsAttachmentData = { attachment_id: `_${attachment.id}`, filename: attachment.name, content_type: attachment.contentType, url: attachment.url }
-    await interaction.client.database.attachments.create(scrimsAttachmentData)
+    const scrimsAttachment = ScrimsAttachment.fromMessageAttachment(interaction.client.database, attachment).setId(`_${attachment.id}`)
+    await interaction.client.database.attachments.create(scrimsAttachment)
 
     setTimeout(() => interaction.client.database.attachments.remove({ attachment_id: `_${attachment.id}` }).catch(console.error), 15*60*1000)
     await interaction.reply( SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(suggestions.slice(0, 5), attachment) )
@@ -208,7 +206,7 @@ async function suggestionRemoveComponent(interaction) {
     }
 
     const id_suggestion = interaction.args.shift()
-    const suggestion = await interaction.client.database.suggestions.get({ id_suggestion }).then(results => results[0])
+    const suggestion = await interaction.client.database.suggestions.find(id_suggestion)
     
     if (!suggestion) return interaction.update( 
         ScrimsMessageBuilder.errorMessage(`Unkown Suggestion`, `The suggestion you were trying to delete no longer exists.`) 
@@ -218,16 +216,16 @@ async function suggestionRemoveComponent(interaction) {
     const removed = interaction.client.database.suggestions.cache.remove(id_suggestion)
 
     const message = await suggestion.fetchMessage()
-    if (!message) return interaction.update(ScrimsMessageBuilder.failedMessage('remove the suggestion'));
-
-    const response = await message.delete().catch(error => error)
-    if (response instanceof Error) {
-
-        // Deleting the message failed so add the suggestion back to cache
-        interaction.client.database.suggestions.cache.push(removed)
-
-        throw response;
-
+    if (message) {
+        const response = await message.delete().catch(error => error)
+        if (response instanceof Error) {
+    
+            // Deleting the message failed so add the suggestion back to cache
+            interaction.client.database.suggestions.cache.push(removed)
+    
+            throw response;
+    
+        }
     }
 
     await interaction.client.database.suggestions.remove({ id_suggestion })

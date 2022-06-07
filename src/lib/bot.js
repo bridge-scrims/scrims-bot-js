@@ -1,21 +1,25 @@
 const { 
     Client, Message, Interaction, CommandInteraction, 
     MessageComponentInteraction, GuildMember, AutocompleteInteraction, 
-    ModalSubmitInteraction, Modal, TextInputComponent 
+    ModalSubmitInteraction, Modal, TextInputComponent, Role, User 
 } = require("discord.js");
 
+const LimitedComponentContainer = require("./components/limited_components");
 const ScrimsCommandInstaller = require("./tools/command_installer");
-const ScrimsPermissionsClient = require("./permissions");
+const ScrimsUserUpdater = require("./tools/user_updater");
+const I18n = require("./tools/internationalization");
+
 const HypixelClient = require("./middleware/hypixel");
-const ScrimsMessageBuilder = require("./responses");
 const MojangClient = require("./middleware/mojang");
 const DBClient = require("./postgresql/database");
-const auditEvents = require("./audited_events");
 
 const { interactionHandler, eventHandlers, commands } = require("./commands");
-const MemoryMessageButton = require("./components/memory_button");
-const ScrimsUserUpdater = require("./tools/user_updater");
-const I18n = require("./Internationalization");
+const ScrimsPermissionsClient = require("./permissions");
+const ScrimsMessageBuilder = require("./responses");
+const auditEvents = require("./audited_events");
+const ScrimsGuild = require("./scrims/guild");
+const ScrimsUser = require("./scrims/user");
+const { validate } = require("uuid");
 
 class ScrimsBot extends Client {
 
@@ -26,52 +30,39 @@ class ScrimsBot extends Client {
         this.eventHandlers = {};
         this.token = config.discordToken;
 
-        /**
-         * @type { DBClient }
-         */
-        this.database = new DBClient(this, config.dbLogin)
+        /** @type {DBClient} */
+        this.database = new DBClient(config.dbLogin, this)
 
-        /**
-         * @type { ScrimsPermissionsClient }
-         */
+        /** @type {ScrimsPermissionsClient} */
         this.permissions = new ScrimsPermissionsClient(this.database)
 
-        /**
-         * @type { ScrimsCommandInstaller }
-         */
+        /** @type {ScrimsCommandInstaller} */
         this.commands = new ScrimsCommandInstaller(this);
 
-        /**
-         * @type { ScrimsUserUpdater }
-         */
+        /** @type {ScrimsUserUpdater} */
         this.scrimsUsers = new ScrimsUserUpdater(this)
 
-        /**
-         * @type { HypixelClient }
-         */
+        /** @type {LimitedComponentContainer} */
+        this.limitedComponents = new LimitedComponentContainer(this)
+
+        /** @type {HypixelClient} */
         this.hypixel = new HypixelClient(config.hypixelToken);
 
-        /**
-         * @type { MojangClient }
-         */
+        /** @type {MojangClient} */
         this.mojang = new MojangClient();
 
-        /**
-         * @type { boolean }
-         */
+        /** @type {boolean} */
         this.blocked = false
 
-        /**
-         * @type { string[] }
-         */
+        /** @type {string[]} */
         this.handles = []
 
-        /**
-         * @type { I18n }
-         */
+        /** @type {I18n} */
         this.i18n = null
 
         this.on('error', console.error)
+        this.on('shardError', console.error)
+
         commands.forEach(([ cmdData, cmdPerms, cmdConfig ]) => this.commands.add(cmdData, cmdPerms, cmdConfig))
 
     }
@@ -86,7 +77,7 @@ class ScrimsBot extends Client {
 
     getConfig(guild_id, key) {
 
-        return this.database.guildEntrys.cache.get({ guild_id, type: { name: key } })[0]?.value ?? null;
+        return this.database.guildEntrys.cache.find({ guild_id, type: { name: key } })?.value ?? null;
 
     }
 
@@ -111,7 +102,7 @@ class ScrimsBot extends Client {
         console.log("Connected to discord!")
 
         const guilds = await this.guilds.fetch()
-        
+
         await this.database.connect();
         this.emit("databaseConnected")
         console.log("Connected to database!")
@@ -123,7 +114,7 @@ class ScrimsBot extends Client {
         console.log("Commands initialized!")
 
         console.log("Initializing guilds...")
-        await Promise.all(guilds.map(guild =>  this.updateScrimsGuild(null, guild)))
+        await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
         console.log("Guilds initialized!")
         
         console.log("Initializing guild members...")
@@ -147,6 +138,10 @@ class ScrimsBot extends Client {
         cmdInteraction.scrimsCommand = this.commands.getScrimsCommand(cmdInteraction.commandName) ?? null
         cmdInteraction.commandConfig = this.commands.getScrimsCommandConfiguration(cmdInteraction.commandName) ?? null
         cmdInteraction.scrimsPermissions = this.commands.getScrimsCommandPermissions(cmdInteraction.commandName) ?? null
+        cmdInteraction.send = async (payload) => {
+            if (cmdInteraction.replied || cmdInteraction.deferred) return cmdInteraction.editReply(payload);
+            return cmdInteraction.reply(payload)
+        } 
 
     }
 
@@ -154,6 +149,10 @@ class ScrimsBot extends Client {
 
         interaction.args = interaction.customId.split("/") || []
         interaction.commandName = interaction.args.shift() || null
+        interaction.send = async (payload) => {
+            if (interaction.replied || interaction.deferred) return interaction.editReply(payload);
+            return interaction.update(payload)
+        } 
 
     }
 
@@ -168,15 +167,29 @@ class ScrimsBot extends Client {
 
     }
 
+    /** @param {Role} role */
+    hasRolePermissions(role) {
+
+        const botMember = role.guild.members.cache.get(this.user.id)
+        if (!botMember) return false;
+        
+        if (!(role.guild.ownerId === this.user.id || botMember.permissions.has("ADMINISTRATOR") || botMember.permissions.has("MANAGE_ROLES"))) return false;
+        
+        const largest = Math.max( ...botMember.roles.cache.map(role => role.position) )
+        return (largest > role.position);
+
+    }
+
     async runHandler(handler, interactEvent, event) {
 
         const id = interactEvent?.id || `${Date.now()}`
-        this.handles.push(id)
+        if (!this.handles.indexOf(id)) this.handles.push(id)
 
         try {
 
             const defer = interactEvent?.commandConfig?.ephemeralDefer
-            if (defer !== undefined) await interactEvent.deferReply({ ephemeral: defer })
+            if (defer !== undefined && !(interactEvent instanceof AutocompleteInteraction)) 
+                await interactEvent.deferReply({ ephemeral: defer })
             await handler(interactEvent, event)
 
         }catch(error) {
@@ -212,7 +225,7 @@ class ScrimsBot extends Client {
 
         const handlerIdentifier = interactEvent?.commandName || null;
 
-        const handler = MemoryMessageButton.getHandler(handlerIdentifier) || this.eventHandlers[handlerIdentifier]
+        const handler = this.limitedComponents.getHandler(handlerIdentifier) || this.eventHandlers[handlerIdentifier]
         if (handler) return this.runHandler(handler, interactEvent, event);
 
         if (interactEvent instanceof Interaction) {
@@ -229,27 +242,50 @@ class ScrimsBot extends Client {
 
     async isPermitted(interactEvent) {
 
-        if (!interactEvent.scrimsPermissions) return false;
+        if (!interactEvent.scrimsPermissions || !interactEvent.userPositions) return false;
 
         const { permissionLevel, allowedPositions, requiredPositions } = interactEvent.scrimsPermissions
         if (!permissionLevel && !allowedPositions && !requiredPositions) return true;
         
-        if (!interactEvent.member) return false;
+        if (interactEvent.member)
+            return interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions);
         
-        const hasPermission = await interactEvent.member.hasPermission(permissionLevel, allowedPositions, requiredPositions).catch(error => error);
-        if (hasPermission instanceof Error) {
+        if (interactEvent.scrimsUser)
+            return interactEvent.scrimsUser.permissions.hasPermission(Object.values(interactEvent.userPositions), permissionLevel, allowedPositions, requiredPositions)
 
-            console.error(`Unable to check if user has permission because of ${hasPermission}!`)
-            return false;
-
-        }
-        return hasPermission;
-
+        return false;
+        
     }
 
-    expandMember(member) {
+    expandMember(member, scrimsUser) {
 
-        member.hasPermission = async (...args) => this.permissions.hasPermission(member, ...args);
+        if (scrimsUser) member.scrimsUser = scrimsUser
+        if (!member.scrimsUser) member.scrimsUser = this.database.users.cache.find({ discord_id: member.id })
+
+        member.id_user = member?.scrimsUser?.id_user ?? null
+        return member;
+       
+    }
+
+    async expandInteractionMember(interation) {
+
+        if (interation.scrimsUser) {
+
+            interation.userPositions = await interation.scrimsUser.permissions.fetchPositions() 
+            if (interation.member) {
+                interation.member.userPositions = interation.userPositions
+                interation.member.hasPermission = (...args) => this.permissions.hasPermission(interation.member, Object.values(interation.userPositions), ...args);
+            }
+
+        }else {
+
+            interation.userPositions = {}
+            if (interation.member) {
+                interation.member.userPositions = interation.userPositions
+                interation.member.hasPermission = () => false;
+            }
+
+        }
 
     }
 
@@ -287,6 +323,7 @@ class ScrimsBot extends Client {
         const isModalSumbitInteraction = (interactEvent instanceof ModalSubmitInteraction)
         const isInteraction = (interactEvent instanceof Interaction)
 
+        interactEvent.database = this.database
         interactEvent.i18n = I18n.getInstance(interactEvent?.locale)
 
         if (interactEvent instanceof Message) this.expandMessage(interactEvent)
@@ -304,7 +341,11 @@ class ScrimsBot extends Client {
         if (interactEvent.commandName === "ping" && isCommandInteraction) 
             return interactEvent.reply({ content: `pong`, embeds: [], components: [], ephemeral: true }).catch(console.error);
 
-        if (this.blocked && isInteraction && !interactEvent?.commandConfig?.bypassBlock) {
+        if (
+            this.blocked && isInteraction && !(interactEvent?.commandConfig?.bypassBlock)
+            && (this.handles.indexOf(interactEvent.id) === -1) && (this.handles.indexOf(interactEvent.commandName) === -1)
+            && !(interactEvent.commandName === "killAction")
+        ) {
 
             if (isAutoCompleteInteraction) await interactEvent.respond([]).catch(console.error);
             else if (isCommandInteraction || isComponentInteraction || isModalSumbitInteraction) 
@@ -316,27 +357,32 @@ class ScrimsBot extends Client {
 
         }
 
-        if (interactEvent.user) {
+        if (interactEvent.member instanceof GuildMember) this.expandMember(interactEvent.member)
+        if (interactEvent?.member?.scrimsUser) interactEvent.scrimsUser = interactEvent.member.scrimsUser
+        if (interactEvent.user && !interactEvent.scrimsUser) {
 
             if (interactEvent?.commandConfig?.forceScrimsUser) {
-                interactEvent.scrimsUser = await this.database.users.get({ discord_id: interactEvent.user.id }).then(result => result[0] ?? false).catch(console.error)
+                interactEvent.scrimsUser = await this.database.users.find({ discord_id: interactEvent.user.id }).catch(console.error)
                 
-                if ((interactEvent.scrimsUser === false) && interactEvent.member) 
-                    interactEvent.scrimsUser = await this.scrimsUsers.createScrimsUser(interactEvent.member)
+                if ((interactEvent.scrimsUser === null) && interactEvent.member) 
+                    interactEvent.scrimsUser = await this.scrimsUsers.createScrimsUser(interactEvent.member).catch(console.error)
 
                 if (!interactEvent.scrimsUser) {
                     if (isCommandInteraction || isComponentInteraction || isModalSumbitInteraction) 
                         await interactEvent.reply(ScrimsMessageBuilder.scrimsUserNeededMessage(interactEvent.i18n)).catch(console.error);
-                      
+        
                     return false;
                 }
             }
 
-            interactEvent.scrimsUser = this.database.users.cache.get({ discord_id: interactEvent?.user?.id })[0] ?? null;
+            interactEvent.scrimsUser = this.database.users.cache.find({ discord_id: interactEvent.user.id })
 
         }
 
-        if (interactEvent.member instanceof GuildMember) this.expandMember(interactEvent.member)
+        if (isInteraction) await this.expandInteractionMember(interactEvent)
+
+        if (interactEvent.user && interactEvent.scrimsUser) 
+            this.scrimsUsers.update(interactEvent.user, interactEvent.scrimsUser).catch(console.error)
             
         if (isCommandInteraction)
             if (!(await this.isPermitted(interactEvent))) 
@@ -367,17 +413,12 @@ class ScrimsBot extends Client {
         const existing = this.database.guilds.cache.resolve(newGuild.id)
         if (!existing) {
 
-            return this.database.guilds.create({
-
-                guild_id: newGuild.id,
-                name: newGuild.name,
-                icon: (newGuild?.icon ?? null)
-
-            }).catch(error => console.error(`Unable to create scrims guild because of ${error}!`));
+            return this.database.guilds.create(ScrimsGuild.fromDiscordGuild(newGuild))
+                .catch(error => console.error(`Unable to create scrims guild because of ${error}!`));
 
         }
 
-        if (existing?.name != newGuild.name || existing?.icon != newGuild.icon) {
+        if (existing?.name !== newGuild.name || existing?.icon !== newGuild.icon) {
 
             await this.database.guilds.update({ guild_id: newGuild.id }, { name: newGuild.name, icon: (newGuild?.icon ?? null) })
                 .catch(error => console.error(`Unable to update scrims guild because of ${error}!`))

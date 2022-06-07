@@ -1,14 +1,12 @@
 const { MessageEmbed, GuildMember, MessageActionRow, Guild } = require("discord.js");
-const MemoryMessageButton = require('../lib/components/memory_button');
 const ScrimsTicket = require('../lib/scrims/ticket');
 const SupportResponseMessageBuilder = require('./responses');
+const TicketCreateExchange = require("./ticket_create_exchange");
 
 const componentHandlers = {
 
-    "ticketModalSubmit": onTicketModalSubmit,
     "ticketCreate": onTicketCreateRequest,
-    "ticketClose": onTicketCloseRequest, 
-    "sendTicket": onTicketSendRequest 
+    "ticketClose": onTicketCloseRequest
 
 }
 
@@ -29,51 +27,6 @@ async function onComponent(interaction) {
 }
 
 /**
- * @param { import('../types').ScrimsModalSubmitInteraction } interaction 
- */
-function getTicketTypeFromId(interaction) {
-
-    const id_type = interaction.args.shift()
-    if (!id_type) return null;
-
-    return interaction.client.database.ticketTypes.cache.resolve(id_type);
-
-}
-
-/**
- * @param { import('../types').ScrimsModalSubmitInteraction } interaction 
- */
-async function onTicketModalSubmit(interaction) {
-
-    const ticketData = {}
-
-    ticketData.type = getTicketTypeFromId(interaction)
-    if (!ticketData.type) return interaction.reply(SupportResponseMessageBuilder.failedMessage('create a support ticket'));
-
-    const inputValue = interaction.fields.getTextInputValue('reason')
-    if (typeof inputValue !== 'string') return interaction.reply(SupportResponseMessageBuilder.errorMessage('Invalid Reason', "You reason must contain at least 15 letters to be valid."));
-    
-    ticketData.reason = SupportResponseMessageBuilder.stripText(inputValue)
-
-    ticketData.targets = await SupportResponseMessageBuilder.parseDiscordUsers(interaction.guild, interaction.fields._fields.find(f => f.customId === 'targets')?.value)
-    
-    const payload = SupportResponseMessageBuilder.ticketConfirmMessage(interaction.i18n, interaction.client, ticketData)
-
-    if (interaction.args.shift() === 'REOPEN') {
-        
-        MemoryMessageButton.destroyMessage(interaction.message)
-        await interaction.update(payload)
-
-    }else {
-
-        await interaction.deferReply({ ephemeral: true })
-        await interaction.editReply(payload)
-
-    }
-
-}
-
-/**
  * @param { import('../types').ScrimsComponentInteraction } interaction 
  */
 function getTicketTypeFromName(interaction) {
@@ -81,7 +34,7 @@ function getTicketTypeFromName(interaction) {
     const ticketTypeName = interaction.args.shift()
     if (!ticketTypeName) return null;
 
-    return interaction.client.database.ticketTypes.cache.get({ name: ticketTypeName })[0] ?? null;
+    return interaction.client.database.ticketTypes.cache.find({ name: ticketTypeName });
 
 }
 
@@ -93,92 +46,46 @@ async function onTicketCreateRequest(interaction) {
     const ticketType = getTicketTypeFromName(interaction)
     if (!ticketType) return interaction.reply(SupportResponseMessageBuilder.failedMessage('create a support ticket'));
 
-    const allowed = await interaction.client.support.verifyTicketRequest(interaction, ticketType.name)
+    const allowed = await interaction.client.support.verifyTicketRequest(interaction.scrimsUser, interaction.guildId, ticketType.name)
     if (allowed !== true) return interaction.reply(allowed);
 
-    await interaction.sendModal(SupportResponseMessageBuilder.ticketCreateModal(ticketType, false))
-
-}
-
-const ticketSendRequestHandlers = { "CREATE": createTicket, "REOPEN": reopenModal }
-
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- */
-async function onTicketSendRequest(interaction) {
-
-    const handler = ticketSendRequestHandlers[interaction.args.shift()];
-    if (!handler) return interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
-
-    if (!interaction.memoryData) return interaction.update({ content: `This message can not be served.`, embeds: [], components: [] });
-    interaction.ticketData = interaction.memoryData
-
-    const allowed = await interaction.client.support.verifyTicketRequest(interaction, interaction.ticketData.type.name)
-    if (allowed !== true) return interaction.update(allowed);
-
-    return handler(interaction);
+    const exchange = new TicketCreateExchange(interaction.client, interaction.guild, interaction.scrimsUser, ticketType, interaction.channel.parentId, createTicket)
+    await exchange.send(interaction)
 
 }
 
 /**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
+ * @param { TicketCreateExchange } exchange 
  */
-async function reopenModal(interaction) {
+async function createTicket(exchange) {
 
-    const fields = []
-    if (interaction.ticketData?.reason) fields.push({ customId: 'reason', value: interaction.ticketData.reason })
-    if (interaction.ticketData?.targets) 
-        fields.push({ customId: 'targets', value: interaction.ticketData.targets.map(value => (value instanceof GuildMember) ? value.user.tag : value.slice(2, -2)).join(' ').split('').slice(0, 100).join('') })
+    const allowed = await exchange.client.support.verifyTicketRequest(exchange.creator, exchange.guild.id, exchange.ticketType.name)
+    if (allowed !== true) return allowed;
 
-    return interaction.sendModal(SupportResponseMessageBuilder.ticketCreateModal(interaction.ticketData.type, true), fields);
-
-} 
-
-function generateRandomLetter() {
-
-    const alphabet = "abcdefghijklmnopqrstuvwxyz"
-    return alphabet[Math.floor(Math.random() * alphabet.length)];
-
-}
-
-/**
- * @param { import('../types').ScrimsComponentInteraction } interaction 
- */
-async function createTicket(interaction) {
-
-    if (!interaction.scrimsUser) return interaction.reply(SupportResponseMessageBuilder.scrimsUserNeededMessage());
-
-    await interaction.update({ content: `Ticket is being created...`, components: [], embeds: [] });
-
-    const mentionRoles = await getMentionRoles(interaction.guild)
-
-    const category = interaction.client.support.getTicketCategory(interaction.guild.id, interaction.ticketData.type.name)
-    
-    const ticketIndex = await interaction.client.database.query(`SELECT nextval('support_ticket_index');`)
+    const category = exchange.client.support.getTicketCategory(exchange.guild.id, exchange.ticketType.name)?.id ?? exchange.categoryId
+    const ticketIndex = await exchange.client.database.query(`SELECT nextval('support_ticket_index');`)
         .then(result => result.rows[0]?.nextval ?? `${generateRandomLetter()}${generateRandomLetter()}`.toUpperCase())
 
-    const channelParentId = category?.id ?? interaction?.channel?.parentId;
-    const channel = await createTicketChannel(interaction.client, interaction.guild, channelParentId, interaction.user, interaction.ticketData.type.name, ticketIndex)
+    const channel = await createTicketChannel(exchange.client, exchange.guild, category, exchange.creator.discordUser, exchange.ticketType.name, ticketIndex)
 
-    const allowed = await interaction.client.support.verifyTicketRequest(interaction, interaction.ticketData.type.name)
-    if (allowed !== true) {
+    const stillAllowed = await exchange.client.support.verifyTicketRequest(exchange.creator, exchange.guildId, exchange.ticketType.name)
+    if (stillAllowed !== true) {
         
         await channel.delete().catch(console.error)
-        return interaction.editReply(allowed);
+        return stillAllowed;
 
     }
 
-    const ticket = await interaction.client.database.tickets.create({ 
+    const ticket = await exchange.client.database.tickets.create(
+        
+        new ScrimsTicket(exchange.client.database)
+            .setUser(exchange.creator)
+            .setType(exchange.ticketType)
+            .setGuild(exchange.guild)
+            .setStatus("open")
+            .setChannel(channel)
 
-        id_ticket: interaction.client.database.generateUUID(),
-        id_user: interaction.scrimsUser.id_user, 
-        id_type: interaction.ticketData.type.id_type,
-        guild_id: interaction.guild.id,
-        status: { name: "open" },
-        channel_id: channel.id, 
-        created_at: Math.round(Date.now()/1000) 
-
-    }).catch(error => error)
+    ).catch(error => error)
 
     if (ticket instanceof Error) {
 
@@ -187,28 +94,44 @@ async function createTicket(interaction) {
 
     }
 
-    await interaction.followUp(getCreatedPayload(channel, ticket.type))
+    sendTicketChannelMessages(exchange, ticket, channel).catch(console.error)
+    return getCreatedPayload(channel, ticket.type);
 
-    const payload = await interaction.client.support.getTicketInfoPayload(interaction.member, mentionRoles, interaction.ticketData)
+}
+
+/**
+ * @param { TicketCreateExchange } exchange 
+ * @param { import("discord.js").TextBasedChannel } channel
+ */
+async function sendTicketChannelMessages(exchange, ticket, channel) {
+
+    const payload = await exchange.client.support.getTicketInfoPayload(exchange)
     const message = await channel.send(payload).catch(console.error)
     if (message) await message.edit({ ...payload, content: null }).catch(console.error)
 
-    const targets = interaction?.ticketData?.targets
-    const reason = interaction?.ticketData?.reason
+    const targets = exchange.getValue("targets")
+    const reason = exchange.getValue("reason")
     
     const logMessage = { 
 
-        id: interaction.id, 
+        id: exchange.customId, 
         createdTimestamp: Date.now(),
-        author: interaction.user, 
-        content: `Created a ${interaction.ticketData.type.name} ticket.`
-            + ((targets?.length > 0) ? ` Reporting: ${targets.map(target => target?.user?.tag ? `@${target.user.tag}` : target).join(' | ')}`: ``)
+        author: exchange.creator.discordUser, 
+        content: `Created a ${exchange.ticketType.name} ticket.`
+            + ((targets?.length > 0) ? ` Reporting: ${targets.map(target => (target?.user?.tag || target?.tag) ? `@${target?.user?.tag || target.tag}` : target).join(' | ')}`: ``)
             + (reason ? ` Reason: ${reason}` : ``) 
 
     }
     
-    await interaction.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
+    await exchange.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
     
+}
+
+function generateRandomLetter() {
+
+    const alphabet = "abcdefghijklmnopqrstuvwxyz"
+    return alphabet[Math.floor(Math.random() * alphabet.length)];
+
 }
 
 function getSupportLevelRoles(client, guild) {
@@ -242,12 +165,6 @@ async function createTicketChannel(client, guild, categoryId, user, type, ticket
 
 }
 
-async function getMentionRoles(guild) {
-
-    const positionRoles = await guild.client.database.positionRoles.get({ guild_id: guild.id, position: { name: "ticket_open_mention" } })
-    return positionRoles.map(posRole => guild.roles.resolve(posRole.role_id)).filter(role => role);
-
-}
 
 function getCreatedPayload(channel, type) {
 
@@ -256,7 +173,7 @@ function getCreatedPayload(channel, type) {
         .setTitle(`Created ${type.capitalizedName} Ticket`)
         .setDescription(`Opened a new ticket for your ${type.name} request at ${channel}.`)
 
-    return { embeds: [embed], ephemeral: true };
+    return { content: null, components: [], embeds: [embed], ephemeral: true };
     
 }
 
@@ -268,7 +185,7 @@ const closeRequestHandlers = { "ACCEPT": onAccept, "DENY": onDeny, "FORCE": onFo
 async function onTicketCloseRequest(interaction) {
 
     const ticketId = interaction.args.shift()
-    if (ticketId) interaction.ticket = await interaction.client.database.tickets.get({ id_ticket: ticketId }).then(v => v[0])
+    if (ticketId) interaction.ticket = await interaction.client.database.tickets.find(ticketId)
 
     const executorId = interaction.args.shift()
     if (executorId) interaction.executor = await interaction.client.users.fetch(executorId)
@@ -327,7 +244,7 @@ async function onAccept(interaction, ticket) {
         return interaction.editReply(getNotAllowedPayload(interaction.i18n, ticket.user));
 
     await interaction.client.support.closeTicket(
-        interaction.channel, interaction.ticket, interaction.executor, 
+        interaction.ticket, interaction.executor, 
         interaction.user, `accepted the close request from ${interaction.executor.tag} with reason: ${interaction.reason}`
     )
 
@@ -339,11 +256,11 @@ async function onAccept(interaction, ticket) {
  */
  async function onForce(interaction, ticket) {
 
-    const hasPermission = await interaction.member.hasPermission('support')
-    if (!hasPermission) return interaction.editReply(SupportResponseMessageBuilder.missingPermissionsMessage('You must be bridge scrims support or higher to do this.'))
+    const hasPermission = interaction.member.hasPermission('support')
+    if (!hasPermission) return interaction.editReply(SupportResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, 'You must be bridge scrims support or higher to do this.'))
 
     await interaction.client.support.closeTicket(
-        interaction.channel, interaction.ticket, interaction.executor, interaction.user, 
+        interaction.ticket, interaction.executor, interaction.user, 
         `forcibly closed this ticket using the request from ${interaction.executor.tag} with reason: ${interaction.reason}`
     )
 

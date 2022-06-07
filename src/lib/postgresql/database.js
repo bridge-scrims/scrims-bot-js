@@ -3,31 +3,35 @@ const pgIPC = require('pg-ipc');
 
 const { v4: uuidv4 } = require("uuid");
 
-const ScrimsTicketMessageAttachment = require("../scrims/ticket_message_attachment");
-const ScrimsSessionParticipant = require('../scrims/session_participant');
-const ScrimsGuildEntryType = require("../scrims/guild_entry_type");
-const ScrimsTicketMessage = require("../scrims/ticket_message");
-const ScrimsUserPosition = require("../scrims/user_position");
-const ScrimsPositionRole = require("../scrims/position_role");
 const ScrimsTicketStatus = require("../scrims/ticket_status");
-const ScrimsSessionType = require('../scrims/session_type');
-const ScrimsGuildEntry = require("../scrims/guild_entry");
 const ScrimsTicketType = require("../scrims/ticket_type");
-const ScrimsAttachment = require('../scrims/attachment');
-const ScrimsPosition = require('../scrims/position');
-const ScrimsSession = require('../scrims/session');
 const ScrimsTicket = require("../scrims/ticket");
 const ScrimsGuild = require('../scrims/guild');
 const ScrimsUser = require("../scrims/user");
+const DBTable = require('./table');
+const ScrimsGuildEntry = require('../scrims/guild_entry');
+const ScrimsPosition = require('../scrims/position');
+const ScrimsPositionRole = require('../scrims/position_role');
+const ScrimsUserPosition = require('../scrims/user_position');
+const ScrimsGuildEntryType = require('../scrims/guild_entry_type');
+const ScrimsAttachment = require('../scrims/attachment');
+const ScrimsTicketMessage = require('../scrims/ticket_message');
+const ScrimsTicketMessageAttachment = require('../scrims/ticket_message_attachment');
+const ScrimsSession = require('../scrims/session');
+const ScrimsSessionType = require('../scrims/session_type');
+const ScrimsSuggestion = require('../scrims/suggestion');
+
+const ScrimsUserPositionTable = require("../scrims/user_position_table");
+const ScrimsUserTable = require("../scrims/user_table");
 
 class DBClient {
 
-    constructor(bot, config) {
+    constructor(config, bot=null) {
 
         Object.defineProperty(this, 'bot', { value: bot });
 
         /**
-         * @type { import('../bot') }
+         * @type {import('../bot') | null}
          * @readonly
          */
         this.bot
@@ -47,113 +51,89 @@ class DBClient {
         this.tables = []
         this.__addScrimsTables()
         
-        /**
-         * @type { ScrimsAttachment.Table }
-         */
-        this.attachments 
-
-        /**
-         * @type { ScrimsGuild.Table }
-         */
+        /** @type {DBTable<ScrimsGuild>} */
         this.guilds
 
-        /**
-         * @type { ScrimsUser.Table }
-         */
+        /** @type {ScrimsUserTable} */
         this.users
 
-        /**
-         * @type { ScrimsPosition.Table }
-         */
+        /** @type {DBTable<ScrimsPosition>} */
         this.positions
 
-        /**
-         * @type { ScrimsUserPosition.Table }
-         */
+        /** @type {DBTable<ScrimsAttachment>} */
+        this.attachments
+
+        /** @type {DBTable<ScrimsPositionRole>} */
+        this.positionRoles
+
+        /** @type {ScrimsUserPositionTable} */
         this.userPositions
 
-        /**
-         * @type { ScrimsPositionRole.Table }
-         */
-        this.positionRoles
- 
-        /**
-         * @type { ScrimsGuildEntryType.Table }
-         */
+        /** @type {DBTable<ScrimsGuildEntryType} */
         this.guildEntryTypes
 
-        /**
-         * @type { ScrimsGuildEntry.Table }
-         */
+        /** @type {DBTable<ScrimsGuildEntry>} */
         this.guildEntrys
 
-        /**
-         * @type { ScrimsTicketType.Table }
-         */
-        this.ticketTypes
-
-        /**
-         * @type { ScrimsTicketStatus.Table }
-         */
-        this.ticketStatuses
-
-        /**
-         * @type { ScrimsTicket.Table }
-         */
-        this.tickets
-
-        /**
-         * @type { ScrimsTicketMessage.Table }
-         */
+        /** @type {DBTable<ScrimsTicketMessage>} */
         this.ticketMessages
 
-        /**
-         * @type { ScrimsTicketMessageAttachment.Table }
-         */
+        /** @type {DBTable<ScrimsTicketMessageAttachment>} */
         this.ticketMessageAttachments
 
-        /**
-         * @type { ScrimsSession.Table }
-         */
-        this.sessions
+        /** @type {DBTable<ScrimsTicketType>} */
+        this.ticketTypes
 
-        /**
-         * @type { ScrimsSessionType.Table }
-         */
+        /** @type {DBTable<ScrimsTicketStatus>} */
+        this.ticketStatuses
+
+        /** @type {DBTable<ScrimsTicket>} */
+        this.tickets
+
+        /** @type {DBTable<ScrimsSessionType>} */
         this.sessionTypes
 
-        /**
-         * @type { ScrimsSessionParticipant.Table }
-         */
-        this.sessionParticipants
+        /** @type {DBTable<ScrimsSession>} */
+        this.sessions
+
+        /** @type {DBTable<ScrimsSuggestion} */
+        this.suggestions
 
     }
 
     __addScrimsTables() {
 
-        this.addTable("attachments", new ScrimsAttachment.Table(this))
+        this.addTable("guilds", new DBTable(this, 'scrims_guild', null, { lifeTime: -1 }, [], ScrimsGuild))
+        this.addTable("users", new ScrimsUserTable(this))
+        this.addTable("positions", new DBTable(this, "scrims_position", null, { lifeTime: -1 }, [], ScrimsPosition))
+        this.addTable("attachments", new DBTable(this, "scrims_attachment", null, { lifeTime: -1 }, [], ScrimsAttachment))
 
-        this.addTable("guilds", new ScrimsGuild.Table(this))
-        this.addTable("users", new ScrimsUser.Table(this))
-
-        this.addTable("positions", new ScrimsPosition.Table(this))
-        this.addTable("userPositions", new ScrimsUserPosition.Table(this))
+        this.addTable("positionRoles", new DBTable(this, "scrims_position_role", "get_position_roles", { lifeTime: -1 }, [ ["position", "id_position", "get_position_id"] ], ScrimsPositionRole))
+        this.addTable("userPositions", new ScrimsUserPositionTable(this))
         
-        this.addTable("positionRoles", new ScrimsPositionRole.Table(this))
+        this.addTable("guildEntryTypes", new DBTable(this, "scrims_guild_entry_type", null, { lifeTime: -1 }, [], ScrimsGuildEntryType))
+        this.addTable("guildEntrys", new DBTable(this, "scrims_guild_entry", "get_guild_entrys", { lifeTime: -1 }, [ ["type", "id_type", "get_guild_entry_type_id"] ], ScrimsGuildEntry))
 
-        this.addTable("guildEntryTypes", new ScrimsGuildEntryType.Table(this))
-        this.addTable("guildEntrys", new ScrimsGuildEntry.Table(this))
+        this.addTable("ticketMessages", new DBTable(this, "scrims_ticket_message", null, {}, [ ["ticket", "id_ticket", "get_ticket_id"], ["author", "id_author", "get_user_id"] ], ScrimsTicketMessage))
+        this.addTable("ticketMessageAttachments", new DBTable(this, "scrims_ticket_message_attachment", "get_ticket_message_attachments", {}, [ ["ticket", "id_ticket", "get_ticket_id"], ["attachment", "attachment_id", "get_attachment_id"] ], ScrimsTicketMessageAttachment))
 
-        this.addTable("ticketTypes", new ScrimsTicketType.Table(this))
-        this.addTable("ticketStatuses", new ScrimsTicketStatus.Table(this))
-        this.addTable("tickets", new ScrimsTicket.Table(this))
-        this.addTable("ticketMessages", new ScrimsTicketMessage.Table(this))
-        this.addTable("ticketMessageAttachments", new ScrimsTicketMessageAttachment.Table(this))
+        this.addTable("ticketTypes", new DBTable(this, 'scrims_ticket_type', null, { lifeTime: -1 }, [], ScrimsTicketType))
+        this.addTable("ticketStatuses", new DBTable(this, 'scrims_ticket_status', null, { lifeTime: -1 }, [], ScrimsTicketStatus))
 
-        this.addTable("sessions", new ScrimsSession.Table(this))
-        this.addTable("sessionTypes", new ScrimsSessionType.Table(this))
-        this.addTable("sessionParticipants", new ScrimsSessionParticipant.Table(this))
+        const ticketForeigners = [
+            [ "user", "id_user", "get_user_id" ],
+            [ "type", "id_type", "get_ticket_type_id" ],
+            [ "status", "id_status", "get_ticket_status_id" ],
+            [ "closer", "id_closer", "get_user_id" ]
+        ]
+        this.addTable("tickets", new DBTable(this, 'scrims_ticket', 'get_tickets', {}, ticketForeigners, ScrimsTicket))
 
+        this.addTable("sessionTypes", new DBTable(this, "scrims_session_type", null, { lifeTime: -1 }, [], ScrimsSessionType))
+        this.addTable("sessions", new DBTable(this, "scrims_session", "get_sessions", {}, [ ["type", "id_type", "get_session_type_id"], ["creator", "id_creator", "get_user_id"] ], ScrimsSession))
+
+        const suggestionForeigners = [ ["creator", "id_creator", "get_creator_id"], ["attachment", "id_attachment", "get_attachment_id"] ]
+        this.addTable("suggestions", new DBTable(this, "scrims_suggestion", "get_suggestions", {}, suggestionForeigners, ScrimsSuggestion))
+        
     }
 
     generateUUID() {
@@ -196,9 +176,13 @@ class DBClient {
 
     }
     
-    async query(...args) {
+    /**
+     * @param {string} queryText 
+     * @param {any[]} values
+     */
+    async query(queryText, values) {
 
-        return this.pool.query(...args);
+        return this.pool.query(queryText, values);
         
     }
   

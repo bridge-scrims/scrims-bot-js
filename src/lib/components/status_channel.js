@@ -1,20 +1,16 @@
 const { GuildChannel } = require("discord.js")
 
-const UPDATE_TIME_LIMIT = 1000*60*10
+const UPDATE_TIME_LIMIT = 10*60*1000
 const UPDATE_AMMOUNT_LIMIT = 2
 
 class StatusChannel {
 
     constructor(channel) {
 
-        /**
-         * @type { string }
-         */
+        /** @type { string } */
         this.id = channel.id
 
-        /**
-         * @type { GuildChannel }
-         */
+        /** @type { GuildChannel } */
         this.channel = channel
 
         this.channelDeleteCall = (channel) => {

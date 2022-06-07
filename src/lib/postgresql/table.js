@@ -4,54 +4,61 @@ const TableRow = require("./row")
 /** @template [T=TableRow] */
 class DBTable {
 
-    constructor(client, name, getFunction=null, foreigners=[], uniqueKeys=[], RowClass=TableRow, CacheClass=DBCache) {
+    /**
+     * @typedef {Object.<string, any>|Array.<Object.<string, any>>|Array.<string>|Array.<Array.<string>>|T} FetchOptions
+     */
+
+    constructor(client, name, getFunction=null, cacheOptions={}, foreigners=[], RowClass=TableRow) {
 
         Object.defineProperty(this, 'client', { value: client });
 
         /**
-         * @type { import('./database') }
+         * @readonly
+         * @type {import('./database')}
          */
         this.client
         
+        /** @type {string} */
         this.name = name
+
+        /** @type {string} */
         this.getFunction = getFunction
+
+        /** @type {DBCache<T>} */
+        this.cache = new DBCache(cacheOptions)
+
+        /** @type {[string, string, string][]} */
         this.foreigners = foreigners
 
+        /** @type {T.constructor} */
         this.RowClass = RowClass
-
-        /**
-         * @type { DBCache<T> }
-         */
-        this.cache = new CacheClass()
-
-        /**
-         * @type { string[] }
-         */
-        this.columns = []
-
-        /**
-         * @type { string[] }
-         */
-        this.uniqueKeys = uniqueKeys
 
     }
 
-    get ipc() {
+    /** @returns {string[]} */
+    get uniqueKeys() {
+        
+        return this.RowClass.uniqueKeys;
+
+    }
+
+    get ipc() { 
 
         return this.client.ipc;
 
     }
 
-    async query(...args) {
+    /**
+     * @param {string} queryString 
+     * @param {any[]} params 
+     */
+    async query(queryString, params) {
 
-        return this.client.query(...args);
+        return this.client.query(queryString, params);
 
     }
 
     async connect() {
-
-        const schema = await this.query(`SELECT * FROM information_schema.columns WHERE table_name='${this.name}'`)
-        this.columns = schema.rows.map(row => row['column_name'])
 
         this.initializeListeners()
         await this.initializeCache()
@@ -60,20 +67,29 @@ class DBTable {
 
     initializeListeners() {
 
-
-
+        this.ipc.on(`${this.name}_remove`, message => this.cache.filterOut(message.payload))
+        this.ipc.on(`${this.name}_update`, message => this.cache.update(message.payload.selector, message.payload.data))
+        this.ipc.on(`${this.name}_create`, message => this.cache.push(this.getRow(message.payload)))
+        
     }
 
     async initializeCache() {
 
-        await this.get({ }, false)
+        await this.fetch(null, false)
 
     }
 
     createSelectQuery(selectCondition, prevValues=[]) {
 
         const [ whereClause, whereValues ] = this.createWhereClause(selectCondition, prevValues)
-        return [ `SELECT * FROM ${this.name} ${whereClause}`, whereValues ];
+        return [ `SELECT * FROM ${this.name}${(whereClause.length > 0) ? ' WHERE ' : ''}${whereClause}`, whereValues ];
+
+    }
+
+    createCountQuery(selectCondition, prevValues=[]) {
+
+        const [ whereClause, whereValues ] = this.createWhereClause(selectCondition, prevValues)
+        return [ `SELECT count(*) FROM ${this.name}${(whereClause.length > 0) ? ' WHERE ' : ''}${whereClause}`, whereValues ];
 
     }
 
@@ -99,10 +115,10 @@ class DBTable {
 
         if (Object.keys(selectCondition).length === 0) return [ "", [] ];
 
-        const getSymbol = (value) => (value == "NULL") ? " IS " : "="
+        const getSymbol = (value) => (value === "NULL") ? " IS " : "="
         
         return [
-            `WHERE ${this.getEntries(selectCondition, prevValues).map(([key, value]) => `${key}${getSymbol(value)}${value}`).join(" AND ")}`,
+            `${this.getEntries(selectCondition, prevValues).map(([key, value]) => `${key}${getSymbol(value)}${value}`).join(` AND `)}`,
             this.getValues(selectCondition, prevValues)
         ];
 
@@ -131,32 +147,35 @@ class DBTable {
 
     getValues(data, prevValues) {
 
-        return [ ...prevValues, ...Object.values(data).filter(value => !(value instanceof Array) && value !== null) ];
+        return [ ...prevValues, ...Object.values(data).filter(value => !(value instanceof Array) && value !== null && value !== undefined) ];
 
     }
 
     getEntries(data, prevValues=[]) {
 
         let index = prevValues.length + 1
-        return Object.entries(data).map(([key, value]) => {
+        return Object.entries(data)
+            .filter(([_, value]) => value !== undefined)
+            .map(([key, value]) => {
 
-            if (value === null) value = 'NULL';
-            else if (value instanceof Array) value = value[0];
-            else {
+                if (value === null) value = 'NULL';
+                else if (value instanceof Array) value = `(${value[0]})`;
+                else {
 
-                value = `$${index}`
-                index += 1
+                    value = `$${index}`
+                    index += 1
 
-            }
+                }
 
-            return [ key, value ];
+                return [ key, value ];
 
-        });
+            });
 
     }
 
     format(data, prevValues=[]) {
 
+        const formatedData = {}
         this.foreigners.forEach(([ commonKey, localKey, translater ]) => {
 
             const foreigner = data[commonKey]
@@ -165,15 +184,14 @@ class DBTable {
                 const [ parameters, values ] = this.createFunctionParameters(foreigner, prevValues)
             
                 prevValues = values
-                data[localKey] = [ `${translater}(${parameters})` ]
+                formatedData[localKey] = [ `${translater}(${parameters})` ]
+                formatedData[commonKey] = undefined
 
             }
 
-            if (data[commonKey] !== undefined) delete data[commonKey];
-
         })
 
-        return [ data, prevValues ];
+        return [ { ...data, ...formatedData }, prevValues ];
 
     }
 
@@ -194,47 +212,154 @@ class DBTable {
     getRow(rowData) {
 
         if (rowData instanceof this.RowClass) return rowData;
-        return new this.RowClass(this, rowData);
+        return new this.RowClass(this.client, rowData);
 
     }
 
-    /** 
-     * @returns { Promise<T[]> }
+    /**
+     * @param {FetchOptions} [options] If fasley, fetches all.
+     * @param {boolean} [useCache]
+     * @returns {Promise<T[]>}
      */
-    async get(selectCondition, useCache=true) { 
+    async fetch(options, useCache=false) {
 
-        const cached = this.cache.get(this.getRow(selectCondition))
-        if (cached.length > 0 && useCache) return cached;
+        if (useCache) {
+            const cached = this.cache.get(options)
+            if (cached?.length > 0) return cached;
+        }
 
-        const [ formated, values1 ] = this.format({ ...selectCondition })
-        const query = (this.getFunction === null) ? this.createSelectQuery(formated, values1) : this.createFunctionSelectQuery(formated, values1)
-        const result = await this.query( ...query )
-
-        const items = (this.getFunction === null) ? result.rows : result.rows[0][this.getFunction]
-        const rows = this.getRows(items)
- 
-        if (JSON.stringify(selectCondition) === "{}") this.cache.setAll(rows)
-        else rows.forEach(row => this.cache.push(row))
+        const rows = await this._makeFetchQuery(options).then(rows => this.getRows(rows))
         
+        if (!options) this.cache.setAll(rows)
+        else rows.forEach(row => this.cache.push(row))
         return rows;
 
     }
 
     /**
-     * @param { Object.<string, any> } selectCondition
+     * @param {Object.<string, any>|Array.<Object.<string, any>>} [options] If fasley, counts all.
+     * @returns {Promise<number>}
+     */
+    async count(options) {
+
+        if (options instanceof Array) {
+
+            const [ conditions, values ] = options.reduce(([conditions, values], id) => {
+
+                const [ thisConditions, thisValues ] = this.createWhereClause( ...this.format(id, values) )
+                return [ conditions.concat(thisConditions), thisValues ];
+
+            }, [ [], [] ])
+
+            options = [ `SELECT count(*) FROM ${this.name} WHERE ${conditions.map(v => `(${v})`).join(' OR ')}`, values ];
+
+        }else {
+
+            options = this._getObjectSelector(options ?? {})
+            options = this.format(options ?? {})
+            options = this.createCountQuery( ...options )
+
+        }
+
+        const result = await this.query( ...options )
+        return parseInt((result.rows[0] ?? {})["count"] ?? 0);
+
+    }
+
+    _getSelectorFromId(id) {
+
+        if (!(id instanceof Array)) id = [id] 
+        return Object.fromEntries(this.uniqueKeys.map((key, idx) => [key, id[idx]]));
+
+    } 
+
+    _getFetchQuery(options) {
+
+        if (options instanceof Array) {
+
+            const [ conditions, values ] = options.reduce(([conditions, values], id) => {
+
+                const [selector, selectorValues] = (() => {
+
+                    if (typeof id === "string" || id instanceof Array) return [this._getSelectorFromId(id), values];
+                    else return this.format(id, values)
+
+                })()
+
+                const [ thisConditions, thisValues ] = this.createWhereClause(selector, selectorValues)
+                return [ conditions.concat(thisConditions), thisValues ];
+
+            }, [ [], [] ])
+
+            return [ `SELECT * FROM ${this.name} WHERE ${conditions.map(v => `(${v})`).join(' OR ')}`, values ];
+
+        }
+
+        if (options instanceof TableRow) options = options.toJSON(false)
+
+        options = this._getObjectSelector(options ?? {})
+        options = this.format(options ?? {})
+
+        if (this.getFunction) return this.createFunctionSelectQuery( ...options );
+        return this.createSelectQuery( ...options );
+
+    }
+
+    _getObjectSelector(obj) {
+
+        if (this.uniqueKeys.length > 0 && this.uniqueKeys.every(key => obj[key] !== undefined)) {
+            return Object.fromEntries(this.uniqueKeys.map(key => [key, obj[key]]))
+        }
+        return obj;
+        
+    }
+
+    async _makeFetchQuery(options) {
+
+        const query = this._getFetchQuery(options)
+        const result = await this.query( ...query )
+        return (result.rows[0] ?? {})[this.getFunction] ?? result.rows;
+
+    }
+
+    /**
+     * @param {Object.<string, any>|Array.<string>|string|number|T} options
+     * @param {boolean} [useCache]
+     * @returns {Promise<T>}
+     */
+    async find(options, useCache=true) {
+
+        if (useCache) {
+            const cached = this.cache.find(options)
+            if (cached) return cached;
+        }
+
+        if (options instanceof Array || typeof options !== "object") options = this._getSelectorFromId(options)
+
+        const rows = await this._makeFetchQuery(options)
+        if (rows.length === 0) return null;
+        
+        const row = this.getRow(rows[0])
+        this.cache.push(row)
+        return row;
+
+    }
+
+    /**
+     * @param {FetchOptions} selectCondition
      * @param { string[] } mapKeys
      * @param { Boolean } useCache
      * @returns { Promise<{ [x: string]: T }> }
      */
     async getMap(selectCondition, mapKeys, useCache=false) {
 
-        const result = await this.get(selectCondition, useCache)
+        const result = await this.fetch(selectCondition, useCache)
         return Object.fromEntries(result.map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value]));
 
     }
 
     /**
-     * @param { Object.<string, any> } selectCondition
+     * @param {FetchOptions} selectCondition
      * @param { string[] } mapKeys
      * @param { Boolean } useCache
      * @returns { Promise<{ [x: string]: T[] }> }
@@ -243,7 +368,7 @@ class DBTable {
 
         const obj = {}
 
-        const result = await this.get(selectCondition, useCache)
+        const result = await this.fetch(selectCondition, useCache)
         result.map(value => [mapKeys.reduce((v, key) => (v ?? {})[key], value), value])
             .forEach(([key, value]) => (key in obj) ? obj[key].push(value) : obj[key] = [value])
         
@@ -252,52 +377,70 @@ class DBTable {
     }
 
     /** 
+     * @param { Object.<string, any> | T } data
      * @returns { Promise<T> }
      */
     async create(data) {
 
         const obj = this.getRow(data)
-        const inserted = obj.id ? this.cache.push(obj) : null
-        const filter = inserted?.getSelector()
+        if (obj.id) this.cache.push(obj)
 
-        if (data instanceof TableRow) data = data.toMinimalForm()
-        const [ formated, formatValues ] = this.format({ ...data })
+        const result = await this.query( ...this.createInsertQuery( ...this.format(obj.toJSON(false)) ) ).catch(error => error)
+        if (result instanceof Error) {
+            if (obj.id) this.cache.remove(obj.id)
+            throw result;
+        }
 
-        const query = this.createInsertQuery(formated, formatValues)
-        await this.query( ...query )
-        
         // Fetch what was just inserted to add it to cache
-        if (filter) return this.get(filter, false).then(rows => rows[0]);
-        return null; 
+        if (!obj.id || obj.partial) return this.find(obj, false);
+        return obj;
 
     }
 
+    /** 
+     * @param {Object.<string, any>|T|string|number|Array.<string>} selector
+     * @param {Object.<string, any>} data
+     */
     async update(selector, data) {
 
-        const [ formatedData, values1 ] = this.format({ ...data })
+        if (selector instanceof Array || typeof selector !== "object") selector = this._getSelectorFromId(selector)
+        else selector = this._getObjectSelector(selector)
+
+        const existing = this.cache.find(selector)
+        this.cache.update(selector, data)
+
+        const [ formatedData, values1 ] = this.format(data)
         const [ setClause, values2 ] = this.createSetClause(formatedData, values1)
 
-        const [ formatedSelector, values3 ] = this.format({ ...selector }, values2)
+        const [ formatedSelector, values3 ] = this.format(selector, values2)
         const [ whereClause, values4 ] = this.createWhereClause(formatedSelector, values3)
 
-        const result = await this.query(`UPDATE ${this.name} ${setClause} ${whereClause}`, values4)
-        this.cache.update(this.getRow(data), this.getRow(selector))
-
+        const result = await this.query(`UPDATE ${this.name} ${setClause} WHERE ${whereClause}`, values4).catch(error => error)
+        if (result instanceof Error) {
+            this.cache.update(selector, existing)
+            throw result;
+        }
         return result;
 
     }
 
     /** 
+     * @param { Object.<string, any> | T } selector
      * @returns { Promise<T[]> }
      */
     async remove(selector) {
 
-        const [ formated, values1 ] = this.format({ ...selector })
+        selector = this._getObjectSelector(selector)
+        const removed = this.cache.filterOut(selector)
+
+        const [ formated, values1 ] = this.format(selector)
         const [ whereClause, values2 ] = this.createWhereClause(formated, values1)
 
-        await this.query(`DELETE FROM ${this.name} ${whereClause}`, values2)
-        
-        const removed = this.cache.filterOut(selector)
+        const result = await this.query(`DELETE FROM ${this.name} WHERE ${whereClause}`, values2).catch(error => error)
+        if (result instanceof Error) {
+            removed.forEach(removed => this.cache.push(removed))
+            throw result;
+        }
         return removed;
 
     }

@@ -13,32 +13,40 @@ class ScrimsUserUpdater {
          */
         this.bot
 
-        this.addEventListeners()
+        this.bot.on('ready', () => this.addEventListeners())
 
     }
 
     addEventListeners() {
 
-        this.bot.on('guildMemberAdd', member => this.onMemberAdd(member))
-        this.bot.on('userUpdate', (oldUser, newUser) => this.onUserUpdate(oldUser, newUser))
+        this.bot.on('guildMemberAdd', member => this.onMemberAdd(member).catch(console.error))
+        this.bot.on('userUpdate', (_, newUser) => this.update(newUser).catch(console.error))
 
-        this.bot.on('guildCreate', guild => this.initializeGuildMembers(guild))
+        this.bot.on('guildCreate', guild => this.initializeGuildMembers(guild).catch(console.error))
 
     }
 
+    expandMember(member, scrimsUser) {
+        return this.bot.expandMember(member, scrimsUser);
+    }
+    
     /**
-     * @param { User | PartialUser } oldUser 
-     * @param { User } newUser 
+     * @param {User} user 
+     * @param {ScrimsUser} [scrimsUser]
      */
-    async onUserUpdate(oldUser, newUser) {
+    async update(user, scrimsUser) {
 
-        if (oldUser?.tag != newUser.tag || oldUser?.avatar != newUser.avatar || oldUser?.accentColor != newUser.accentColor) {
-            await this.updateScrimsUser(newUser.id, {
+        if (!scrimsUser) scrimsUser = this.bot.database.users.cache.find({ discord_id: user.id })
+        if (!scrimsUser) return false;
 
-                discord_username: newUser.username, 
-                discord_discriminator: newUser.discriminator,
-                discord_accent_color: newUser.accentColor,
-                discord_avatar: newUser.avatar
+        await user.fetch(true)
+        if (scrimsUser.tag !== user.tag || scrimsUser.discord_avatar !== user.avatar || scrimsUser.discord_accent_color !== user.accentColor) {
+            await this.updateScrimsUser(user.id, {
+
+                discord_username: user.username, 
+                discord_discriminator: user.discriminator,
+                discord_accent_color: user.accentColor,
+                discord_avatar: user.avatar
 
             })
         }
@@ -51,7 +59,7 @@ class ScrimsUserUpdater {
     async onMemberAdd(member) {
 
         const scrimsUsers = this.bot.database.users.cache.getMap("discord_id")
-        member.scrimsUser = await this.createMember(member, scrimsUsers[member.id])
+        await this.createMember(member, scrimsUsers[member.id])
         this.bot.emit('scrimsGuildMemberAdd', member)
 
     }
@@ -79,7 +87,7 @@ class ScrimsUserUpdater {
     async updateMembers(members, allScrimsUsers) {
 
         for (const member of members.values()) 
-            await this.updateMember(member, allScrimsUsers).catch(console.error)
+            await this.update(member.user, allScrimsUsers[member.id]).catch(console.error)
 
     }
 
@@ -91,41 +99,11 @@ class ScrimsUserUpdater {
 
         if (!scrimsUser) {
 
-            await member.user.fetch()
             return this.createScrimsUser(member);
 
         }
 
-        return scrimsUser;
-
-    }
-
-    /**
-     * @param { GuildMember } member
-     * @param { Object.<string, ScrimsUser> } scrimsUsers
-     */
-    async updateMember(member, scrimsUsers) {
-
-        const scrimsUser = scrimsUsers[member.id]
-        if (!scrimsUser) return false
-
-        await member.user.fetch()
-        
-        if ((
-                scrimsUser.discord_username != member.user.username 
-                || scrimsUser.discord_discriminator != member.user.discriminator 
-                || scrimsUser.discord_accent_color != member.user.accentColor 
-                || scrimsUser.discord_avatar != member.user.avatar
-            )
-        ) await this.updateScrimsUser(member.id, {
-
-            discord_username: member.user.username, 
-            discord_discriminator: member.user.discriminator,
-            discord_accent_color: member.user.accentColor,
-            discord_avatar: member.user.avatar
-
-        })
-
+        this.expandMember(member, scrimsUser)
         return scrimsUser;
 
     }
@@ -135,6 +113,8 @@ class ScrimsUserUpdater {
      */
     async createScrimsUser(member) {
 
+        await member.user.fetch()
+
         return this.bot.database.users.create({ 
 
             id_user: this.bot.database.generateUUID(),
@@ -143,9 +123,10 @@ class ScrimsUserUpdater {
             discord_discriminator: member.user.discriminator,
             discord_accent_color: member.user.accentColor,
             discord_avatar: member.user.avatar, 
-            joined_at: Math.round(member.joinedTimestamp/1000) 
+            joined_at: Math.floor(member.joinedTimestamp/1000) 
             
-        }).catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))
+        }).then(scrimsUser => this.expandMember(member, scrimsUser))
+        .catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))
 
     }
 

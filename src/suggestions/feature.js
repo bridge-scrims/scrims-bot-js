@@ -1,24 +1,14 @@
 const SuggestionsResponseMessageBuilder = require("./responses");
-const ScrimsSuggestion = require("./suggestion");
 const onReactionUpdate = require("./reactions");
 
 const { interactionHandler, listeners, contextMenus } = require("./interactions");
 const { commandHandler, eventListeners, commands } = require("./commands");
 
-const { Message, TextChannel } = require("discord.js");
+const { Message, TextChannel, MessageReaction } = require("discord.js");
 const DynamicallyConfiguredValueUpdater = require("../lib/tools/configed_value_updater");
 const AsyncFunctionBuffer = require("../lib/tools/buffer");
 
 class SuggestionsFeature {
-
-    static tables = { 
-
-        /**
-         * @type { ScrimsSuggestion.Table }
-         */
-        suggestions: null
-
-    }
 
     constructor(bot) {
 
@@ -36,11 +26,10 @@ class SuggestionsFeature {
         this.suggestionChannels = {}
 
         this.configChangeBuffer = new AsyncFunctionBuffer((guildId) => this.onConfigurationChange(guildId))
+        this.infoMessageBuffer = new AsyncFunctionBuffer((...args) => this.sendSuggestionInfoMessageTask(...args))
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
         contextMenus.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
-
-        this.database.addTable("suggestions", new ScrimsSuggestion.Table(this.database))
 
         this.bot.on('ready', () => this.onReady())
         this.bot.on('databaseConnected', () => this.onStartup())
@@ -71,8 +60,8 @@ class SuggestionsFeature {
 
     async onStartup() {
 
-        new DynamicallyConfiguredValueUpdater(this.database, `suggestions_channel`, (guildId) => this.configChangeBuffer.run(guildId), (guildId) => this.configChangeBuffer.run(guildId))
-        new DynamicallyConfiguredValueUpdater(this.database, `suggestions_vote_const`, (guildId) => this.configChangeBuffer.run(guildId), (guildId) => this.configChangeBuffer.run(guildId))
+        new DynamicallyConfiguredValueUpdater(this.bot, `suggestions_channel`, (guildId) => this.configChangeBuffer.run(guildId), (guildId) => this.configChangeBuffer.run(guildId))
+        new DynamicallyConfiguredValueUpdater(this.bot, `suggestions_vote_const`, (guildId) => this.configChangeBuffer.run(guildId), (guildId) => this.configChangeBuffer.run(guildId))
 
     }
 
@@ -111,8 +100,6 @@ class SuggestionsFeature {
         const channel = await this.bot.channels.fetch(this.getChannelId(guildId))
         context.channel_name = channel.name
 
-        await this.logSuccess(`Suggestions channel found and is initializing with a critical vote ratio of ${this.getVoteConst(guildId)}.`, context)
-
         const messages = await channel.messages.fetch()
         await Promise.all(messages.filter(msg => (msg.components.length > 0) && msg.author.id === this.bot.user.id).map(msg => msg.delete()))
 
@@ -143,8 +130,6 @@ class SuggestionsFeature {
         if (this.suggestionInfoMessages[guildId] instanceof Message) {
 
             const guild = this.suggestionInfoMessages[guildId].guild
-            await this.logError(`Suggestions unconfigured.`, { guild_id: guild.id })
-
             await this.suggestionInfoMessages[guildId].delete().catch(() => null);
 
         }
@@ -173,13 +158,13 @@ class SuggestionsFeature {
 
     async onReady() {
 
-        this.bot.on('scrimsMessageCreate', message => this.onMessageCreate(message))
-        this.bot.on('scrimsMessageDelete', message => this.onMessageDelete(message))
+        this.bot.on('scrimsMessageCreate', message => this.onMessageCreate(message).catch(console.error))
+        this.bot.on('scrimsMessageDelete', message => this.onMessageDelete(message).catch(console.error))
 
-        this.bot.on('scrimsReactionRemove', reaction => this.onReactionUpdate(reaction))
-        this.bot.on('scrimsReactionAdd', reaction => this.onReactionUpdate(reaction))
+        this.bot.on('scrimsReactionRemove', reaction => this.onReactionUpdate(reaction).catch(console.error))
+        this.bot.on('scrimsReactionAdd', reaction => this.onReactionUpdate(reaction).catch(console.error))
 
-        this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel))
+        this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel).catch(console.error))
 
         this.addEventHandlers()
 
@@ -215,7 +200,7 @@ class SuggestionsFeature {
         if (message.channel.id !== suggestionsChannel?.id) return false;
 
         // Messages like CHANNEL_PINNED_MESSAGE & THREAD_CREATED should get deleted
-        const badMessageTypes = ['CHANNEL_PINNED_MESSAGE', 'THREAD_STARTER_MESSAGE']
+        const badMessageTypes = ['CHANNEL_PINNED_MESSAGE', 'THREAD_CREATED']
         if (badMessageTypes.includes(message.type)) return message.delete().catch(console.error);
     
         // This bot sent the message so don't worry about it
@@ -228,22 +213,22 @@ class SuggestionsFeature {
 
     async onMessageDelete(message) {
 
-        const suggestion = this.database.suggestions.cache.get({ message_id: message.id })[0]
-
-        // If a suggestion message was delted it should also be deleted in the database
-        await this.database.suggestions.remove({ message_id: message.id }).catch(console.error);
+        const suggestion = this.database.suggestions.cache.find({ message_id: message.id })
 
         if (suggestion) {
 
+            await this.database.suggestions.remove({ message_id: message.id })
             this.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: message?.executor?.id })
 
         }
         
     }
 
+    /** @param {MessageReaction} reaction */
     async onReactionUpdate(reaction) {
 
-        if (reaction.userId == this.bot.user.id) return false;
+        if (reaction.message.author !== this.bot.user) return false;
+        if (reaction.userId === this.bot.user.id) return false;
         await onReactionUpdate(reaction).catch(console.error)
         
     }
@@ -259,6 +244,12 @@ class SuggestionsFeature {
 
     async sendSuggestionInfoMessage(channel, resend) {
 
+        await this.infoMessageBuffer.run(channel, resend).catch(console.error)
+
+    }
+    
+    async sendSuggestionInfoMessageTask(channel, resend) {
+
         const context = { guild_id: channel.guild.id, channel_name: channel.name }
 
         this.suggestionChannels[channel.guild.id] = channel;
@@ -268,10 +259,8 @@ class SuggestionsFeature {
         await this.suggestionInfoMessages[channel.guild.id]?.delete()?.catch(() => null);
         const message = await channel.send(SuggestionsResponseMessageBuilder.suggestionsInfoMessage(channel.guild.name))
             .catch(error => this.logError(`Suggestions message could not be sent!`, { ...context, error }))
-        
-        await this.suggestionInfoMessages[channel.guild.id]?.delete()?.catch(() => null);
-        this.suggestionInfoMessages[channel.guild.id] = message;
 
+        this.suggestionInfoMessages[channel.guild.id] = message;
         if (resend) this.suggestionInfoMessageReloads[channel.guild.id] = setTimeout(() => this.sendSuggestionInfoMessage(channel, false).catch(console.error), 7*60*1000)
 
     }

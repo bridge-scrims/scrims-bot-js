@@ -1,86 +1,31 @@
 const { Constants } = require("discord.js");
 const TableRow = require("../postgresql/row");
-const DBTable = require("../postgresql/table");
-
-/**
- * @extends DBTable<ScrimsGuild>
- */
-class ScrimsGuildTable extends DBTable {
-
-    constructor(client) {
-
-        super(client, "scrims_guild", null, [], ['id_guild'], ScrimsGuild);
-
-    }
-
-    /**
-     * @override
-     */
-    initializeListeners() {
-
-        this.ipc.on('guild_remove', message => this.cache.filterOut(message.payload))
-        this.ipc.on('guild_update', message => this.cache.update(message.payload.data, message.payload.selector))
-        this.ipc.on('guiöd_create', message => this.cache.push(this.getRow(message.payload)))
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } filter
-     * @param { Boolean } useCache
-     * @returns { Promise<ScrimsGuild[]> }
-     */
-    async get(filter, useCache) {
-
-        return super.get(filter, useCache);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } data
-     * @returns { Promise<ScrimsGuild> }
-     */
-    async create(data) {
-
-        return super.create(data);
-
-    }
-
-    /** 
-     * @param { Object.<string, any> } selector
-     * @returns { Promise<ScrimsGuild[]> }
-     */
-    async remove(selector) {
-
-        return super.remove(selector);
-
-    }
-
-}
 
 class ScrimsGuild extends TableRow {
 
+    static uniqueKeys = ['guild_id']
+    static columns = ['guild_id', 'name', 'icon']
+
     /**
-     * @type { ScrimsGuildTable }
+     * @param {import("discord.js").Guild} guild 
      */
-    static Table = ScrimsGuildTable
+    static fromDiscordGuild(guild) {
+
+        return new ScrimsGuild(guild.client.database, { guild_id: guild.id, name: guild.name, icon: (guild.icon ?? null) });
+
+    }
 
     constructor(client, guildData) {
 
-        super(client, guildData, []);
+        super(client, guildData);
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.guild_id
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.name
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.icon
 
     }
@@ -93,7 +38,7 @@ class ScrimsGuild extends TableRow {
 
     get discordGuild() {
 
-        if (!this.guild_id) return null;
+        if (!this.guild_id || !this.bot) return null;
         return this.bot.guilds.resolve(this.guild_id);
 
     }

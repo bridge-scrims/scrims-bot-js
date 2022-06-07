@@ -1,13 +1,15 @@
 const ScrimsMessageBuilder = require("../lib/responses");
 
 const { SlashCommandBuilder } = require("@discordjs/builders");
-const { MessageActionRow, MessageButton } = require("discord.js");
+const { MessageActionRow, MessageButton, MessageEmbed } = require("discord.js");
+const ScrimsUser = require("./scrims/user");
 
 const interactionHandlers = {
 
     "killAction": onKillAction,
     "reload": onReloadCommand,
     "config": onConfigCommand,
+    "find": onFindCommand,
     "kill": onKillCommand
 
 }
@@ -22,6 +24,49 @@ async function onInteraction(interaction) {
 
     throw new Error(`Interaction with name '${interaction.commandName}' does not have a handler!`, interactionHandlers);
 
+}
+
+/**
+ * @param { import('./types').ScrimsCommandInteraction } interaction
+ */
+async function onFindCommand(interaction) {
+
+    const userResolvable = interaction.options.getString("user-resolvable")
+
+    const querystring = `SELECT * FROM scrims_user WHERE ((discord_username || '#' || discord_discriminator) like $1) OR (discord_username like $1) OR (discord_id=$1) OR (id_user::text=$1) ORDER BY (discord_username || '#' || discord_discriminator) ASC LIMIT 100;`
+    let result = await interaction.database.query(querystring, [userResolvable])
+
+    if (result.rows.length === 0)
+        result = await interaction.database.query(querystring.replace(/like/g, "ilike"), [userResolvable])
+
+    /** @type {ScrimsUser[]} */
+    const users = []
+
+    users.push(...result.rows.map(data => new ScrimsUser(interaction.database, data)))
+    if (interaction.guild) {
+        const members = interaction.guild.members.cache.filter(member => member.scrimsUser && (member.displayName.toLowerCase().includes(userResolvable.toLowerCase())))
+        users.push(...members.map(member => member.scrimsUser))
+    }
+    
+    if (users.length === 0) return interaction.editReply({ content: "No results." });
+    
+    const userPositions = await interaction.database.userPositions.getArrayMap(users.map(user => ({ id_user: user.id_user })), ['id_user'], false)
+
+    if (users.length <= 3)
+        return interaction.editReply({ embeds: users.map(user => user.toEmbed(userPositions, interaction.guild)) });
+
+    let description = ""
+    for (const user of users) {
+        const summary = `\n\`•\` **${user.tag.replace(/[*`_]/g, "")}** (${user.discord_id})`
+        if ((description.length + summary.length) > 3500) {
+            description += `\n **... and more**`
+            break;
+        }
+        description += summary
+    }
+    
+    return interaction.editReply({ embeds: [new MessageEmbed().setTitle("Multiple Results").setDescription(description)] })
+        
 }
 
 /**
@@ -98,6 +143,7 @@ async function onKillCommand(interaction) {
         + `I am waiting for \`${bot.handles.length}\` interaction handler(s) to finish before I shutdown. `
         + `I will keep you updated on my progress by editing this message.`
 
+    
     const actions = new MessageActionRow().addComponents(
         new MessageButton().setCustomId('killAction/KILL').setLabel('Force Kill').setStyle('DANGER'),
         new MessageButton().setCustomId('killAction/CANCEL').setLabel('Cancel').setStyle('SECONDARY')
@@ -159,7 +205,7 @@ async function onConfigCommand(interaction) {
 
     if (entryTypeId === -1) {
 
-        const entrys = await interaction.client.database.guildEntrys.get({ guild_id: interaction.guild.id })
+        const entrys = await interaction.client.database.guildEntrys.fetch({ guild_id: interaction.guild.id })
 
         if (entrys.length === 0) return interaction.editReply({ content: "Nothing configured for this guild." });
         
@@ -168,20 +214,25 @@ async function onConfigCommand(interaction) {
     }
 
     const selector = { guild_id: interaction.guild.id, id_type: entryTypeId }
-    const entrys = await interaction.client.database.guildEntrys.get(selector)
+    const entrys = await interaction.client.database.guildEntrys.fetch(selector)
 
     if (!value) return interaction.editReply({ content: `${entrys[0]?.value || null}`, allowedMentions: { parse: [] }, ephemeral: true });
     
+    const realValue = (value.toLowerCase() === "null") ? null : value
     if (entrys.length > 0) {
 
         const oldValue = entrys[0].value
-        
-        await interaction.client.database.guildEntrys.update(selector, { value })
-        return interaction.editReply({ content: `${oldValue} **->** ${value}`, allowedMentions: { parse: [] }, ephemeral: true });
+        if (oldValue === realValue) return interaction.editReply({ content: `Value already is \`${realValue}\`.`, allowedMentions: { parse: [] }, ephemeral: true });
+
+        await interaction.client.database.guildEntrys.update(selector, { value: realValue })
+        const entry = interaction.client.database.guildEntrys.cache.find(selector)
+        if (entry) interaction.client.database.ipc.send(`audited_config_create`, { oldValue, entry, id_executor: interaction.scrimsUser.id_user, executor_id: interaction.user.id })
+        return interaction.editReply({ content: `${oldValue} **->** ${realValue}`, allowedMentions: { parse: [] }, ephemeral: true });
 
     }
 
-    await interaction.client.database.guildEntrys.create({ ...selector, value })
+    const created = await interaction.client.database.guildEntrys.create({ ...selector, value: realValue })
+    interaction.client.database.ipc.send(`audited_config_create`, { entry: created, id_executor: interaction.scrimsUser.id_user, executor_id: interaction.user.id })
     await interaction.editReply({ content: `${value}`, allowedMentions: { parse: [] }, ephemeral: true })
 
 } 
@@ -259,10 +310,30 @@ function getKillCommand() {
 
 }
 
+/**
+ * @returns { [ SlashCommandBuilder, import('./types').ScrimsPermissions, import('./types').ScrimsCommandConfiguration } ] }
+ */
+function getFindCommand() {
+
+    const command = new SlashCommandBuilder()
+        .setName("find")
+        .setDescription("Used to resolve a discord user by their tag.")
+        .addStringOption(option => (
+            option
+                .setName("user-resolvable")
+                .setDescription("Something to find the user with, like their username or tag.")
+                .setRequired(true)
+        ))
+    
+    return [ command, { permissionLevel: "support" }, { forceGuild: false, bypassBlock: true, forceScrimsUser: false, ephemeralDefer: false } ];
+
+}
+
+
 module.exports = {
 
     interactionHandler: onInteraction,
     eventHandlers: ['killAction'],
-    commands: [ getReloadCommand(), getConfigCommand(), getPingCommand(), getKillCommand() ]
+    commands: [ getReloadCommand(), getConfigCommand(), getPingCommand(), getKillCommand(), getFindCommand() ]
 
 }

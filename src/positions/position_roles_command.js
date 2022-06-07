@@ -1,3 +1,6 @@
+const { Role } = require("discord.js");
+const ScrimsPosition = require("../lib/scrims/position");
+const ScrimsPositionRole = require("../lib/scrims/position_role");
 const PositionsResponseMessageBuilder = require("./responses");
 
 const subCmdHandlers = {
@@ -23,32 +26,16 @@ async function onCommand(interaction) {
 async function getPosition(interaction) {
 
     const positionId = interaction?.options?.getInteger("position") || interaction?.args?.shift()
-    const position = await interaction.client.database.positions.get({ id_position: positionId }).then(positions => positions[0])
+    const position = interaction.client.database.positions.cache.resolve(positionId)
     if (!position) {
-
-        return interaction.reply(
+ 
+        return interaction.send(
             PositionsResponseMessageBuilder.errorMessage(`Invalid Position`, `Please pick a valid bridge scrims position and try again!`)
         ).then(() => false);
 
     }
     return position;
 
-}
-
-async function getGuild(interaction) {
-
-    const guild_id = interaction?.options?.getString("guild") || interaction?.args?.shift() || interaction.guild.id
-    
-    const guild = interaction.client.database.guilds.cache.resolve(guild_id)
-    if (!guild) {
-
-        return interaction.reply(
-            PositionsResponseMessageBuilder.errorMessage(`Invalid Guild`, `Please pick a valid guild and try again!`)
-        ).then(() => false);
-
-    }
-    return guild.guild_id;
-    
 }
 
 function sortPositionRoles(positionRoles) {
@@ -62,10 +49,10 @@ async function hasPositionPermissions(interaction, position, action) {
     if (typeof position.level === "number") {
 
         // For example if staff wants to change the roll for owner position
-        if (!(await interaction.client.permissions.hasPermissionLevel(interaction.member, position.name))) {
+        if (!(interaction.member.hasPermission(position.name))) {
 
             return interaction.editReply(
-                PositionsResponseMessageBuilder.missingPermissionsMessage(`You are not allowed to ${action}!`)
+                PositionsResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, `You are not allowed to ${action}!`)
             ).then(() => false);
 
         } 
@@ -76,6 +63,9 @@ async function hasPositionPermissions(interaction, position, action) {
 
 }
 
+/**
+ * @param {import("../types").ScrimsCommandInteraction} interaction 
+ */
 async function onStatusSubcommand(interaction) {
 
     const guild_id = interaction.options.getString("guild") ?? interaction.guild.id
@@ -86,50 +76,55 @@ async function onStatusSubcommand(interaction) {
 
 }
 
+/**
+ * @param {import("../types").ScrimsCommandInteraction} interaction 
+ */
 async function onReloadSubcommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    const positionRoles = await interaction.client.database.positionRoles.get({ guild_id: interaction.guild.id }, false).catch(error => error)
-    const result = await interaction.client.database.positions.get({ }, false).catch(error => error)
-    
-    const error = (positionRoles instanceof Error) ? positionRoles : result
-    if (error instanceof Error) {
+    await interaction.client.database.positions.initializeCache()
+    await interaction.client.database.userPositions.initializeCache()
+    await interaction.client.database.positionRoles.initializeCache()
 
-        console.error(`Unable to reload positions because of ${error}!`)
-        return interaction.editReply(PositionsResponseMessageBuilder.failedMessage(`reload the positions`));
-
-    }
-
+    const positionRoles = interaction.client.database.positionRoles.cache.get({ guild_id: interaction.guild.id })
     const sortedPositionRoles = sortPositionRoles(positionRoles)
+
     const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id)
-    await interaction.editReply({ ...payload, content: `Bridge scrims positions reloaded.`, ephemeral: true })
+    await interaction.editReply({ ...payload, content: `Bridge scrims positions, user-positions and position-roles reloaded.`, ephemeral: true })
 
 }
 
+/**
+ * @param {import("../types").ScrimsCommandInteraction|import("../types").ScrimsComponentInteraction} interaction 
+ * @param {Role} role
+ * @param {ScrimsPosition} position
+ * @param {string} guild_id
+ */
 async function addPositionRole(interaction, role, position, guild_id) {
 
     if (!(await hasPositionPermissions(interaction, position, `connect anything to bridge scrims **${position.name}** position`))) return false;
 
-    const positionRole = { id_position: position.id_position, role_id: role.id, guild_id }
+    const positionRole = new ScrimsPositionRole(interaction.client.database).setPosition(position).setRole(role).setGuild(guild_id)
     const result = await interaction.client.database.positionRoles.create(positionRole).catch(error => error)
     if (result instanceof Error) {
 
         console.error(`Unable to create position role because of ${result}!`)
-        await interaction.editReply(PositionsResponseMessageBuilder.failedMessage(`create a new position role`))
+        return interaction.editReply(PositionsResponseMessageBuilder.failedMessage(`create a new position role`))
 
     }
 
     interaction.client.database.ipc.notify('audited_position_role_create', { executor_id: interaction.user.id, positionRole: result })
 
-    const positionRoles = await interaction.client.database.positionRoles.get({ guild_id })
+    const positionRoles = interaction.client.database.positionRoles.cache.get({ guild_id })
     const sortedPositionRoles = sortPositionRoles(positionRoles)
     const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id)
 
     const warning = (
-        interaction.client.positions.botHasRolePermissions(role) ? `` 
-        : `\n_ _\n ⚠️ ${interaction.client.user} is missing permissions to give/remove this role!`
-            + `\n To fix this in **Server Settings** -> **Roles** drag ${interaction.client.user} above ${role}.`
+        interaction.client.hasRolePermissions(role) ? `` 
+        : `\n_ _\n ⚠️ ${interaction.client.user} is missing permissions to give/remove this role! `
+            + `\nMake sure that ${interaction.client.user} has permission to manage roles, and that in `
+            + `**Server Settings** -> **Roles** ${interaction.client.user} is above ${role}.`
     )
 
     await interaction.editReply({ 
@@ -140,10 +135,12 @@ async function addPositionRole(interaction, role, position, guild_id) {
 
 }
 
+/**
+ * @param {import("../types").ScrimsCommandInteraction} interaction 
+ */
 async function onAddSubcommand(interaction) {
 
     const role = interaction.options.getRole("role")
-    
     const guild_id = interaction.guild.id
 
     const position = await getPosition(interaction)
@@ -151,17 +148,10 @@ async function onAddSubcommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    const existing = interaction.client.database.positionRoles.cache.get({ guild_id, role_id: role.id })
-    if (existing instanceof Error) {
+    const existing = interaction.client.database.positionRoles.cache.find({ guild_id, role_id: role.id })
+    if (existing && existing.id_position === position.id_position) {
 
-        console.error(`Unable to get existing position roles ${existing}!`)
-        return interaction.editReply(PositionsResponseMessageBuilder.failedMessage(`get the position roles`));
-
-    }
-
-    if (existing.filter(posRole => posRole.id_position == position.id_position).length > 0) {
-
-        const positionRoles = await interaction.client.database.positionRoles.get({ guild_id })
+        const positionRoles = interaction.client.database.positionRoles.cache.get({ guild_id })
         const sortedPositionRoles = sortPositionRoles(positionRoles)
         const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id)
         return interaction.editReply({ 
@@ -172,29 +162,29 @@ async function onAddSubcommand(interaction) {
 
     }
 
-    if (existing.length > 0)
-        return interaction.editReply(PositionsResponseMessageBuilder.positionRolesAddConfirmMessage(existing[0], role, position));
+    if (existing)
+        return interaction.editReply(PositionsResponseMessageBuilder.positionRolesAddConfirmMessage(existing, role, position));
 
     await addPositionRole(interaction, role, position, guild_id)
     
 }
 
+/**
+ * @param {import("../types").ScrimsComponentInteraction} interaction 
+ */
 async function onConfirmComponent(interaction) {
+
+    await interaction.update({ content: "Overwriting...", embeds: [], components: [] })
 
     const roleId = interaction.args.shift()
     const role = interaction.guild.roles.resolve(roleId)
-    if (!role) {
-
-        return interaction.update(PositionsResponseMessageBuilder.errorMessage(`Invalid Role`, `Please pick a valid discord role and try again.`));
-
-    }
+    if (!role) 
+        return interaction.editReply(PositionsResponseMessageBuilder.errorMessage(`Invalid Role`, `Please pick a valid discord role and try again.`));
 
     const position = await getPosition(interaction)
     if (!position) return false;
 
     const guild_id = interaction.guild.id
- 
-    await interaction.deferUpdate({ ephemeral: true })
 
     const success = await removePositionRoles(interaction, position, { guild_id, role_id: roleId })
     if (!success) return false;
@@ -203,6 +193,11 @@ async function onConfirmComponent(interaction) {
 
 }
 
+/**
+ * @param {import("../types").ScrimsCommandInteraction|import("../types").ScrimsComponentInteraction} interaction 
+ * @param {ScrimsPosition} position 
+ * @param {Object.<string, any>} selector 
+ */
 async function removePositionRoles(interaction, position, selector) {
 
     if (!(await hasPositionPermissions(interaction, position, `connect anything to bridge scrims **${position.name}** position`))) return false;
@@ -222,16 +217,17 @@ async function removePositionRoles(interaction, position, selector) {
 
 async function getOptionalPosition(interaction) {
 
-    if (interaction.options.getInteger("position") !== null) 
-        return getPosition(interaction);
+    if (interaction.options.getInteger("position") !== null) return getPosition(interaction);
     return null;
 
 }
 
+/**
+ * @param {import("../types").ScrimsCommandInteraction} interaction  
+ */
 async function onRemoveSubcommand(interaction) {
 
     const role = interaction.options.getRole("role")
-    
     const guild_id = interaction.guild.id
 
     const position = await getOptionalPosition(interaction)
@@ -240,8 +236,8 @@ async function onRemoveSubcommand(interaction) {
     const positionFilter = position ? { id_position: position.id_position } : { };
     const selector = { guild_id, role_id: role.id, ...positionFilter }
     
-    const existing = await interaction.client.database.positionRoles.get(selector)
-    if (existing.length === 0) {
+    const existing = interaction.client.database.positionRoles.cache.find(selector)
+    if (!existing) {
 
         const message = `${role} is not connected to ${position ? `bridge scrims **${position.name}**!` : `any bridge scrims positions!`}`;
         return interaction.reply(PositionsResponseMessageBuilder.errorMessage(`Not Connected`, message));
@@ -250,10 +246,10 @@ async function onRemoveSubcommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    const success = await removePositionRoles(interaction, existing[0].position, selector)
+    const success = await removePositionRoles(interaction, existing.position, selector)
     if (!success) return false;
 
-    const positionRoles = await interaction.client.database.positionRoles.get({ guild_id })
+    const positionRoles = interaction.client.database.positionRoles.cache.get({ guild_id })
     const sortedPositionRoles = sortPositionRoles(positionRoles)
     const payload = PositionsResponseMessageBuilder.positionRolesStatusMessage(sortedPositionRoles, interaction.guild.id)
     const message = `${role} was unconnected from ${position ? `bridge scrims **${position.name}**.` : `any bridge scrims positions.`}`

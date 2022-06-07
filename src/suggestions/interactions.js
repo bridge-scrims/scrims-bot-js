@@ -1,7 +1,7 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { MessageComponentInteraction, MessageContextMenuInteraction, ModalSubmitInteraction, Modal, TextInputComponent, MessageActionRow } = require("discord.js");
 const SuggestionsResponseMessageBuilder = require('./responses');
-const ScrimsSuggestion = require('./suggestion');
+const ScrimsSuggestion = require('../lib/scrims/suggestion');
 
 const cooldown = 15*60*1000
 const cooldowns = {}
@@ -11,8 +11,7 @@ const cooldowns = {}
  */
 async function onInteraction(interaction) {
 
-    if (!interaction.guild)
-        return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Guild Only", "This should only be used in discord servers!"));
+    if (!interaction.guild) return interaction.reply(SuggestionsResponseMessageBuilder.guildOnlyMessage(interaction.i18n));
 
     if (interaction.channel !== interaction.client.suggestions.suggestionChannels[interaction.guild.id])
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Wrong Channel", "This should only be used in the suggestions channel!"));
@@ -48,18 +47,17 @@ async function verifySuggestionRequest(interaction) {
     if (!interaction.scrimsUser)
         return interaction.reply( SuggestionsResponseMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
 
-    const bannedPosition = await interaction.client.database.userPositions.get({ id_user: interaction.scrimsUser.id_user, position: { name: "suggestion_blacklisted" } })
-    if (bannedPosition.length > 0) {
+    const bannedPosition = await interaction.client.database.userPositions.find({ id_user: interaction.scrimsUser.id_user, position: { name: "suggestion_blacklisted" } })
+    if (bannedPosition) {
 
-        const length = bannedPosition[0].expires_at ? `until <t:${bannedPosition[0].expires_at}:f>` : `permanently`;
         return interaction.reply( 
-            SuggestionsResponseMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to create suggestions ${length} since you didn't follow the rules.`) 
+            SuggestionsResponseMessageBuilder.errorMessage(`Blacklisted`, `You are not allowed to create suggestions ${bannedPosition.getDuration()} since you didn't follow the rules.`) 
         ).then(() => false);
 
     }
         
     const cooldown = cooldowns[interaction.userId] ?? null
-    if (cooldown && (!(await interaction.member.hasPermission("support")))) {
+    if (cooldown && (!(interaction.member.hasPermission("support")))) {
 
         return interaction.reply({ 
             content: `You are currently on suggestion cooldown! You can create a suggestion again <t:${Math.round(cooldown/1000)}:R>.`, 
@@ -100,9 +98,9 @@ async function createModal(interaction) {
             new MessageActionRow().addComponents(
                 new TextInputComponent()
                     .setCustomId('suggestion')
-                    .setLabel('Your brilliant idea')
+                    .setLabel(`What would you like to suggest?`)
                     .setStyle('PARAGRAPH')
-                    .setMinLength(15)
+                    .setMinLength(10)
                     .setMaxLength(1200)
                     .setPlaceholder('Write here')
                     .setRequired(true)
@@ -121,30 +119,29 @@ async function onContextMenu(interaction) {
 
 async function onRemoveSuggestion(interaction) {
 
-    if (interaction.targetId == interaction.client.suggestions.suggestionsInfoMessage)
+    if (interaction.targetId === interaction.client.suggestions.suggestionsInfoMessage)
         return interaction.reply({ content: "This should be used on suggestion messages. Not the suggestions channel info message!", ephemeral: true });
 
-    const suggestion = interaction.client.database.suggestions.cache.get({ message_id: interaction.targetId })[0]
+    const suggestion = interaction.client.database.suggestions.cache.find({ message_id: interaction.targetId })
     if (!suggestion) return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Unkown Suggestion", "This can only be used on suggestion messages!"));
     
     interaction.suggestion = suggestion
 
-    const interactorIsAuthor = (suggestion.creator.discord_id == interaction.userId);
+    const interactorIsAuthor = (suggestion.creator.discord_id === interaction.userId);
     if (suggestion.epic && interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Not Removable", "Since your suggestion is so liked it can not be removed! Have a nice day :)"));
 
-    if (!(await interaction.member.hasPermission("staff")) && !interactorIsAuthor) 
+    if (!(interaction.member.hasPermission("staff")) && !interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
     const removed = interaction.client.database.suggestions.cache.remove(suggestion.id_suggestion)
 
-    const response = await interaction.targetMessage.delete().catch(error => onError(interaction, `remove suggestions message`, error, true))
-    if (response === false) {
+    const response = await interaction.targetMessage.delete().then(() => true).catch(error => onError(interaction, `remove suggestions message`, error, true))
+    if (response !== true) {
 
         // Deleting the message failed so add the suggestion back to cache
         interaction.client.database.suggestions.cache.push(removed)
-
         return false;
 
     }
@@ -193,15 +190,8 @@ async function onModalSubmit(interaction) {
     if (typeof inputValue !== 'string') return interaction.editReply(SuggestionsResponseMessageBuilder.errorMessage('Invalid Suggestion', "You suggestion must contain at least 15 letters to be valid."));
     const suggestionText = getSuggestionText(inputValue)
 
-    const suggestion = new ScrimsSuggestion(interaction.client.database.suggestions, {
-
-        id_suggestion: interaction.client.database.generateUUID(),
-        guild_id: interaction.guild.id, 
-        created_at: Math.round(Date.now()/1000),
-        suggestion: suggestionText,
-        id_creator: interaction.scrimsUser.id_user
-
-    })
+    const suggestion = new ScrimsSuggestion(interaction.client.database)
+        .setGuild(interaction.guild).setCreation().setSuggestion(suggestionText).setCreator(interaction.scrimsUser)
 
     const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(60, suggestion)
     const message = await interaction.channel.send({ embeds: [embed] }).catch(error => onError(interaction, `send suggestions message`, error, true))
@@ -215,14 +205,10 @@ async function onModalSubmit(interaction) {
     // Delete the current suggestions info message since it is no longer the last message
     await interaction.client.suggestions.sendSuggestionInfoMessage(interaction.channel, true)
 
-    suggestion.updateWith({  
+    suggestion.setChannel(message.channel)
+    suggestion.setMessage(message)
 
-        channel_id: message.channel.id, 
-        message_id: message.id
-
-    })
-
-    if (!(await interaction.member.hasPermission("staff"))) addCooldown(interaction.userId)
+    if (!(interaction.member.hasPermission("staff"))) addCooldown(interaction.userId)
 
     const createResult = await interaction.client.database.suggestions.create(suggestion)
         .catch(error => onError(interaction, `add suggestion to database`, error, true))

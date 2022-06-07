@@ -20,7 +20,7 @@ CREATE OR REPLACE FUNCTION is_expired( expires_at bigint )
 RETURNS boolean
 AS $$ BEGIN
 
-RETURN (select extract(epoch from current_timestamp)) >= expires_at;
+RETURN expires_at <= (select extract(epoch from now()));
 
 END $$ 
 LANGUAGE plpgsql;
@@ -89,7 +89,7 @@ DECLARE
 BEGIN
 
     IF (TG_OP = 'DELETE') THEN 
-        PERFORM pg_notify('user_position_remove', json_build_object('id_user', OLD.id_user, 'id_position', OLD.id_position)::text);
+        PERFORM pg_notify('scrims_user_position_remove', json_build_object('id_user', OLD.id_user, 'id_position', OLD.id_position)::text);
         RETURN OLD;
     END IF;
 
@@ -98,12 +98,12 @@ BEGIN
     INTO user_positions;
 
     IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
-        'user_position_update', json_build_object(
+        'scrims_user_position_update', json_build_object(
             'selector', json_build_object('id_user', OLD.id_user, 'id_position', OLD.id_position), 
             'data', (user_positions->>0)::json
         )::text
     );
-    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('user_position_create', user_positions->>0);
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('scrims_user_position_create', user_positions->>0);
     END IF;
 
     return NEW;

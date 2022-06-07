@@ -1,6 +1,6 @@
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-const BridgeScrimsCache = require("../cache");
+const BridgeScrimsCache = require("./cache");
 const got = require('got');
 
 class HypixelAPIError extends Error {

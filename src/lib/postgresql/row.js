@@ -1,57 +1,53 @@
 class TableRow {
 
-    constructor(table, data, references=[]) {
+    /** @type {Array.<string>} */
+    static uniqueKeys = []
 
-        Object.defineProperty(this, 'table', { value: table });
+    /** @type {Array.<string>} */
+    static columns = []
 
-        Object.defineProperty(this, 'client', { value: table.client });
-        Object.defineProperty(this, 'bot', { value: table.client.bot });
+    /** 
+     * @param {import('./database')} client 
+     * @param {Object.<string, any>} [data] 
+     */
+    constructor(client, data={}) {
+
+        Object.defineProperty(this, 'client', { value: client });
 
         /**
-         * @type { import('./table') }
-         * @readonly
-         */
-        this.table
-
-        /**
-         * @type { import('./database') }
+         * @type {import('./database')}
          * @readonly
          */
         this.client
 
-        /**
-         * @type { import('../bot') }
-         * @readonly
-         */
-        this.bot
+        this.update(data)
 
-        /**
-         * @type { [string, string[], string[], import('./table')][] }
-         */
-        this._references = references
+    }
 
-        this._handles = null
+    get bot() {
 
-        this.updateWith(data)
+        return this.client.bot;
 
     }
 
     get id() {
 
-        if (!this.uniqueKeys.every(key => (key in this))) return null;
+        if (this.uniqueKeys.length === 0 || !this.uniqueKeys.every(key => (key in this))) return null;
         return this.uniqueKeys.map(key => this[key]).join('#');
 
     }
 
+    /** @returns {Array.<string>} */
     get uniqueKeys() {
 
-        return this.table.uniqueKeys;
+        return this.constructor.uniqueKeys;
 
     }
 
+    /** @returns {Array.<string>} */
     get columns() {
 
-        return this.table.columns;
+        return this.constructor.columns;
 
     }
 
@@ -61,166 +57,60 @@ class TableRow {
 
     }
 
-    /**
-     * @param { import('./table') } table
-     * @param { string } objKey
-     */
-    removePotentialHandle(table, objKey) {
+    isCacheExpired(now) {
 
-        if (this._handles && objKey in this._handles) {
-
-            table.cache.releaseHandle(this._handles[objKey])
-            delete this._handles[objKey]
-
-        }
-
-    }
-
-    /**
-     * @param { import('./table') } table
-     * @param { TableRow } existingObject 
-     * @param { string } objKey
-     * @returns { [number, TableRow] }
-     */
-    createHandle(table, existingObject, objKey) {
-
-        this.removePotentialHandle(table, objKey)
+        return (this._expiration !== undefined) && (this._expiration <= now);
         
-        return table.cache.createHandle(existingObject.id);
+    }
 
+    setCacheExpiration(expiration) {
+
+        this._expiration = expiration
+        
     }
 
     /**
-     * @param { import('./table') } table
-     * @param { TableRow } existingObject 
-     * @param { string } objKey
+     * @param {import('./table')} table 
+     * @param {string} objKey 
+     * @param {string[]} localIdKeys 
+     * @param {string[]} foreignIdKeys 
+     * @param {string|number|Object.<string, any>|TableRow} resolvable 
      */
-    setObjectFromExistingObject(table, existingObject, objKey) {
-
-        //Building a row out of the row data
-        if (!(existingObject instanceof TableRow)) existingObject = table.getRow(existingObject)
-
-        if (this._handles) {
-
-            //This object is cached so we will add the existingObject to cache if it is not already there and add a handle to it
-            const [handleId, row] = this.createHandle(table, existingObject, objKey)
-            if (handleId && row) {
-
-                this._handles[objKey] = handleId
-                this[objKey] = row
-                return;
-
-            }
-
-        }
-
-        this[objKey] = this.getObject(table, existingObject)
-
-    }
-
-    getObject(table, filter) {
-
-        if (!filter.partial) return filter;
-        if (filter.id) return table.cache.resolve(filter.id);
-        return table.cache.get(filter)[0] ?? null;
-
-    }
-
-    /**
-     * @param { import('./table') } table 
-     * @param { string } objKey
-     * @param { Object.<string, any> } data
-     * @param { string[] } uniqueLocalKeys 
-     * @param { string[] } uniqueForeignKeys 
-     */
-    setObjectFromUniqueKeys(table, objKey, data, uniqueLocalKeys, uniqueForeignKeys) {
-
-        if (uniqueLocalKeys.every(key => data[key] === null)) {
-
+    _setForeignObjectReference(table, objKey, localIdKeys, foreignIdKeys, resolvable) {
+        
+        if (resolvable === null) {
             this[objKey] = null
-            return;
-            
-        }
-
-        //Building a partial row to use as a filter below
-        const filter = table.getRow(Object.fromEntries(uniqueLocalKeys.map((localKey, idx) => [uniqueForeignKeys[idx], data[localKey]])))
-
-        if (this._handles) {
-
-            //This row is cached so find & create a handle with the object in cache
-            const [handleId, row] = this.createHandle(table, filter, objKey)
-            if (handleId && row) {
-
-                this._handles[objKey] = handleId
-                this[objKey] = row
-
-            }
-
         }else {
 
-            //This row is not cached so no worry about handles
-            this[objKey] = this.getObject(table, filter)
+            if (resolvable && foreignIdKeys.every(key => resolvable[key] !== undefined))
+                this[objKey] = table.cache.find(foreignIdKeys.map(key => resolvable[key]))
+            else if (localIdKeys.every(key => this[key] !== undefined))
+                this[objKey] = table.cache.find(localIdKeys.map(key => this[key]))
+            else if (resolvable)
+                this[objKey] = table.cache.find(resolvable)
 
+            // resolvable was not found in cache but maybe it is a full object
+            if (resolvable && !this[objKey] && (typeof resolvable === "object")) {
+
+                const obj = table.getRow(resolvable)
+                if (!obj.partial) this[objKey] = obj
+
+            }
+            
         }
-        
+
+        if (this[objKey]) localIdKeys.forEach((key, idx) => this[key] = this[objKey][foreignIdKeys[idx]] ?? null)
+
     }
 
-    updateWith(data) {
+    /**
+     * @param {Object.<string, any>} data 
+     */
+    update(data) {
 
-        this._references.forEach(([objKey, uniqueLocalKeys, uniqueForeignKeys, table]) => {
-
-            const existingObject = data[objKey]
-
-            if (existingObject) {
-
-                //We have a object for this property but it could be partial (filter) or it may not be a reference
-                if (!this[objKey] || !this[objKey].equals(existingObject))
-                    this.setObjectFromExistingObject(table, existingObject, objKey)
-
-            }else if (uniqueLocalKeys.every(key => (key in data))) {
-
-                //We have to find the object using unique keys
-                if (!this[objKey] || !uniqueLocalKeys.every(key => this[objKey][key] === data[key]))
-                    this.setObjectFromUniqueKeys(table, objKey, data, uniqueLocalKeys, uniqueForeignKeys)
-
-            }
-
-            const foreignObject = this[objKey]
-            
-            //At this point the foreign Object is most likely set but now we make sure that its unique keys are transfered
-            uniqueLocalKeys.forEach((key, idx) => {
-
-                if (foreignObject && uniqueForeignKeys[idx] && (uniqueForeignKeys[idx] in foreignObject)) {
-
-                    this[key] = foreignObject[uniqueForeignKeys[idx]]
-
-                }else {
-
-                    if (this[key]) this[key] = null
-
-                }
-
-            })
-
-            //Now we make sure that if we are cached that we have handles to any foreigners
-            if (foreignObject && this._handles) {
-
-                if (!(objKey in this._handles)) {
-
-                    this.setObjectFromExistingObject(table, foreignObject, objKey)
-
-                }
-
-            }
-
-        })
-
-        //Here we override everything of this from data except for if the key is a system key or the value is a reference (bcs that was already taken care of above)
-        const objKeys = this._references.map(([objKey, _, __, ___]) => objKey)
         Object.entries(data).forEach(([key, value]) => {
 
-            if (key.startsWith('_')) return;
-            if (!objKeys.includes(key)) this[key] = value
+            if (this.columns.includes(key)) this[key] = value
 
         })
 
@@ -228,30 +118,10 @@ class TableRow {
 
     }
 
-    cache() {
-
-        this._handles = {}
-        this.updateWith(this)
-
-    }
-
-    uncache() {
-
-        if (this._handles) {
-
-            Object.entries(this._handles)
-                .forEach(([key, value]) => this._references.filter(([objKey, _, __, ___]) => objKey === key)[0][3].cache.releaseHandle(value))
-
-        }
-
-        this._handles = null
-
-    }
-
     /**
-     * @param { Object.<string, any> } obj1 
-     * @param { Object.<string, any> } obj2 
-     * @returns { Boolean }
+     * @param {Object.<string, any>} obj1 
+     * @param {Object.<string, any>} obj2 
+     * @returns {boolean}
      */
     valuesMatch(obj1, obj2) {
 
@@ -260,6 +130,8 @@ class TableRow {
         if (typeof obj1.toJSON === "function") obj1 = obj1.toJSON();
         if (typeof obj2.toJSON === "function") obj2 = obj2.toJSON();
 
+        if (obj1 === obj2) return true;
+
         return Object.entries(obj1).every(([key, value]) => 
             (value instanceof Object && obj2[key] instanceof Object) 
                 ? this.valuesMatch(value, obj2[key]) : (obj2[key] == value)
@@ -267,71 +139,32 @@ class TableRow {
 
     }
 
-    getSelector() {
-
-        if (!this.uniqueKeys.every(key => (key in this))) return null;
-
-        return Object.fromEntries(this.uniqueKeys.map(key => [key, this[key]]));
-
-    }
-
     /**
-     * @param { Object.<string, any> } obj 
-     * @returns { Boolean }
+     * @param {Object.<string, any>|TableRow} obj 
+     * @returns {boolean}
      */
     equals(obj) {
 
-        if ((obj instanceof TableRow) && obj.id && this.id)
-            return obj.id == this.id;
+        if (this.uniqueKeys.length > 0 && this.uniqueKeys.every(key => obj[key] !== undefined && this[key] !== undefined))
+            return this.uniqueKeys.every(key => this[key] === obj[key]);
 
         return this.exactlyEquals(obj);
 
     }
 
     /**
-     * @param { Object.<string, any> } obj 
-     * @returns { Boolean }
+     * @param {Object.<string, any>|TableRow} obj 
+     * @returns {boolean}
      */
     exactlyEquals(obj) {
 
-        const objKeys = this._references.map(([objKey, _, __, ___]) => objKey)
-        return this.valuesMatch(Object.fromEntries(Object.entries(obj).filter(([key, _]) => this.columns.includes(key) || objKeys.includes(key))), this);
+        return this.valuesMatch(Object.fromEntries(Object.entries(obj).filter(([key, _]) => (!key.startsWith('_')))), this);
 
     }
 
-    toMinimalForm() {
+    toJSON(allValues=true) {
 
-        const columns = Object.fromEntries(Object.entries(this).filter(([key, _]) => this.columns.includes(key)))
-        Object.keys(this).forEach((key) => {
-
-            const reference = this._references.filter(([objKey,  _, __, ___]) => objKey === key)[0]
-            if (reference && this[key] !== undefined) {
-
-                const [objKey, uniqueLocalKeys, uniqueForeignKeys, table] = reference
-                if (uniqueLocalKeys.some(key => this[key] === undefined)) {
-                    
-                    uniqueLocalKeys.forEach(key => delete columns[key])
-                    columns[objKey] = this[objKey]?.toMinimalForm() ?? null 
-
-                }
-
-            }
-
-        })
-
-        return columns;
-
-    }
-
-    async create() {
-
-        return this.table.create(this);
-
-    }
-
-    toJSON() {
-
-        return Object.fromEntries(Object.entries(this).filter(([key, _]) => !key.startsWith('_')));
+        return Object.fromEntries(Object.entries(this).filter(([key, _]) => allValues ? (!key.startsWith('_')) : this.columns.includes(key)));
 
     }
 

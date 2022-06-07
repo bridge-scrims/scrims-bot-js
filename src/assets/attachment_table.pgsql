@@ -71,3 +71,39 @@ INTO retval;
 RETURN retval;
 END $$ 
 LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION process_attachment_change()
+RETURNS trigger 
+AS $$
+BEGIN
+
+    IF (TG_OP = 'DELETE') THEN 
+        PERFORM pg_notify('scrims_attachment_remove', json_build_object('attachment_id', OLD.attachment_id)::text);
+        RETURN OLD;
+    END IF;
+
+    IF (TG_OP = 'UPDATE') THEN PERFORM pg_notify(
+        'scrims_attachment_update', json_build_object(
+            'selector', json_build_object('attachment_id', OLD.attachment_id), 
+            'data', row_to_json(NEW)
+        )::text
+    );
+    ELSEIF (TG_OP = 'INSERT') THEN PERFORM pg_notify('scrims_attachment_create', row_to_json(NEW)::text);
+    END IF;
+
+    return NEW;
+
+END $$
+LANGUAGE plpgsql;
+
+DO
+$do$
+BEGIN
+    CREATE TRIGGER guild_entry_trigger
+        AFTER INSERT OR UPDATE OR DELETE
+        ON scrims_guild_entry
+        FOR EACH ROW
+        EXECUTE PROCEDURE process_guild_entry_change();
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;

@@ -1,74 +1,89 @@
-const DBTable = require("../postgresql/table");
 const TableRow = require("../postgresql/row");
 
 const ScrimsSession = require("./session");
 const ScrimsUser = require("./user");
 
-/**
- * @extends DBTable<ScrimsSessionParticipant>
- */
-class ScrimsSessionParticipantTable extends DBTable {
-
-    constructor(client) {
-
-        const foreigners = [
-            [ "session", "id_session", "get_session_id" ],
-            [ "user", "id_user", "get_user_id" ]
-        ]
-
-        const uniqueKeys = ['id_session', 'id_user']
-
-        super(client, "scrims_session_participant", "get_session_participants", foreigners, uniqueKeys, ScrimsSessionParticipant);
-
-    }
-    
-}
-
 class ScrimsSessionParticipant extends TableRow {
 
-    /**
-     * @type { ScrimsSessionParticipantTable }
-     */
-    static Table = ScrimsSessionParticipantTable
+    static uniqueKeys = ['id_session', "id_user"]
+    static columns = ['id_session', 'id_user', "joined_at", "participation_time"]
 
-    constructor(table, participantData) {
+    constructor(client, participantData) {
 
-        const references = [
-            ['session', ['id_session'], ['id_session'], table.client.sessions],
-            ['user', ['id_user'], ['id_user'], table.client.users]
-        ]
+        super(client, participantData)
 
-        super(table, participantData, references)
-
-        /**
-         * @type { string } 
-         */
+        /** @type {string} */
         this.id_session
 
-        /**
-         * @type { ScrimsSession }
-         */
+        /** @type {ScrimsSession} */
         this.session
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.id_user
 
-        /**
-         * @type { ScrimsUser }
-         */
+        /** @type {ScrimsUser} */
         this.user
 
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.joined_at
 
-        /**
-         * @type { number }
-         */
+        /** @type {number} */
         this.participation_time
+
+    }
+
+    /**
+     * @param {string|Object.<string, any>|ScrimsSession} sessionResolvable 
+     */
+    setSession(sessionResolvable) {
+
+        this._setForeignObjectReference(this.client.sessions, 'session', ['id_session'], ['id_session'], sessionResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {string|Object.<string, any>|ScrimsUser} userResolvable 
+     */
+    setUser(userResolvable) {
+
+        this._setForeignObjectReference(this.client.users, 'user', ['id_user'], ['id_user'], userResolvable)
+        return this;
+
+    }
+
+    /**
+     * @param {number} [joined_at] If undefined will use current timestamp 
+     */
+    setJoinPoint(joined_at) {
+
+        this.joined_at = (joined_at === undefined) ? Math.floor(Date.now()/1000) : joined_at
+        return this;
+
+    }
+
+    /**
+     * @param {number} participation_time
+     */
+    setParticipationTime(participation_time) {
+
+        this.participation_time = participation_time
+        return this;
+
+    }
+
+    /** 
+     * @override
+     * @param {Object.<string, any>} participantData 
+     */
+    update(participantData) {
+        
+        super.update(participantData);
+
+        this.setSession(participantData.session)
+        this.setUser(participantData.user)
+
+        return this;
 
     }
 

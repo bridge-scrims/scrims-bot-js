@@ -1,42 +1,35 @@
-const DBTable = require("../postgresql/table");
 const TableRow = require("../postgresql/row");
-
-/**
- * @extends DBTable<ScrimsSessionType>
- */
-class ScrimsSessionTypeTable extends DBTable {
-
-    constructor(client) {
-
-        const foreigners = []
-        const uniqueKeys = ['id_type']
-
-        super(client, "scrims_session_type", null, foreigners, uniqueKeys, ScrimsSessionType);
-
-    }
-    
-}
 
 class ScrimsSessionType extends TableRow {
 
-    /**
-     * @type { ScrimsSessionTypeTable }
-     */
-    static Table = ScrimsSessionTypeTable
+    static uniqueKeys = ['id_type']
+    static columns = ['id_type', 'name']
 
-    constructor(table, sessionData) {
+    constructor(client, typeData) {
 
-        super(table, sessionData, [])
+        super(client, typeData)
 
-        /**
-         * @type { number } 
-         */
+        /** @type {number} */
         this.id_type
 
-        /**
-         * @type { string }
-         */
+        /** @type {string} */
         this.name
+
+    }
+
+    /**
+     * @param {string} name 
+     */
+    setName(name) {
+        
+        this.name = name
+        return this;
+
+    }
+
+    get capitalizedName() {
+
+        return this.name && this.name[0].toUpperCase() + this.name.slice(1);
 
     }
 

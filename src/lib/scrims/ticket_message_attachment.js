@@ -1,69 +1,72 @@
-const DBTable = require("../postgresql/table");
+const { MessageAttachment } = require("discord.js");
 const TableRow = require("../postgresql/row");
 
 const ScrimsAttachment = require("./attachment");
 const ScrimsTicket = require("./ticket");
 
-/**
- * @extends DBTable<ScrimsTicketMessageAttachment>
- */
-class ScrimsTicketMessageAttachmentsTable extends DBTable {
+class ScrimsTicketMessageAttachment extends TableRow {
 
-    constructor(client) {
+    static uniqueKeys = ['message_id', 'attachment_id']
+    static columns = ['id_ticket', 'message_id', "attachment_id"]
 
-        const foreigners = [
-            [ "ticket", "id_ticket", "get_ticket_id" ],
-            [ "attachment", "attachment_id", "get_attachment_id" ]
-        ]
+    constructor(client, messageAttachmentData) {
 
-        const uniqueKeys = [ 'id_ticket', 'message_id', 'attachment_id' ]
+        super(client, messageAttachmentData)
 
-        super(client, "scrims_ticket_message_attachment", "get_ticket_message_attachments", foreigners, uniqueKeys, ScrimsTicketMessageAttachment);
+        /** @type {string} */
+        this.id_ticket
+
+        /** @type {ScrimsTicket} */
+        this.ticket
+        
+        /** @type {string} */
+        this.message_id
+
+        /** @type {string} */
+        this.attachment_id
+
+        /** @type {ScrimsAttachment} */
+        this.attachment
 
     }
 
-}
+    /**
+     * @param {string|Object.<string, any>|ScrimsTicket} ticketResolvable 
+     */
+    setTicket(ticketResolvable) {
 
-class ScrimsTicketMessageAttachment extends TableRow {
+        this._setForeignObjectReference(this.client.tickets, 'ticket', ['id_ticket'], ['id_ticket'], ticketResolvable)
+        return this;
+
+    }
 
     /**
-     * @type { ScrimsTicketMessageAttachmentsTable }
+     * @param {string} message_id 
      */
-    static Table = ScrimsTicketMessageAttachmentsTable
+    setMessageId(message_id) {
 
-    constructor(table, messageData) {
+        this.message_id = message_id
+        return this;
 
-        const references = [
-            ['ticket', ['id_ticket'], ['id_ticket'], table.client.tickets],
-            ['attachment', ['attachment_id'], ['attachment_id'], table.client.attachments]
-        ]
+    }
 
-        super(table, messageData, references)
+    /** @param {import("discord.js").MessageResolvable} */
+    setMessage(messageResolvable) {
 
-        /**
-         * @type { number }
-         */
-        this.id_ticket
+        this.message_id = messageResolvable?.id ?? messageResolvable
+        return this;
 
-        /**
-         * @type { ScrimsTicket }
-         */
-        this.ticket
+    }
+
+    /**
+     * @param {string|Object.<string, any>|ScrimsAttachment|MessageAttachment} attachmentResolvable 
+     */
+    setAttachment(attachmentResolvable) {
+
+        if (attachmentResolvable instanceof MessageAttachment) attachmentResolvable = attachmentResolvable.id
         
-        /**
-         * @type { string }
-         */
-        this.message_id
-
-        /**
-         * @type { string }
-         */
-        this.attachment_id
-
-        /**
-         * @type { ScrimsAttachment }
-         */
-        this.attachment
+        this._setForeignObjectReference(this.client.attachments, 'attachment', ['attachment_id'], ['attachment_id'], attachmentResolvable)
+        return this;
 
     }
 
@@ -98,6 +101,21 @@ class ScrimsTicketMessageAttachment extends TableRow {
 
         if (!this.channel || !this.message_id) return null;
         return this.channel.messages.resolve(this.message_id);
+
+    }
+
+    /** 
+     * @override
+     * @param {Object.<string, any>} messageAttachmentData 
+     */
+    update(messageAttachmentData) {
+        
+        super.update(messageAttachmentData);
+
+        this.setTicket(messageAttachmentData.ticket)
+        this.setAttachment(messageAttachmentData.attachment)
+
+        return this;
 
     }
 

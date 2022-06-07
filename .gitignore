@@ -4,3 +4,4 @@ logs
 .vscode
 package-lock.json
 src/config.json
+src/lib_old
