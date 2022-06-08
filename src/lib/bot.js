@@ -28,7 +28,7 @@ class ScrimsBot extends Client {
         super({ intents, partials, presence });
 
         this.eventHandlers = {};
-        this.token = config.discordToken;
+        this.token = process.env.DISCORD_TOKEN ?? config.discordToken;
 
         /** @type {DBClient} */
         this.database = new DBClient(config.dbLogin, this)
