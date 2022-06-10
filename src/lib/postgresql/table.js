@@ -291,7 +291,7 @@ class DBTable {
 
             }, [ [], [] ])
 
-            return [ `SELECT * FROM ${this.name} WHERE ${conditions.map(v => `(${v})`).join(' OR ')}`, values ];
+            return [ `SELECT * FROM ${this.name}` + (conditions.length > 0 ? ` WHERE ${conditions.map(v => `(${v})`).join(' OR ')}` : ''), values ];
 
         }
 

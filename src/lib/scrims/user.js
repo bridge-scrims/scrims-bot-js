@@ -207,7 +207,7 @@ class ScrimsUser extends TableRow {
     /** @param {Guild} guild */
     getMember(guild) {
 
-        if (!this.discord_id) return null;
+        if (!this.discord_id || !guild) return null;
         return guild.members.cache.get(this.discord_id) ?? null;
 
     }

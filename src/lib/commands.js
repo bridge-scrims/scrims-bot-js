@@ -33,7 +33,7 @@ async function onFindCommand(interaction) {
 
     const userResolvable = interaction.options.getString("user-resolvable")
 
-    const querystring = `SELECT * FROM scrims_user WHERE ((discord_username || '#' || lpad(discord_discriminator::text, 4, '0')) like $1) OR (discord_username like $1) OR (discord_id=$1) OR (id_user::text=$1) ORDER BY (discord_username || '#' || discord_discriminator) ASC LIMIT 100;`
+    const querystring = `SELECT * FROM scrims_user WHERE ((discord_username || '#' || lpad(discord_discriminator::text, 4, '0')) like $1) OR (discord_username like $1) OR (discord_id=$1) OR (id_user::text=$1) ORDER BY (discord_username || '#' || discord_discriminator) ASC LIMIT 100`
     let result = await interaction.database.query(querystring, [userResolvable])
 
     if (result.rows.length === 0)
@@ -45,7 +45,7 @@ async function onFindCommand(interaction) {
 
     if (interaction.guild) {
         const members = interaction.guild.members.cache.filter(member => member.scrimsUser && (member.displayName.toLowerCase().includes(userResolvable.toLowerCase())))
-        memberUsers.push(...members.map(member => member.scrimsUser))
+        memberUsers.push(...members.map(member => member.scrimsUser).filter(v => v))
     }
 
     result.rows
@@ -53,11 +53,11 @@ async function onFindCommand(interaction) {
         .map(data => new ScrimsUser(interaction.database, data))
         .forEach(user => databaseUsers.push(user))
 
+    if (memberUsers.concat(databaseUsers).length === 0) return interaction.editReply({ content: "No results." });
+    
     const userPositions = await interaction.database.userPositions.getArrayMap(memberUsers.concat(databaseUsers).map(user => ({ id_user: user.id_user })), ['id_user'], false)
     const users = memberUsers.sort(ScrimsUser.sortByPositions(userPositions)).concat(databaseUsers.sort(ScrimsUser.sortByPositions(userPositions)))
 
-    if (users.length === 0) return interaction.editReply({ content: "No results." });
-    
     const content = users.map(user => user.getMember(interaction.guild)).filter(v => v).join(' ') || null
 
     if (users.length <= 5)
