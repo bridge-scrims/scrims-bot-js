@@ -8,7 +8,7 @@ class ScrimsUserPosition extends TableRow {
 
     static sortByLevel(a, b) {
 
-        return ((a?.positions?.level ?? 100) - (b?.position?.level ?? 100));
+        return ((a?.position?.level ?? 99) - (b?.position?.level ?? 99));
         
     }
 

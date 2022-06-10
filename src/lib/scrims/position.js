@@ -4,7 +4,7 @@ class ScrimsPosition extends TableRow {
 
     static sortByLevel(a, b) {
 
-        return ((a.level ?? 100) - (b.level ?? 100));
+        return ((a.level ?? 99) - (b.level ?? 99));
         
     }
 

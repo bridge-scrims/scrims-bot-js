@@ -34,7 +34,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     static getPositionsInfoMessage(positions, userPositions) {
 
-        positions = positions.sort((a, b) => ((a.level ?? 100) - (b.level ?? 100)))
+        positions = positions.sort(ScrimsPosition.sortByLevel)
         const getDetails = (pos) => `\`ID:\` ${pos.id}, \`Level:\` **${pos.level ?? '*None*'}**, \`Sticky:\` ${pos.sticky}, \`Members:\` **${userPositions.filter(v => v.id_position === pos.id_position).length}**`;
 
         return { 
