@@ -33,29 +33,35 @@ async function onFindCommand(interaction) {
 
     const userResolvable = interaction.options.getString("user-resolvable")
 
-    const querystring = `SELECT * FROM scrims_user WHERE ((discord_username || '#' || discord_discriminator) like $1) OR (discord_username like $1) OR (discord_id=$1) OR (id_user::text=$1) ORDER BY (discord_username || '#' || discord_discriminator) ASC LIMIT 100;`
+    const querystring = `SELECT * FROM scrims_user WHERE ((discord_username || '#' || lpad(discord_discriminator::text, 4, '0')) like $1) OR (discord_username like $1) OR (discord_id=$1) OR (id_user::text=$1) ORDER BY (discord_username || '#' || discord_discriminator) ASC LIMIT 100;`
     let result = await interaction.database.query(querystring, [userResolvable])
 
     if (result.rows.length === 0)
         result = await interaction.database.query(querystring.replace(/like/g, "ilike"), [userResolvable])
 
     /** @type {ScrimsUser[]} */
-    const users = []
+    const memberUsers = []
+    const databaseUsers = []
 
-    users.push(...result.rows.map(data => new ScrimsUser(interaction.database, data)))
     if (interaction.guild) {
-        const members = interaction.guild.members.cache
-            .filter(member => member.scrimsUser && (member.displayName.toLowerCase().includes(userResolvable.toLowerCase())))
-            .filter(member => !users.find(user => user.id_user === member.scrimsUser.id_user))
-        users.push(...members.map(member => member.scrimsUser))
+        const members = interaction.guild.members.cache.filter(member => member.scrimsUser && (member.displayName.toLowerCase().includes(userResolvable.toLowerCase())))
+        memberUsers.push(...members.map(member => member.scrimsUser))
     }
-    
+
+    result.rows
+        .filter(data => !memberUsers.find(user => user.id_user === data.id_user))
+        .map(data => new ScrimsUser(interaction.database, data))
+        .forEach(user => databaseUsers.push(user))
+
+    const userPositions = await interaction.database.userPositions.getArrayMap(memberUsers.concat(databaseUsers).map(user => ({ id_user: user.id_user })), ['id_user'], false)
+    const users = memberUsers.sort(ScrimsUser.sortByPositions(userPositions)).concat(databaseUsers.sort(ScrimsUser.sortByPositions(userPositions)))
+
     if (users.length === 0) return interaction.editReply({ content: "No results." });
     
-    const userPositions = await interaction.database.userPositions.getArrayMap(users.map(user => ({ id_user: user.id_user })), ['id_user'], false)
+    const content = users.map(user => user.getMember(interaction.guild)).filter(v => v).join(' ') || null
 
-    if (users.length <= 3)
-        return interaction.editReply({ embeds: users.map(user => user.toEmbed(userPositions, interaction.guild)) });
+    if (users.length <= 5)
+        return interaction.editReply({ content, embeds: users.map(user => user.toEmbed(userPositions, interaction.guild)), allowedMentions: { parse: [] } });
 
     let description = ""
     for (const user of users) {
@@ -67,7 +73,7 @@ async function onFindCommand(interaction) {
         description += summary
     }
     
-    return interaction.editReply({ embeds: [new MessageEmbed().setTitle("Multiple Results").setDescription(description)] })
+    return interaction.editReply({ content, embeds: [new MessageEmbed().setTitle("Multiple Results").setDescription(description)], allowedMentions: { parse: [] } })
         
 }
 

@@ -74,11 +74,11 @@ class PositionLoggingFeature {
     async onPositionRoleRemove(payload) {
 
         const guild = payload?.selector?.guild_id ? (this.database.guilds.cache.resolve(payload.selector.guild_id)?.discordGuild ?? null) : null
-        const role = (guild && guild.roles.resolve(payload?.selector?.role_id)) ? `${guild.roles.resolve(payload.selector.role_id)}` : `@&${payload?.selector?.role_id}`
+        const role = (guild && guild.roles.resolve(payload?.selector?.role_id)) ? `${guild.roles.resolve(payload.selector.role_id)}` : `**@${payload?.selector?.role_id}**`
 
         const position = (payload?.selector?.id_position) ? this.database.positions.cache.resolve(payload.selector.id_position)?.name : payload?.selector?.id_position
 
-        const msg = `Unconnected discord **${role}** from ` + (position ? `bridge scrims **${position}**.` : `any bridge scrims positions.`)
+        const msg = `Unconnected discord ${role} from ` + (position ? `bridge scrims **${position}**.` : `any bridge scrims positions.`)
         return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Position Role Removed", '#F00A7D', [payload?.selector?.guild_id]);
 
     }

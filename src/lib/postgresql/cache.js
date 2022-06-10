@@ -236,13 +236,16 @@ class DBCache extends EventEmitter {
             existing.update(value)
             if (oldId !== existing.id) {
 
-                delete this.data[oldId]
-                this.set(existing.id, existing)
+                this.remove(oldId)
+                this.push(existing)
+
+            }else {
+
+                this.setExpiration(existing)
+                this.emit('update', existing)
 
             }
 
-            this.setExpiration(existing)
-            this.emit('update', existing)
             return true;
 
         }

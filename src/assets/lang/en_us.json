@@ -28,5 +28,7 @@
     "vouch_decision_accepted": "Got Accepted",
     "vouch_decision_description": "Decided by the %s%s",
     "no_voice_channel_title": "No Voice Channel",
-    "no_voice_channel": "You can only use this command in voice channels!"
+    "no_voice_channel": "You can only use this command in voice channels!",
+    "unexpected_failure_title": "Well, this is akward",
+    "not_scrims_guild_member": "The user you choose has not been added to our system yet. Please try again later."
 }

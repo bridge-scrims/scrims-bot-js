@@ -130,6 +130,13 @@ class ScrimsUserPosition extends TableRow {
 
     }
 
+    getExpirationDetail() {
+
+        return (this.expires_at === null) ? `\`permanent\`` 
+            : ((!this.expires_at) ? '\`unknown duration\`' : `expires <t:${this.expires_at}:F>`);
+
+    }
+
 }
 
 module.exports = ScrimsUserPosition;

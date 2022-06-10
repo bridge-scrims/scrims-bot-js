@@ -163,6 +163,12 @@ class ScrimsMessageBuilder {
     
     }
 
+    static unexpectedFailureMessage(i18n, message) {
+
+        return this.errorMessage(i18n.get("unexpected_failure_title"), message);
+
+    }
+
     static configEntrysMessage(configEntrys) {
 
         return { 

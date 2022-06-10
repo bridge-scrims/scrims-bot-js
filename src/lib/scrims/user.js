@@ -12,9 +12,13 @@ class ScrimsUser extends TableRow {
         'mc_uuid', 'mc_name', 'mc_verified', 'country', 'timezone'
     ]
 
-    /**
-     * @param {GuildMember} member 
-     */
+    static sortByPositions(userPositions) {
+
+        return (a, b) => ((userPositions[b.id_user]?.length ?? -1) - (userPositions[a.id_user]?.length ?? -1));
+
+    }
+
+    /** @param {GuildMember} member */
     static fromGuildMember(member) {
         
         return new ScrimsUser(member.client.database)
@@ -204,7 +208,7 @@ class ScrimsUser extends TableRow {
     getMember(guild) {
 
         if (!this.discord_id) return null;
-        return guild.members.cache.get(this.discord_id);
+        return guild.members.cache.get(this.discord_id) ?? null;
 
     }
 
@@ -220,9 +224,9 @@ class ScrimsUser extends TableRow {
 
     }
 
-    async fetchPositions() {
+    async fetchPositions(show_expired=false) {
 
-        return this.permissions.fetchPositions();
+        return this.permissions.fetchPositions(show_expired);
 
     }
 

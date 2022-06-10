@@ -53,13 +53,13 @@ class ScrimsUserUpdater {
 
     }
 
-    /** 
-     * @param { GuildMember } member 
-     */
+    /** @param {GuildMember} member */
     async onMemberAdd(member) {
 
         const scrimsUsers = this.bot.database.users.cache.getMap("discord_id")
         await this.createMember(member, scrimsUsers[member.id])
+        
+        if (!member.scrimsUser) return false;
         this.bot.emit('scrimsGuildMemberAdd', member)
 
     }

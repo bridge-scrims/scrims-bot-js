@@ -9,6 +9,12 @@ class ScrimsPositionRole extends TableRow {
     static uniqueKeys = ['id_position', 'role_id', 'guild_id']
     static columns = ['id_position', 'role_id', 'guild_id']
 
+    static sortByLevel(a, b) {
+
+        return ((a?.position?.level ?? 99) - (b?.position?.level ?? 99));
+        
+    }
+    
     constructor(client, positionRoleData) {
 
         super(client, positionRoleData)

@@ -169,9 +169,9 @@ class ScrimsUserPermissionsManager {
 
     }
 
-    async fetchPositions() {
+    async fetchPositions(show_expired=false) {
 
-        const userPositions = await this.client.userPositions.fetch({ id_user: this.user.id_user }, false)
+        const userPositions = await this.client.userPositions.fetch({ id_user: this.user.id_user, show_expired }, false)
         return Object.fromEntries(userPositions.map(userPos => [userPos.id_position, userPos]));
 
     }
