@@ -116,17 +116,19 @@ async function onRemovePositionCommand(interaction) {
     const position = interaction.client.database.positions.cache.resolve(id_position)
     if (!position) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
 
-    const existing = await interaction.client.database.userPositions.fetch({ id_position }, false)
-    await interaction.client.database.userPositions.remove({ id_position })
-    existing.forEach(userPosition => interaction.client.database.ipc.notify("audited_user_position_remove", { executor_id: interaction.user.id, userPosition }))
-    
     const removed = await interaction.client.database.positionRoles.remove({ id_position })
     removed.forEach(selector => interaction.client.database.ipc.notify('audited_position_role_remove', { executor_id: interaction.user.id, selector }))
 
-    const result = await interaction.client.database.positions.remove({ id_position }).catch(error => error)
-    if (result instanceof Error)
-        return interaction.editReply(ScrimsMessageBuilder.failedMessage(`remove the **${position.name}** position`));
+    const existing = await interaction.client.database.userPositions.fetch({ id_position }, false)
+    await interaction.client.database.userPositions.remove({ id_position })
+    existing.forEach(userPosition => interaction.client.database.ipc.notify("audited_user_position_remove", { executor_id: interaction.user.id, userPosition }))
 
+    const result = await interaction.client.database.positions.remove({ id_position }).catch(error => error)
+    if (result instanceof Error) {
+        console.error(result)
+        return interaction.editReply(ScrimsMessageBuilder.failedMessage(`remove the **${position.name}** position`));
+    }
+       
     interaction.client.database.ipc.send('audited_position_remove', { position, id_executor: interaction.scrimsUser.id_user })
     await interaction.editReply({ content: `Removed **${position.name}**.`, ephemeral: true })
     

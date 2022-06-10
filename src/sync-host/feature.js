@@ -89,10 +89,10 @@ class ScrimsSyncHostFeature {
 
     }
 
-    getMemberMissingPositions(member, userPositions) {
+    getMemberMissingPositions(member, scrimsUser, userPositions) {
 
-        if (!member.scrimsUser) return [];
-        const currentPositions = member.scrimsUser.getUserPositions(userPositions)
+        if (!member) return [];
+        const currentPositions = scrimsUser.getUserPositions(userPositions)
 
         const allPositionRoles = this.permissions.getGuildPositionRoles(member.guild.id)
         const allowedPositionRoles = allPositionRoles.filter(pRole => this.permissions.hasRequiredPositionRoles(member, pRole.id_position, true))
@@ -102,11 +102,10 @@ class ScrimsSyncHostFeature {
 
     }
 
-    getMemberUnallowedPositions(member, userPositions) {
+    getMemberUnallowedPositions(member, scrimsUser, userPositions) {
 
-        if (!member.scrimsUser) return [];
-        const currentPositions = Object.values(member.scrimsUser.getUserPositions(userPositions))
-        const unallowedPositions = currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true))
+        const currentPositions = Object.values(scrimsUser.getUserPositions(userPositions))
+        const unallowedPositions = member ? currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true)) : currentPositions.filter(userPos => !userPos.positions?.sticky)
 
         return Array.from(new Set(unallowedPositions.map(userPos => userPos.id_position)));
 
@@ -154,11 +153,11 @@ class ScrimsSyncHostFeature {
     async getMembersPositionsDifference(guild) {
 
         const userPositions = await this.bot.database.userPositions.getArrayMap({}, ["id_user"], false)
-        const members = await guild.members.fetch()
+        const scrimsUsers = this.bot.database.users.cache.values()
 
-        return members.map(member => [
-            this.getMemberMissingPositions(member, userPositions), 
-            this.getMemberUnallowedPositions(member, userPositions) 
+        return scrimsUsers.map(user => [
+            this.getMemberMissingPositions(user.getMember(guild), user, userPositions), 
+            this.getMemberUnallowedPositions(user.getMember(guild), user, userPositions)
         ]);
 
     }
@@ -166,16 +165,14 @@ class ScrimsSyncHostFeature {
     async transferPositions(guild, id_executor) {
 
         const userPositions = await this.bot.database.userPositions.getArrayMap({}, ["id_user"], false)
-        const members = await guild.members.fetch()
+        const scrimsUsers = this.bot.database.users.cache.values()
 
-        return Promise.all(members.filter(member => member.scrimsUser).map(member => this.transferPositionsForMember(id_executor, member, this.getMemberMissingPositions(member, userPositions), this.getMemberUnallowedPositions(member, userPositions))))
+        return Promise.all(scrimsUsers.map(user => this.transferPositionsForMember(id_executor, user, this.getMemberMissingPositions(user.getMember(guild), user, userPositions), this.getMemberUnallowedPositions(user.getMember(guild), user, userPositions))))
             .then(results => results.reduce(([rmv, create], [removeResults, createResults]) => [ [...rmv, ...removeResults], [...create, ...createResults] ], [[], []]))
 
     }
 
-    async transferPositionsForMember(id_executor, member, create, remove) {
-
-        const scrimsUser = member.scrimsUser
+    async transferPositionsForMember(id_executor, scrimsUser, create, remove) {
 
         const removeResults = await Promise.all(
             remove.map(id_position => this.bot.database.userPositions.remove({ id_user: scrimsUser.id_user, id_position })
