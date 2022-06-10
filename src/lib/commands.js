@@ -44,7 +44,9 @@ async function onFindCommand(interaction) {
 
     users.push(...result.rows.map(data => new ScrimsUser(interaction.database, data)))
     if (interaction.guild) {
-        const members = interaction.guild.members.cache.filter(member => member.scrimsUser && (member.displayName.toLowerCase().includes(userResolvable.toLowerCase())))
+        const members = interaction.guild.members.cache
+            .filter(member => member.scrimsUser && (member.displayName.toLowerCase().includes(userResolvable.toLowerCase())))
+            .filter(member => !users.find(user => user.id_user === member.scrimsUser.id_user))
         users.push(...members.map(member => member.scrimsUser))
     }
     

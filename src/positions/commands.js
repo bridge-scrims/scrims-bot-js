@@ -69,7 +69,7 @@ async function onPositionAutoComplete(interaction) {
     await interaction.respond(
         positions
             .filter(position => position.name.toLowerCase().includes(focused))
-            .filter(position => userPositions.filter(userPos => userPos.id_position == position.id_position).length === 0)
+            .filter(position => !userPositions.find(userPos => userPos.id_position === position.id_position))
             .map(position => ({ name: position.name, value: position.id_position }))
             .slice(0, 25)
     )
