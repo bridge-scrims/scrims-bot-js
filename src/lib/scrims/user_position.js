@@ -7,9 +7,11 @@ class ScrimsUserPosition extends TableRow {
     static columns = ['id_user', 'id_position', 'id_executor', 'given_at', 'expires_at']
 
     static sortByLevel(a, b) {
-
         return ((a?.position?.level ?? 99) - (b?.position?.level ?? 99));
-        
+    }
+
+    static removeExpired(v) {
+        return !(v.isExpired());
     }
 
     constructor(client, userPositionData) {
@@ -133,7 +135,7 @@ class ScrimsUserPosition extends TableRow {
     getExpirationDetail() {
 
         return (this.expires_at === null) ? `\`permanent\`` 
-            : ((!this.expires_at) ? '\`unknown duration\`' : `expires <t:${this.expires_at}:F>`);
+            : ((!this.expires_at) ? '\`unknown duration\`' : `expires <t:${this.expires_at}:R>`);
 
     }
 

@@ -111,7 +111,7 @@ class ScrimsPositionUpdater {
 
         if (member.guild.id === this.hostGuildId && member.scrimsUser) {
             
-            await this.sync.scrimsMemberRemove(member.scrimsUser)
+            await this.sync.scrimsMemberRemove(member.scrimsUser, Object.values(await member.scrimsUser.fetchPositions(true)))
 
         }
 
@@ -122,7 +122,7 @@ class ScrimsPositionUpdater {
         if (member.guild.id === this.hostGuildId) {
 
             // Make sure the user lost their non sticky positions when they left
-            if (member.scrimsUser) await this.sync.removeUnstickyPositions(member.scrimsUser)
+            if (member.scrimsUser) await this.sync.removeUnstickyPositions(member.scrimsUser, Object.values(await member.scrimsUser.fetchPositions(true)))
 
         }
 

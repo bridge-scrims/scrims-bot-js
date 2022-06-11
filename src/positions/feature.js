@@ -1,4 +1,4 @@
-const { GuildMember } = require("discord.js");
+const { GuildMember, Role, Guild } = require("discord.js");
 const { interactionHandler, eventListeners, commands } = require("./commands");
 
 class PositionsFeature {
@@ -9,8 +9,7 @@ class PositionsFeature {
         this.bot = bot
 
         commands.forEach(([ cmdData, cmdPerms, cmdOptions ]) => this.bot.commands.add(cmdData, cmdPerms, cmdOptions))
-        
-        bot.on('ready', () => this.onReady())
+
         bot.on('databaseConnected', () => this.onStartup())
 
     }
@@ -18,12 +17,6 @@ class PositionsFeature {
     get database() {
 
         return this.bot.database;
-
-    }
-
-    async onReady() {
-
-        
 
     }
 
@@ -45,52 +38,38 @@ class PositionsFeature {
 
     }
 
-    botHasRolePermissions(role) {
-
-        const botMember = role.guild.members.cache.get(this.bot.user.id)
-        if (!botMember) return false;
-        
-        const largest = Math.max( ...botMember.roles.cache.map(role => role.position) )
-        return (largest > role.position);
-
-    }
-
-    async logError(msg, context) {
-
-        if (context.error) console.error(`${msg} Reason: ${context.error}`)
-        this.database.ipc.notify(`position_error`, { msg, ...context })
-
-    }
-
+    /** @param {Role} role */
     async onRoleDelete(role) {
 
-        const selector = { guild_id: role.guild.id, role_id: role.id }
-        await this.database.positionRoles.remove(selector)
-            .then(() => this.database.ipc.notify('audited_position_role_remove', { executor_id: this.bot.user.id, selector }))
-            .catch(console.error)
+        const selector = { guild_id: role.guild.id, role_id: role.name }
+        if (this.database.positionRoles.cache.find(selector)) {
+            await this.database.positionRoles.remove(selector)
+                then(() => this.database.ipc.notify('audited_position_role_remove', { executor_id: this.bot.user.id, selector }))
+                .catch(console.error)
+        }
 
     }
 
-    /**
-     * @param { GuildMember } member 
-     */
+    /** @param {import("../lib/types").ScrimsGuildMember} member */
     async onMemberAdd(member) {
 
-        const userPositions = this.bot.database.userPositions.cache.get({ id_user: member.scrimsUser.id_user, position: { sticky: true } })
+        const userPositions = await this.bot.database.userPositions.fetch({ id_user: member.scrimsUser.id_user, position: { sticky: true } })
         const discordRoleIds = userPositions.map(p => this.bot.permissions.getPositionRequiredRoles(member.guild.id, p.id_position)).flat()
-        const missingRoleIds = [ ...new Set(discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))) ].filter(roleId => !member.guild.roles.cache.get(roleId)?.managed)
+        const missingRoleIds = Array.from(new Set(discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))))
+        const missingRoles = missingRoleIds.map(roleId => member.guild.roles.cache.get(roleId))
+            .filter(role => role && this.bot.hasRolePermissions(role) && member.guild.id !== role.id)
 
-        if (missingRoleIds.length > 0) {
+        if (missingRoles.length > 0) {
 
             await Promise.all(
-                missingRoleIds.map(
-                    roleId => member.roles.add(roleId)
-                        .catch(error => console.error(`Unable to add position roles to ${member.user.tag} because of ${error}!`, userPositions, roleId))
+                missingRoles.map(
+                    role => member.roles.add(role)
+                        .catch(error => console.error(`Unable to add position roles to ${member.user.tag} because of ${error}!`, userPositions, role))
                 )
             )
 
-            const addedRoles = missingRoleIds.filter(id => member.roles.cache.has(id)).map(id => `${member.roles.cache.get(id)}`)
-            if (addedRoles.length > 0 ) this.database.ipc.notify(`joined_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, roles: addedRoles })
+            const addedRoles = missingRoles.filter(role => member.roles.cache.has(role.id)).map(role => `${role}`)
+            if (addedRoles.length > 0) this.database.ipc.notify(`joined_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, roles: addedRoles })
         
         }
 
@@ -103,28 +82,33 @@ class PositionsFeature {
         await Promise.allSettled(
             this.bot.guilds.cache.map(
                 guild => guild.members.fetch(user.discord_id)
-                    .then(member => this.givePositionRoles(member, id_position))
+                    .then(member => this.givePositionRoles(member, id_position).catch(console.error))
             )
         )
 
     }
 
+    /**
+     * @param {GuildMember} member
+     * @param {number} id_position
+     */
     async givePositionRoles(member, id_position) {
 
-        const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position)
+        const roles = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position)
             .filter(roleId => !member.roles.cache.has(roleId))
-            .filter(roleId => !member.guild.roles.cache.get(roleId)?.managed && member.guild.id !== roleId)
-
-        if (roleIds.length > 0) {
+            .map(roleId => member.guild.roles.cache.get(roleId))
+            .filter(role => role && this.bot.hasRolePermissions(role) && member.guild.id !== role.id)
+            
+        if (roles.length > 0) {
 
             await Promise.all(
-                roleIds.map(
-                    roleId => member.roles.add(roleId)
-                        .catch(error => console.error(`Adding roles failed because of ${error}!`, member.guild.id, id_position, roleId))
+                roles.map(
+                    role => member.roles.add(role)
+                        .catch(error => console.error(`Adding roles failed because of ${error}!`, member.guild.id, id_position, role))
                 )
             )
 
-            const addedRoles = roleIds.filter(id => member.roles.cache.has(id)).map(id => `${member.roles.cache.get(id)}`)
+            const addedRoles = roles.filter(role => member.roles.cache.has(role.id)).map(role => `${role}`)
             if (addedRoles.length > 0) this.database.ipc.notify(`position_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, id_position, roles: addedRoles })
 
         }
@@ -134,58 +118,65 @@ class PositionsFeature {
     async onPositionRemove(userPositionSelector) {
 
         const { id_user, id_position } = userPositionSelector
-        const scrimsUsers = await this.database.users.fetch({ id_user }).catch(console.error)
-        if (!scrimsUsers || scrimsUsers.length === 0) return false;
+
+        const scrimsUser = this.database.users.cache.find(id_user)
+        if (!scrimsUser) return false;
 
         await Promise.allSettled(
             this.bot.guilds.cache.map(
-                guild => guild.members.fetch(scrimsUsers[0].discord_id)
-                    .then(member => this.removePositionRoles(member, id_position))
+                guild => guild.members.fetch(scrimsUser.discord_id)
+                    .then(member => this.removePositionRoles(member, id_position).catch(console.error))
             )
         )
 
     }
 
+    /**
+     * @param {GuildMember} member 
+     * @param {number} id_position 
+     */
     async removePositionRoles(member, id_position) {
 
-        const roleIds = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position)
-            .filter(roleId => member.roles.cache.has(roleId))
-            .filter(roleId => !member.roles.cache.get(roleId).managed && member.guild.id !== roleId)
-        
-        const roles = roleIds.map(id => `${member.roles.cache.get(id)}`)
+        const roles = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position)
+            .map(roleId => member.roles.cache.get(roleId))
+            .filter(role => role && this.bot.hasRolePermissions(role) && member.guild.id !== role.id)
+  
+        if (roles.length > 0) {
 
-        if (roleIds.length > 0) {
+            await member.roles.remove(roles)
+                .catch(error => console.error(`Removing roles failed because of ${error}!`, member.guild.id, id_position, roles))
 
-            const success = await member.roles.remove(roleIds).then(() => true)
-                .catch(error => console.error(`Removing roles failed because of ${error}!`, member.guild.id, id_position. roleIds))
-
-            if (success === true && roles.length > 0) this.database.ipc.notify(`position_discord_roles_lost`, { guild_id: member.guild.id, executor_id: member.id, id_position, roles })
+            const lostRoles = roles.filter(role => !member.roles.cache.has(role.id)).map(role => `${role}`)
+            if (lostRoles.length > 0) this.database.ipc.notify(`position_discord_roles_lost`, { guild_id: member.guild.id, executor_id: member.id, id_position, roles: lostRoles })
             
         }
         
     }
 
+    /** @param {import("../lib/types").ScrimsGuildMember} member */
     getMemberMissingRoles(member, userPositions) {
 
         return Array.from(
             new Set(
-                userPositions.map(userPos => this.bot.permissions.getPositionRequiredPositionRoles(member.guild.id, userPos.id_position)).flat()
-                    .filter(pRole => !member.roles.cache.has(pRole.role_id))
-                    .filter(pRole => !member.guild.roles.cache.get(pRole.role_id)?.managed)
-                    .map(pRole => pRole.role_id)
+                Object.keys(member.scrimsUser.getUserPositions(userPositions))
+                    .map(id_position => this.bot.permissions.getPositionRequiredPositionRoles(member.guild.id, id_position)).flat()
+                        .filter(pRole => !member.roles.cache.has(pRole.role_id))
+                        .filter(pRole => pRole.role && this.bot.hasRolePermissions(pRole.role) && member.guild.id !== pRole.role_id)
+                        .map(pRole => pRole.role_id)
             )
         );
 
     }
 
+    /** @param {import("../lib/types").ScrimsGuildMember} member */
     getMemberUnallowedRoles(member, userPositions) {
 
         return Array.from(
             new Set(
                 this.bot.permissions.getGuildPositionRoles(member.guild.id)
-                    .filter(pRole => !userPositions.find(userPos => userPos.id_position === pRole.id_position))
+                    .filter(pRole => !member.scrimsUser.permissions.hasPosition(pRole.id_position, userPositions))
                     .filter(pRole => member.roles.cache.has(pRole.role_id))
-                    .filter(pRole => !member.guild.roles.cache.get(pRole.role_id)?.managed)
+                    .filter(pRole => pRole.role && this.bot.hasRolePermissions(pRole.role) && member.guild.id !== pRole.role_id)
                     .map(pRole => pRole.role_id)
             )
         );
@@ -199,28 +190,27 @@ class PositionsFeature {
 
     }
 
+    /** @param {Guild} guild */
     async getMembersRolesDifference(guild) {
 
-        const members = await guild.members.fetch()
-        const userPositions = await this.database.userPositions.getArrayMap({}, ["user", "discord_id"], false)
-
-        return Promise.all(members.map(member => [ this.getMemberMissingRoles(member, userPositions[member.id] ?? [] ), this.getMemberUnallowedRoles(member, userPositions[member.id] ?? []) ]));
+        const members = guild.members.cache.filter(member => member.scrimsUser)
+        const userPositions = await this.database.userPositions.getArrayMap({}, ["id_user"], false)
+        return Promise.all(members.map(member => [ this.getMemberMissingRoles(member, userPositions), this.getMemberUnallowedRoles(member, userPositions) ]));
 
     }
 
+    /** @param {Guild} guild */
     async syncPositions(guild) {
 
-        const members = await guild.members.fetch()
-        const userPositions = await this.database.userPositions.getArrayMap({}, ["user", "discord_id"], false)
+        const members = guild.members.cache.filter(member => member.scrimsUser)
+        const userPositions = await this.database.userPositions.getArrayMap({}, ["id_user"], false)
 
-        return Promise.all(members.map(member => this.syncPositionsForMember(member, userPositions[member.id] ?? [])))
+        return Promise.all(members.map(member => this.syncPositionsForMember(member, userPositions)))
             .then(results => results.reduce(([rmv, create], [removeResults, createResults]) => [ [...rmv, ...removeResults], [...create, ...createResults] ], [[], []]))
 
     }
 
-    /**
-     * @param {GuildMember} member 
-     */
+    /** @param {GuildMember} member */
     async syncPositionsForMember(member, userPositions) {
 
         const unallowedRoles = this.getMemberUnallowedRoles(member, userPositions)

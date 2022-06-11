@@ -102,12 +102,32 @@ class DBTable {
 
     createFunctionParameters(parameters, prevValues=[]) {
 
-        if (Object.keys(parameters).length === 0) return [ "", [] ];
+        if (parameters instanceof Array) {
+            if (parameters.length === 0) return [ "", [] ];
+            return [
+                `${this.getEntries(parameters, prevValues).join(", ")}`,
+                this.getValues(parameters, prevValues)
+            ];
+        }
 
+        if (Object.keys(parameters).length === 0) return [ "", [] ];
         return [
             `${this.getEntries(parameters, prevValues).map(([key, value]) => `${key} => ${value}`).join(", ")}`,
             this.getValues(parameters, prevValues)
         ];
+
+    }
+
+    /**
+     * @param {string} functionName 
+     * @param {Object.<string, any>|Array.<string>} parameters 
+     */
+    async callFunction(functionName, parameters) {
+
+        if (!(parameters instanceof Array)) parameters = this.format(parameters)
+        const [ formatedParameters, values ] = this.createFunctionParameters(parameters)
+        const result = await this.query(`SELECT ${functionName}(${formatedParameters})`, values)
+        return (result.rows[0] ?? {})[functionName];
 
     }
 
@@ -147,29 +167,35 @@ class DBTable {
 
     getValues(data, prevValues) {
 
-        return [ ...prevValues, ...Object.values(data).filter(value => !(value instanceof Array) && value !== null && value !== undefined) ];
+        if (!(data instanceof Array)) data = Object.values(data)
+        return [ ...prevValues, ...data.filter(value => !(value instanceof Array) && value !== null && value !== undefined) ];
+
+    }
+
+    getRealValues(index) {
+
+        return (a) => {
+
+            const getValue = (e) => (a instanceof Array) ? [a[0], e] : e;
+            const value = (a instanceof Array) ? a[1] : a
+
+            if (value === null) return getValue('NULL');
+            if (value instanceof Array) return getValue(`(${value[0]})`);
+            
+            const v = getValue(`$${index}`);
+            index += 1
+            return v;
+
+        }
 
     }
 
     getEntries(data, prevValues=[]) {
 
-        let index = prevValues.length + 1
-        return Object.entries(data)
-            .filter(([_, value]) => value !== undefined)
-            .map(([key, value]) => {
-
-                if (value === null) value = 'NULL';
-                else if (value instanceof Array) value = `(${value[0]})`;
-                else {
-
-                    value = `$${index}`
-                    index += 1
-
-                }
-
-                return [ key, value ];
-
-            });
+        if (data instanceof Array) return data.filter(v => v !== undefined).map(this.getRealValues(prevValues.length + 1));
+        
+        const e = Object.entries(data).filter(([_, v]) => v !== undefined).map(this.getRealValues(prevValues.length + 1));
+        return e;
 
     }
 
@@ -403,10 +429,11 @@ class DBTable {
      */
     async update(selector, data) {
 
+        if (selector instanceof TableRow) selector.update(data)
         if (selector instanceof Array || typeof selector !== "object") selector = this._getSelectorFromId(selector)
         else selector = this._getObjectSelector(selector)
 
-        const existing = this.cache.find(selector)
+        const existing = this.cache.find(selector)?.toJSON(false) ?? null
         this.cache.update(selector, data)
 
         const [ formatedData, values1 ] = this.format(data)
@@ -417,7 +444,7 @@ class DBTable {
 
         const result = await this.query(`UPDATE ${this.name} ${setClause} WHERE ${whereClause}`, values4).catch(error => error)
         if (result instanceof Error) {
-            this.cache.update(selector, existing)
+            if (existing) this.cache.update(selector, existing)
             throw result;
         }
         return result;
@@ -436,12 +463,12 @@ class DBTable {
         const [ formated, values1 ] = this.format(selector)
         const [ whereClause, values2 ] = this.createWhereClause(formated, values1)
 
-        const result = await this.query(`DELETE FROM ${this.name} WHERE ${whereClause}`, values2).catch(error => error)
+        const result = await this.query(`DELETE FROM ${this.name} WHERE ${whereClause} RETURNING *`, values2).catch(error => error)
         if (result instanceof Error) {
             removed.forEach(removed => this.cache.push(removed))
             throw result;
         }
-        return removed;
+        return (result.rows ?? []).map(row => this.getRow(row));
 
     }
 

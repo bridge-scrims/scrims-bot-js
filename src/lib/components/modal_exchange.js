@@ -110,7 +110,7 @@ class ModalEphemeralExchange extends EphemeralExchange {
         if (type === 'USERS') 
             return (value.length > 0) ? value.map(v => (v?.id || v?.discord_id) ? `${v} (${v?.discord_id ?? v?.id})` : `**${v}**`).map(v => `\`•\` ${v}`).join("\n") : '``` ```';
         
-        return `\`\`\`${ScrimsMessageBuilder.stripText(value)}\`\`\``;
+        return `\`\`\`${ScrimsMessageBuilder.stripText(value).substring(0, 1018)}\`\`\``;
 
     }
 

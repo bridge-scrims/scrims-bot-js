@@ -80,7 +80,6 @@ RETURN COALESCE(retval, '[]'::json);
 END $$ 
 LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE FUNCTION process_user_position_change()
 RETURNS trigger 
 AS $$

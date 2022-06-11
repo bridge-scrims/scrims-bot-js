@@ -63,9 +63,7 @@ async function createTicket(exchange) {
     if (allowed !== true) return allowed;
 
     const category = exchange.client.support.getTicketCategory(exchange.guild.id, exchange.ticketType.name)?.id ?? exchange.categoryId
-    const ticketIndex = await exchange.client.database.query(`SELECT nextval('support_ticket_index');`)
-        .then(result => result.rows[0]?.nextval ?? `${generateRandomLetter()}${generateRandomLetter()}`.toUpperCase())
-
+    const ticketIndex = await exchange.client.database.tickets.callFunction("nextval", ["support_ticket_index"])
     const channel = await createTicketChannel(exchange.client, exchange.guild, category, exchange.creator.discordUser, exchange.ticketType.name, ticketIndex)
 
     const stillAllowed = await exchange.client.support.verifyTicketRequest(exchange.creator, exchange.guildId, exchange.ticketType.name)
@@ -125,13 +123,6 @@ async function sendTicketChannelMessages(exchange, ticket, channel) {
     
     await exchange.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
     
-}
-
-function generateRandomLetter() {
-
-    const alphabet = "abcdefghijklmnopqrstuvwxyz"
-    return alphabet[Math.floor(Math.random() * alphabet.length)];
-
 }
 
 function getSupportLevelRoles(client, guild) {

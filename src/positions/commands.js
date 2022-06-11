@@ -14,6 +14,7 @@ const { MessageActionRow, MessageButton } = require("discord.js");
 const PositionsResponseMessageBuilder = require("./responses");
 
 const positionRolesCommandHandler = require("./position_roles_command");
+const ScrimsUserPosition = require("../lib/scrims/user_position");
 const positionsCommandHandler = require("./positions_command");
 
 const commandHandlers = { 
@@ -26,20 +27,18 @@ const commandHandlers = {
 
 }
 
+/** @param {import("../types").ScrimsAutoCompleteInteraction} interaction */
 async function getUserPositions(interaction, userId) {
 
     if (interaction.options.getSubcommand() === "give") return [];
 
     if (userId) {
 
-        const userPositions = await interaction.client.database.userPositions.fetch({ user: { discord_id: userId } }, false).catch(error => error)
-        if (userPositions instanceof Error) {
-    
-            console.error(`Unable to get user positions for autocomplete because of ${userPositions}!`)
-            return [];
-    
-        }
-        return userPositions;
+        const userPositions = await interaction.client.database.userPositions.fetch({ user: { discord_id: userId } }, false)
+            .catch(error => console.error(`Unable to get user positions for autocomplete because of ${error}!`))
+        
+        if (!userPositions) return [];
+        return userPositions.sort(ScrimsUserPosition.sortByLevel);
 
     }
 
@@ -47,6 +46,7 @@ async function getUserPositions(interaction, userId) {
 
 }
 
+/** @param {import("../types").ScrimsAutoCompleteInteraction} interaction */
 async function onPositionAutoComplete(interaction) {
 
     const focused = interaction.options.getFocused().toLowerCase()
@@ -76,6 +76,7 @@ async function onPositionAutoComplete(interaction) {
 
 }
 
+/** @param {import("../types").ScrimsInteraction} interaction */
 async function onInteraction(interaction) {
 
     if (interaction.isAutocomplete()) return onPositionAutoComplete(interaction);
@@ -87,9 +88,8 @@ async function onInteraction(interaction) {
 
 }
 
+/** @param {import("../types").ScrimsCommandInteraction} interaction */
 async function syncMembersCommandHandler(interaction) {
-
-    await interaction.deferReply({ ephemeral: true })
 
     const memberChanges = await interaction.client.positions.getMembersRolesDifference(interaction.guild).catch(error => error)
     if (memberChanges instanceof Error) {
@@ -115,14 +115,14 @@ async function syncMembersCommandHandler(interaction) {
 
 }
 
+/** @param {import("../types").ScrimsComponentInteraction} interaction */
 async function onSyncMembersComponent(interaction) {
 
     if (interaction.args.shift() !== "CONFIRM") return false;
 
     if (!interaction.scrimsUser) return interaction.reply(PositionsResponseMessageBuilder.scrimsUserNeededMessage(interaction.i18n));
 
-    await interaction.deferUpdate()
-    await interaction.editReply({ content: `Syncing...`, embeds: [], components: [] })
+    await interaction.update({ content: `Syncing...`, embeds: [], components: [] })
 
     const result = await interaction.client.positions.syncPositions(interaction.guild).catch(error => error)
     if (result instanceof Error) {
@@ -296,7 +296,7 @@ function getBridgeScrimsSyncCommand() {
         .setName("scrims-sync-members")
         .setDescription("Use this command to sync everyones bridge scrims position roles.")
 
-    return [ syncCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
+    return [ syncCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false, ephemeralDefer: true } ];
 
 }
 

@@ -105,7 +105,7 @@ class ScrimsSyncHostFeature {
     getMemberUnallowedPositions(member, scrimsUser, userPositions) {
 
         const currentPositions = Object.values(scrimsUser.getUserPositions(userPositions))
-        const unallowedPositions = member ? currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true)) : currentPositions.filter(userPos => !userPos.positions?.sticky)
+        const unallowedPositions = member ? currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true)) : currentPositions.filter(userPos => !userPos.position?.sticky)
 
         return Array.from(new Set(unallowedPositions.map(userPos => userPos.id_position)));
 
@@ -124,7 +124,7 @@ class ScrimsSyncHostFeature {
 
     async removeUnstickyPositions(scrimsUser, userPositions) {
 
-        const nonStickyPositions = Object.values(scrimsUser.getUserPositions(userPositions)).filter(userPos => !userPos.position.sticky)
+        const nonStickyPositions = Object.values(scrimsUser.getUserPositions(userPositions)).filter(userPos => !userPos.position?.sticky)
         await Promise.all(
             nonStickyPositions.map(userPos => this.bot.database.userPositions.remove(userPos)
                 .catch(error => console.error(`Unable to remove non sticky positions of user!`, error, nonStickyPositions))

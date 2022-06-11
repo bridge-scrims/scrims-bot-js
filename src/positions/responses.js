@@ -3,6 +3,8 @@ const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, Messag
 const ScrimsMessageBuilder = require("../lib/responses");
 const ScrimsPosition = require("../lib/scrims/position");
 const ScrimsPositionRole = require("../lib/scrims/position_role");
+const ScrimsUser = require("../lib/scrims/user");
+const ScrimsUserPosition = require("../lib/scrims/user_position");
 
 class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
@@ -13,6 +15,7 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
         if (positionRoles.length === 0) 
             return { ephemeral: true, components: [], content: "No position roles configured." };
 
+        positionRoles = positionRoles.sort(ScrimsPositionRole.sortByLevel)
         const getRoleMention = (role) => (role.guild.id === guild_id) ? `${role}` : `@${role.name}`;
 
         return { 
@@ -78,19 +81,20 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    static getUserPositionsMessage(user, userPositions) {
+    /** @param {ScrimsUser} scrimsUser */
+    static getUserPositionsMessage(scrimsUser, userPositions) {
 
-        const userName = user.username.endsWith('s') ? user.username : `${user.username}'s`;
-        const getUserPositionExpiration = userPos => (userPos.expires_at === null) ? `never expires` : `expires <t:${userPos.expires_at}:R>`;
+        userPositions = userPositions.filter(ScrimsUserPosition.removeExpired).sort(ScrimsUserPosition.sortByLevel)
+        const username = scrimsUser.discord_username
         return { 
 
             ephemeral: true,
             components: [],
             embeds: this.createMultipleEmbeds(userPositions, (userPositions, idx, containers) => (
                 new MessageEmbed()
-                    .setTitle(`${userName} Positions`)
+                    .setTitle(`${(username.endsWith('s') ? username : `${username}'s`)} Positions`)
                     .setColor(this.syncViolet)
-                    .setDescription(userPositions.map(userPos => `\`•\` **${userPos.position?.name}** (${getUserPositionExpiration(userPos)})`).join("\n"))
+                    .setDescription(userPositions.map(userPos => `\`•\` **${userPos.position?.name}** (${userPos.getExpirationDetail()})`).join("\n"))
                     .setFooter({ text: `Page ${idx+1}/${containers.length}` })
                     .setTimestamp(Date.now())
             ))
