@@ -205,7 +205,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
     /**
      * @param { TicketCreateExchange } exchange 
      */
-    static ticketInfoMessage(exchange, mentionRoles, supportRole) {
+    static ticketInfoMessage(exchange, mentionRoles=[], supportRole=null) {
 
         if (exchange.isNiteBlock()) {
 
@@ -215,20 +215,20 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
                 .setFields(exchange.getEmbedFields())
                 .setColor('#ff9d00')
 
-            const content = `||${exchange.creator}||`
+            const content = `${exchange.creator}`
             return { content, embeds: [embed], allowedMentions: { roles: [], users: [exchange.creator.discord_id] } };
 
         }
 
         const embed = new MessageEmbed()
             .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
-            .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? '**@support**'} team have been alerted and will be with you shortly.`)
+            .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? 'support'} team have been alerted and will be with you shortly.`)
             .setColor(supportRole?.hexColor || '#ff9d00')
             .setFooter({ text: `Managed by the support team`, iconURL: supportRole?.iconURL() })
             .setFields(exchange.getEmbedFields())
             .setTimestamp()
 
-        const content = (mentionRoles.length > 0 ? `||${exchange.creator} ${mentionRoles.join(' ')}||\n` : `||${exchange.creator}||`)
+        const content = `${mentionRoles.join(' ')} ${exchange.creator} created a ${exchange.ticketType.name} ticket.`
         return { content, embeds: [embed], allowedMentions: { roles: (exchange.isTest() ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
 
     }
