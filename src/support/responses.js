@@ -207,6 +207,19 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
      */
     static ticketInfoMessage(exchange, mentionRoles, supportRole) {
 
+        if (exchange.isNiteBlock()) {
+
+            const embed = new MessageEmbed()
+                .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
+                .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. Niteblock has been alerted because we detected that this is minecraft server related.`)
+                .setFields(exchange.getEmbedFields())
+                .setColor('#ff9d00')
+
+            const content = `||${exchange.creator}||`
+            return { content, embeds: [embed], allowedMentions: { roles: [], users: [exchange.creator.discord_id] } };
+
+        }
+
         const embed = new MessageEmbed()
             .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
             .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? '**@support**'} team have been alerted and will be with you shortly.`)
@@ -216,7 +229,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
             .setTimestamp()
 
         const content = (mentionRoles.length > 0 ? `||${exchange.creator} ${mentionRoles.join(' ')}||\n` : `||${exchange.creator}||`)
-        return { content, embeds: [embed], allowedMentions: { roles: ((exchange.isTest() || exchange.isNiteBlock()) ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
+        return { content, embeds: [embed], allowedMentions: { roles: (exchange.isTest() ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
 
     }
     
