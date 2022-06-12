@@ -216,7 +216,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
             .setTimestamp()
 
         const content = (mentionRoles.length > 0 ? `||${exchange.creator} ${mentionRoles.join(' ')}||\n` : `||${exchange.creator}||`)
-        return { content, embeds: [embed], allowedMentions: { roles: (exchange.isTest() ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
+        return { content, embeds: [embed], allowedMentions: { roles: ((exchange.isTest() || exchange.isNiteBlock()) ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
 
     }
     

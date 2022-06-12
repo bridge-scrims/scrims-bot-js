@@ -57,6 +57,12 @@ class TicketCreateExchange extends ModalEphemeralExchange {
         
     }
 
+    isNiteBlock() {
+
+        return (this.getValue("reason").includes("alpha") || this.getValue("reason").includes("testing") || this.getValue("reason").includes("tester"));
+
+    }
+
     /** @param {MessageEmbed} embed */
     _getResponsePayload(embed, fields, currentIndex) {
 

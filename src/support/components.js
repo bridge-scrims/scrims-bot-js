@@ -122,6 +122,8 @@ async function sendTicketChannelMessages(exchange, ticket, channel) {
     }
     
     await exchange.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
+
+    if (exchange.isNiteBlock()) await channel.send({ content: `<@445556389532925952> 👀` }).catch(console.error)
     
 }
 
