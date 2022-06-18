@@ -120,14 +120,19 @@ class ScrimsUserUpdater {
         const user = discord?.user ?? discord
         await user.fetch()
 
-        const scrimsUser = new ScrimsUser(this.bot.database).setDiscord(user)
+        const scrimsUser = new ScrimsUser(this.bot.database).setDiscord(user).setJoinPoint()
         if (discord instanceof GuildMember && discord.guild.id === "759894401957888031") {
             scrimsUser.setDiscordAvatar(discord.avatar)
             scrimsUser.setJoinPoint(Math.floor(discord.joinedTimestamp/1000) )
         }
 
-        return this.bot.database.users.create(scrimsUser).then(scrimsUser => this.expandMember(member, scrimsUser))
-            .catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))
+        const created = await this.bot.database.users.create(scrimsUser)
+            .catch(error => console.error(`Unable to make scrims user for ${discord.id} because of ${error}!`))
+
+        if (created) {
+            if (discord instanceof GuildMember) this.bot.expandMember(discord, created)
+            else this.bot.expandUser(discord, created)
+        }
 
     }
 
