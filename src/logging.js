@@ -30,24 +30,31 @@ async function removeOld() {
 
 function getTime() {
     const date = new Date()
-    const hours = date.getUTCHours().toString().padStart(2, '0')
-    const minutes = date.getUTCMinutes().toString().padStart(2, '0')
-    const seconds = date.getUTCSeconds().toString().padStart(2, '0')
-    return `[${hours}:${minutes}:${seconds}] `;
+    return `[${date.toISOString()}]`;
 }
 
 async function rotateLog() {
     const logFile = fs.createWriteStream(path.join(LOGGINGPATH, `${stringifyDate(new Date())}.log`), { flags: 'a' });
-    const logStdout = process.stdout;
+    const log = console.log
+    const error = console.error
+    const warn = console.warn
 
     console.log = ((...d) => {
-        logFile.write(getTime() + util.format(...d) + '\n');
-        logStdout.write(getTime() + util.format(...d) + '\n');
+        log.apply(console, [getTime()].concat(d))
+        logFile.write(getTime() + " " + util.format(...d) + '\n');
     })
-    console.error = console.log
-    console.warn = console.log
-    console.log("------- Log Start -------")
 
+    console.error = ((...d) => {
+        error.apply(console, [getTime()].concat(d))
+        logFile.write(getTime() + " " + util.format(...d) + '\n');
+    })
+
+    console.warn = ((...d) => {
+        warn.apply(console, [getTime()].concat(d))
+        logFile.write(getTime() + " " + util.format(...d) + '\n');
+    })
+
+    logFile.write("------- Log Start -------\n");
     await removeOld()
 }
     
@@ -57,13 +64,14 @@ async function rotateLater() {
     midNight.setUTCHours(0, 0, 0, 0)
 
     await sleep(midNight.getTime()-Date.now())
-    console.log("------- Log End -------")
+    console.log("Rotating log...")
 
     await rotateLog().catch(console.error)
     await rotateLater().catch(console.error)
 }
     
 async function setup() {
+    if (!fs.existsSync(LOGGINGPATH)) fs.mkdirSync(LOGGINGPATH)
     await rotateLog().catch(console.error)
     rotateLater().catch(console.error)
 }

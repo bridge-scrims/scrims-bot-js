@@ -29,10 +29,16 @@ class ScrimsPosition extends TableRow {
         this.level
 
     }
+    
+    get managed() {
+
+        return this.name === "banned";
+        
+    }
 
     get dontLog() {
 
-        return this.name === "bridge_scrims_member";
+        //return this.name === "bridge_scrims_member";
 
     }
 

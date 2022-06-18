@@ -44,8 +44,8 @@ async function onFindCommand(interaction) {
     const databaseUsers = []
 
     if (interaction.guild) {
-        const members = interaction.guild.members.cache.filter(member => member.scrimsUser && (member.displayName.toLowerCase().includes(userResolvable.toLowerCase())))
-        memberUsers.push(...members.map(member => member.scrimsUser).filter(v => v))
+        const members = interaction.guild.members.cache.filter(member => member.scrimsUser && (member.displayName.toLowerCase() === userResolvable.toLowerCase()))
+        memberUsers.push(...members.map(member => member.scrimsUser))
     }
 
     result.rows
@@ -73,7 +73,7 @@ async function onFindCommand(interaction) {
         description += summary
     }
     
-    return interaction.editReply({ content, embeds: [new MessageEmbed().setTitle("Multiple Results").setDescription(description)], allowedMentions: { parse: [] } })
+    return interaction.editReply({ embeds: [new MessageEmbed().setTitle("Multiple Results").setDescription(description)], allowedMentions: { parse: [] } })
         
 }
 
@@ -131,7 +131,7 @@ async function kill(interaction) {
     else await interaction.reply(payload).catch(console.error)
 
     console.log(`kill command used by ${interaction?.user?.tag} to terminate this process`);
-    await interaction.client.destroy()
+    interaction.client.destroy()
 
 }
 
@@ -151,7 +151,6 @@ async function onKillCommand(interaction) {
         + `I am waiting for \`${bot.handles.length}\` interaction handler(s) to finish before I shutdown. `
         + `I will keep you updated on my progress by editing this message.`
 
-    
     const actions = new MessageActionRow().addComponents(
         new MessageButton().setCustomId('killAction/KILL').setLabel('Force Kill').setStyle('DANGER'),
         new MessageButton().setCustomId('killAction/CANCEL').setLabel('Cancel').setStyle('SECONDARY')
@@ -214,9 +213,7 @@ async function onConfigCommand(interaction) {
     if (entryTypeId === -1) {
 
         const entrys = await interaction.client.database.guildEntrys.fetch({ guild_id: interaction.guild.id })
-
         if (entrys.length === 0) return interaction.editReply({ content: "Nothing configured for this guild." });
-        
         return interaction.editReply(ScrimsMessageBuilder.configEntrysMessage(entrys));
 
     }
@@ -342,6 +339,6 @@ module.exports = {
 
     interactionHandler: onInteraction,
     eventHandlers: ['killAction'],
-    commands: [ getReloadCommand(), getConfigCommand(), getPingCommand(), getKillCommand(), getFindCommand() ]
+    commands: [getReloadCommand(), getConfigCommand(), getPingCommand(), getKillCommand(), getFindCommand()]
 
 }

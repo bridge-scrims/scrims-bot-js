@@ -8,7 +8,8 @@ const interactionHandlers = {
     "transfer-user-positions": onTransferPositionsCommand, 
     "TransferUserPositions": onTransferPositionsComponent,
     "create-position": onCreatePositionCommand,
-    "remove-position": onRemovePositionCommand
+    "remove-position": onRemovePositionCommand,
+    "update-position": onUpdatePositionCommand
 
 }
 async function onInteraction(interaction) {
@@ -86,12 +87,45 @@ async function onCreatePositionCommand(interaction) {
     const sticky = interaction.options.getBoolean("sticky") ?? false
     const level = interaction.options.getInteger("level") ?? null
 
-    if (level <= 0) return interaction.editReply(ScrimsMessageBuilder.errorMessage("Invalid Level", "The position level must be a number greater then 0!"));
+    if (level !== null && level <= 0) 
+        return interaction.editReply(ScrimsMessageBuilder.errorMessage("Invalid Level", "The position level must be a number greater then 0!"));
     const position = await interaction.client.database.positions.create({ name, sticky, level }).catch(console.error)
     if (!position) return interaction.editReply(ScrimsMessageBuilder.failedMessage('create the position'));
 
     interaction.client.database.ipc.send('audited_position_create', { position, id_executor: interaction.scrimsUser.id_user })
     await interaction.editReply({ content: `Created **${position.name}**.`, ephemeral: true })
+
+}
+
+/** @param {import("../types").ScrimsCommandInteraction} interaction */
+async function onUpdatePositionCommand(interaction) {
+
+    if (interaction.isAutocomplete()) return onPositionAutoComplete(interaction); 
+
+    const id_position = interaction.options.getInteger("position")
+    const position = interaction.client.database.positions.cache.resolve(id_position)
+    if (!position) return interaction.reply(ScrimsMessageBuilder.errorMessage(`Invalid Position`, `Please choose a valid position and try again.`));
+
+    const name = interaction.options.getString("name")
+    const sticky = interaction.options.getBoolean("sticky")
+    const level = interaction.options.getInteger("level")
+
+    if (level !== null && level <= 0) 
+        return interaction.editReply(ScrimsMessageBuilder.errorMessage("Invalid Level", "The position level must be a number greater then 0!"));
+        
+    if (name !== null && interaction.database.positions.cache.find({ name }))
+        return interaction.editReply(ScrimsMessageBuilder.errorMessage("Invalid Name", "A position already exists with this name!"));
+
+    const update = {}
+    if (name !== null && position.name !== name) update["name"] = name
+    if (sticky !== null && position.sticky !== sticky) update["sticky"] = sticky
+    if (level !== null && position.level !== level) update["level"] = level
+    
+    if (Object.keys(update).length === 0) 
+        return interaction.editReply(ScrimsMessageBuilder.errorMessage("Invalid Parameters", "There is nothing to update here!"));
+
+    await interaction.database.positions.update(position, update)
+    await interaction.editReply({ content: "Position updated." })
 
 }
 
@@ -163,16 +197,30 @@ function getRemovePositionCommand() {
     const removePositionCommand = new SlashCommandBuilder()
         .setName("remove-position")
         .setDescription("Removes a bridge scrims position.")
-        .addIntegerOption(option => option.setName("position").setDescription("The name of the position that should be removed.").setAutocomplete(true))
+        .addIntegerOption(option => option.setName("position").setDescription("The name of the position that should be removed.").setRequired(true).setAutocomplete(true))
     
     return [ removePositionCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: true, ephemeralDefer: true } ];
+
+}
+
+function getUpdatePositionCommand() {
+
+    const updatePositionCommand = new SlashCommandBuilder()
+        .setName("update-position")
+        .setDescription("Updates a bridge scrims position.")
+        .addIntegerOption(option => option.setName("position").setDescription("The name of the position that should be edited.").setRequired(true).setAutocomplete(true))
+        .addStringOption(option => option.setName("name").setDescription("The new name of this position.").setRequired(false))
+        .addBooleanOption(option => option.setName("sticky").setDescription("Whether the position should always stay.").setRequired(false))
+        .addIntegerOption(option => option.setName("level").setDescription("The new level in the bridge scrims hierarchy.").setRequired(false))
+    
+    return [ updatePositionCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: true, ephemeralDefer: true } ];
 
 }
 
 module.exports = {
 
     interactionHandler: onInteraction,
-    commands: [ getTransferPositionsCommand(), getCreatePositionCommand(), getRemovePositionCommand() ],
+    commands: [getTransferPositionsCommand(), getCreatePositionCommand(), getRemovePositionCommand(), getUpdatePositionCommand()],
     eventListeners: [ "TransferUserPositions" ]
 
 }

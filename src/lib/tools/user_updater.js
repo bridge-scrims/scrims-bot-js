@@ -1,4 +1,4 @@
-const { OAuth2Guild, Guild, User, PartialUser, GuildMember, Collection } = require("discord.js")
+const { OAuth2Guild, Guild, User, PartialUser, GuildMember, Collection, InviteGuild } = require("discord.js")
 const ScrimsUser = require("../scrims/user")
 
 class ScrimsUserUpdater {
@@ -8,7 +8,7 @@ class ScrimsUserUpdater {
         Object.defineProperty(this, 'bot', { value: bot })
         
         /**
-         * @type { import("../bot") }
+         * @type {import("../../bot")}
          * @readonly
          */
         this.bot
@@ -60,7 +60,7 @@ class ScrimsUserUpdater {
         await this.createMember(member, scrimsUsers[member.id])
         
         if (!member.scrimsUser) return false;
-        this.bot.emit('scrimsGuildMemberAdd', member)
+        this.bot.scrimsEvents.emit('guildMemberAdd', member)
 
     }
 
@@ -72,8 +72,10 @@ class ScrimsUserUpdater {
         if (guild instanceof OAuth2Guild) guild = await guild.fetch()
 
         const members = await guild.members.fetch()
+        const bans = await guild.bans.fetch().then(bans => bans.filter(v => v.user))
         const scrimsUsers = await this.bot.database.users.getMap({}, ["discord_id"], false)
         await Promise.all(members.map(member => this.createMember(member, scrimsUsers[member.id]))).catch(console.error)
+        await Promise.all(bans.map(ban => this.createUser(ban.user, scrimsUsers[ban.user.id]))).catch(console.error)
 
         const allScrimsUsers = await this.bot.database.users.getMap({}, ["discord_id"], false)
         this.updateMembers(members, allScrimsUsers).catch(console.error)
@@ -95,44 +97,43 @@ class ScrimsUserUpdater {
      * @param { GuildMember } member
      * @param { ScrimsUser } scrimsUser
      */
-     async createMember(member, scrimsUser) {
+    async createMember(member, scrimsUser) {
 
-        if (!scrimsUser) {
-
-            return this.createScrimsUser(member);
-
-        }
-
+        if (!scrimsUser) return this.createScrimsUser(member);
         this.expandMember(member, scrimsUser)
         return scrimsUser;
 
     }
 
-    /**
-     * @param { GuildMember } member 
-     */
-    async createScrimsUser(member) {
+    async createUser(user, scrimsUser) {
 
-        await member.user.fetch()
-
-        return this.bot.database.users.create({ 
-
-            id_user: this.bot.database.generateUUID(),
-            discord_id: member.id, 
-            discord_username: member.user.username, 
-            discord_discriminator: member.user.discriminator,
-            discord_accent_color: member.user.accentColor,
-            discord_avatar: member.user.avatar, 
-            joined_at: Math.floor(member.joinedTimestamp/1000) 
-            
-        }).then(scrimsUser => this.expandMember(member, scrimsUser))
-        .catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))
+        if (!scrimsUser) return this.createScrimsUser(user);
+        this.bot.expandUser(user, scrimsUser)
 
     }
 
     /**
-     * @param { String } discordId 
-     * @param { Object.<string, any> } changes
+     * @param {GuildMember|User} discord 
+     */
+    async createScrimsUser(discord) {
+
+        const user = discord?.user ?? discord
+        await user.fetch()
+
+        const scrimsUser = new ScrimsUser(this.bot.database).setDiscord(user)
+        if (discord instanceof GuildMember && discord.guild.id === "759894401957888031") {
+            scrimsUser.setDiscordAvatar(discord.avatar)
+            scrimsUser.setJoinPoint(Math.floor(discord.joinedTimestamp/1000) )
+        }
+
+        return this.bot.database.users.create(scrimsUser).then(scrimsUser => this.expandMember(member, scrimsUser))
+            .catch(error => console.error(`Unable to make scrims user for ${member.id} because of ${error}!`))
+
+    }
+
+    /**
+     * @param {string} discordId 
+     * @param {Object.<string, any>} changes
      */
     async updateScrimsUser(discordId, changes) {
 

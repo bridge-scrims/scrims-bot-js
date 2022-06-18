@@ -2,12 +2,15 @@ const ScrimsUserPosition = require("./user_position");
 const ScrimsUser = require("./user");
 const { Guild } = require("discord.js");
 
-class ScrimsUserPermissionsManager {
+class ScrimsUserPositionsCollection {
 
     constructor(user) {
 
         /** @type {ScrimsUser} */
         this.user = user
+
+        /** @type {Object.<string, ScrimsUserPosition>} */
+        this.userPositions
 
     }
     
@@ -21,6 +24,18 @@ class ScrimsUserPermissionsManager {
 
         return this.user.client;
 
+    }
+
+    getUserPositions() {
+
+        return Object.values(this.userPositions);
+
+    }
+
+    getPositions() {
+
+        return Object.values(this.userPositions).map(userPos => userPos.position).filter(v => v);
+        
     }
 
     /**
@@ -44,26 +59,26 @@ class ScrimsUserPermissionsManager {
     /**
      * @param {ScrimsUserPosition[]|Object.<string, ScrimsUserPosition[]>} userPositions 
      */
-    getUserPositions(userPositions=[]) {
+    setPositions(userPositions=[]) {
 
         if (userPositions instanceof Array) userPositions = userPositions.filter(v => v.id_user === this.user.id_user);
         else userPositions = (userPositions[this.user.id_user] ?? []);
-
-        return Object.fromEntries(userPositions.map(userPos => [userPos.id_position, userPos]));
+        
+        this.userPositions = Object.fromEntries(userPositions.map(userPos => [userPos.id_position, userPos]));
+        return this;
 
     }
 
     /**
      * @param {import('../types').PositionResolvable} positionResolvable
-     * @param {ScrimsUserPosition[]|Object.<string, ScrimsUserPosition[]>} userPositions
      * @returns {ScrimsUserPosition|false} 
      */
-    hasPosition(positionResolvable, userPositions) {
+    hasPosition(positionResolvable) {
 
         const id_position = this.resolvePositionId(positionResolvable)
         if (!id_position) return false;
 
-        return this.getUserPositions(userPositions)[id_position] ?? false;
+        return this.userPositions[id_position] ?? false;
 
     }
 
@@ -82,36 +97,33 @@ class ScrimsUserPermissionsManager {
 
     /**
      * @param {import('../types').PositionResolvable[]} positionResolvables
-     * @param {ScrimsUserPosition[]|Object.<string, ScrimsUserPosition[]>} userPositions 
      */
-    hasEveryPosition(positionResolvables, userPositions) {
+    hasEveryPosition(positionResolvables) {
 
-        return positionResolvables.map(r => this.hasPosition(r, userPositions)).every(v => v);
+        return positionResolvables.map(r => this.hasPosition(r)).every(v => v);
 
     }
 
     /**
      * @param {import('../types').PositionResolvable[]} positionResolvables
-     * @param {ScrimsUserPosition[]|Object.<string, ScrimsUserPosition[]>} userPositions 
      */
-    hasSomePositions(positionResolvables, userPositions) {
+    hasSomePositions(positionResolvables) {
 
-        return positionResolvables.map(r => this.hasPosition(r, userPositions)).some(v => v);
+        return positionResolvables.map(r => this.hasPosition(r)).some(v => v);
 
     }
 
     /**
-     * @param {ScrimsUserPosition[]|Object.<string, ScrimsUserPosition[]>} userPositions 
      * @param {string} permissionLevel
      * @param {string[]} allowedPositions Positions that alone will give permission (or)
      * @param {string[]} requiredPositions Positions that are all required for permission (and)
      * @returns {boolean} If the permissible has the permissionlevel **OR** higher **OR** the allowedPositions **AND** all the requiredPositions
      */
-    hasPermission(userPositions, permissionLevel, allowedPositions, requiredPositions) {
+    hasPermission(permissionLevel, allowedPositions, requiredPositions) {
 
-        const hasRequiredPositions = this.hasEveryPosition(requiredPositions ?? [], userPositions)
-        const hasPermissionLevel = this.hasPermissionLevel(permissionLevel, userPositions)
-        const hasAllowedPositions = this.hasSomePositions(allowedPositions ?? [], userPositions)
+        const hasRequiredPositions = this.hasEveryPosition(requiredPositions ?? [])
+        const hasPermissionLevel = this.hasPermissionLevel(permissionLevel)
+        const hasAllowedPositions = this.hasSomePositions(allowedPositions ?? [])
         
         return hasRequiredPositions && (hasPermissionLevel || hasAllowedPositions);
 
@@ -119,20 +131,19 @@ class ScrimsUserPermissionsManager {
 
     /**
      * @param {Guild} guild
-     * @param {ScrimsUserPosition[]|Object.<string, ScrimsUserPosition[]>} userPositions 
      * @param {string} permissionLevel
      * @param {string[]} allowedPositions Positions that alone will give permission (or)
      * @param {string[]} requiredPositions Positions that are all required for permission (and)
      * @returns {boolean} If the permissible has the permissionlevel **OR** higher **OR** the allowedPositions **AND** all the requiredPositions
      */
-    hasGuildPermission(guild, userPositions, permissionLevel, allowedPositions, requiredPositions) {
+    hasGuildPermission(guild, permissionLevel, allowedPositions, requiredPositions) {
 
         if (!this.user.discord_id) return false;
 
         const member = guild.members.cache.get(this.user.discord_id)
         if (!member) return false;
 
-        return this.bot.permissions.hasPermission(member, userPositions, permissionLevel, allowedPositions, requiredPositions);
+        return this.bot.permissions.hasPermission(this, member, permissionLevel, allowedPositions, requiredPositions);
 
     }
 
@@ -150,38 +161,30 @@ class ScrimsUserPermissionsManager {
         const member = await guild.members.fetch(this.user.discord_id)
         if (!member) return false;
 
-        const userPositions = await this.fetchPositions()
-
-        return this.bot.permissions.hasPermission(member, Object.values(userPositions), permissionLevel, allowedPositions, requiredPositions);
+        await this.fetchPositions()
+        return this.bot.permissions.hasPermission(this, member, permissionLevel, allowedPositions, requiredPositions);
 
     }
 
     /**
      * @param {import('../types').PositionResolvable} permissionLevel
-     * @param {ScrimsUserPosition[]|Object.<string, ScrimsUserPosition[]>} userPositions
      */
-    hasPermissionLevel(permissionLevel, userPositions) {
+    hasPermissionLevel(permissionLevel) {
 
         const position = this.resolvePosition(permissionLevel)
         if (!position) return false;
 
-        return this.hasSomePositions(position.getPermissionLevelPositions(), userPositions)
+        return this.hasSomePositions(position.getPermissionLevelPositions())
 
     }
 
     async fetchPositions(show_expired=false) {
 
         const userPositions = await this.client.userPositions.fetch({ id_user: this.user.id_user, show_expired }, false)
-        return Object.fromEntries(userPositions.map(userPos => [userPos.id_position, userPos]));
-
-    }
-
-    toJSON() {
-
-        return undefined;
+        return this.setPositions(userPositions);
 
     }
 
 }
 
-module.exports = ScrimsUserPermissionsManager;
+module.exports = ScrimsUserPositionsCollection;

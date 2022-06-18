@@ -131,9 +131,14 @@ class DBClient {
         this.addTable("sessionTypes", new DBTable(this, "scrims_session_type", null, { lifeTime: -1 }, [], ScrimsSessionType))
         this.addTable("sessions", new DBTable(this, "scrims_session", "get_sessions", {}, [ ["type", "id_type", "get_session_type_id"], ["creator", "id_creator", "get_user_id"] ], ScrimsSession))
 
-        const suggestionForeigners = [ ["creator", "id_creator", "get_creator_id"], ["attachment", "id_attachment", "get_attachment_id"] ]
+        const suggestionForeigners = [ ["creator", "id_creator", "get_user_id"], ["attachment", "id_attachment", "get_attachment_id"] ]
         this.addTable("suggestions", new DBTable(this, "scrims_suggestion", "get_suggestions", {}, suggestionForeigners, ScrimsSuggestion))
         
+        const vouchForeigners = [
+            ["user", "id_user", "get_user_id"],
+            ["position", "id_position", "get_position_id"],
+            ["executor", "id_executor", "get_user_id"]
+        ]
     }
 
     generateUUID() {
@@ -171,7 +176,7 @@ class DBClient {
  
     async initializeCache() {
 
-        for (let table of this.tables) await table.connect()
+        for (const table of this.tables) await table.connect()
         this.tables = []
 
     }

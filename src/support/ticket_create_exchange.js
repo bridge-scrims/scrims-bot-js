@@ -14,7 +14,7 @@ function getInputFields(type) {
         
         fields.push({ 
             type: "USERS", customId: "targets", label: "Who are you reporting?", 
-            maxLength: 1024, minLength: 3, placeholder: "@FirstUser#1188 @SecondUser#2299 ...", 
+            maxLength: 1024, minLength: 3, placeholder: "@FirstUser#1188 @SecondUser#2299 @UserId ...", 
             required: true, style: "SHORT" 
         })
 

@@ -18,7 +18,7 @@ class ScrimsMessageBuilder {
      */
     static parseUser(resolvable, scrimsUsers, guild) {
 
-        resolvable = resolvable.replace(/```|:|discord|\n|@|everyone|here/g, '')
+        resolvable = resolvable.replace(/```|:|\n|@/g, '')
 
         let matches = scrimsUsers.filter(user => user.id_user === resolvable || user.discord_id === resolvable || user.tag === resolvable)
         if (matches.length === 1) return matches[0];

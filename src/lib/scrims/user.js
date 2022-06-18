@@ -1,7 +1,8 @@
 const { Constants, User, GuildMember, Guild, MessageEmbed } = require("discord.js");
-const ScrimsUserPermissionsManager = require("./user_permissions");
+const ScrimsUserPositionsCollection = require("./user_positions");
 const ScrimsUserPosition = require("./user_position");
 const TableRow = require("../postgresql/row");
+const ScrimsPosition = require("./position");
 
 class ScrimsUser extends TableRow {
 
@@ -68,9 +69,6 @@ class ScrimsUser extends TableRow {
         /** @type {string|null} */
         this.timezone
 
-        /** @type {ScrimsUserPermissionsManager} */
-        this.permissions = new ScrimsUserPermissionsManager(this)
-
     }
 
     get discordUser() {
@@ -104,11 +102,11 @@ class ScrimsUser extends TableRow {
     }
 
     /**
-     * @param {number} joined_at
+     * @param {number} [joined_at] if falsley will use the current time
      */
     setJoinPoint(joined_at) {
         
-        this.joined_at = joined_at
+        this.joined_at = joined_at ?? Math.floor(Date.now()/1000)
         return this;
 
     }
@@ -124,6 +122,14 @@ class ScrimsUser extends TableRow {
 
     }
 
+    /** @param {string} avatar */
+    setDiscordAvatar(avatar) {
+
+        this.discord_avatar = avatar
+        return this;
+
+    }
+
     /**
      * @param {User} user
      */
@@ -133,7 +139,7 @@ class ScrimsUser extends TableRow {
         this.discord_username = user.username
         this.setDiscordDiscriminator(user.discriminator)
         this.discord_accent_color = user.accentColor ?? null
-        this.discord_avatar = user.avatar ?? null
+        this.setDiscordAvatar(user.avatar ?? null)
 
         return this;
         
@@ -226,13 +232,24 @@ class ScrimsUser extends TableRow {
 
     async fetchPositions(show_expired=false) {
 
-        return this.permissions.fetchPositions(show_expired);
+        return (new ScrimsUserPositionsCollection(this)).fetchPositions(show_expired);
 
     }
 
-    getUserPositions(userPositions) {
+    /**
+     * @param {ScrimsUserPosition[]|Object.<string, ScrimsUserPosition[]>|ScrimsUserPositionsCollection} userPositions 
+     */
+    getPositions(userPositions) {
 
-        return this.permissions.getUserPositions(userPositions);
+        if (userPositions instanceof ScrimsUserPositionsCollection) return userPositions;
+        return (new ScrimsUserPositionsCollection(this)).setPositions(userPositions);
+
+    }
+
+    async fetchUserPositions(show_expired=false) {
+
+        const userPositions = await this.client.userPositions.fetch({ id_user: this.id_user, show_expired }, false)
+        return Object.fromEntries(userPositions.map(userPos => [userPos.id_position, userPos]));
 
     }
 
@@ -272,14 +289,13 @@ class ScrimsUser extends TableRow {
         if (this.getUTCOffset()) embed.addField("Timezone", `${this.timezone} (${this.getUTCOffset()})`, true)
         if (userPositions) {
 
-            const positions = Object.values(this.permissions.getUserPositions(userPositions))
-            if (positions?.length > 0) embed.addField(
-                "Scrims Positions", positions.filter(userPos => userPos.position)
-                    .sort(ScrimsUserPosition.sortByLevel)
-                    .map(userPos => {
-                        const text = `\`•\` **${userPos.position.name}** (${userPos.position.id})`
+            const positions = this.getPositions(userPositions).getPositions()
+            if (positions.length > 0) embed.addField(
+                "Scrims Positions", positions.sort(ScrimsPosition.sortByLevel)
+                    .map(position => {
+                        const text = `\`•\` **${position.name}** (${position.id_position})`
                         if (guild) {
-                            const connectedRoles = userPos.position.getConnectedRoles(guild.id)
+                            const connectedRoles = position.getConnectedRoles(guild.id)
                             if (connectedRoles?.length > 0) return `${text} **⇨** ${connectedRoles.join(' ')}`;
                         }
                         return text;

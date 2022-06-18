@@ -51,7 +51,7 @@ async function onGetSubcommand(interaction) {
         PositionsResponseMessageBuilder.unexpectedFailureMessage(interaction.i18n, interaction.i18n.get("not_scrims_guild_member"))
     )
 
-    const userPositions = Object.values(await scrimsUser.fetchPositions())
+    const userPositions = await scrimsUser.fetchPositions().then(v => v.getUserPositions())
     if (userPositions.length === 0) return interaction.reply( { content: `${user} does not have any positions!`, allowedMentions: { parse: [] }, ephemeral: true } );
     await interaction.reply(PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, userPositions))
 
@@ -108,7 +108,7 @@ async function onTakeSubcommand(interaction) {
     if (!(await hasPositionPermissions(interaction, position, `take the \`${position.name}\` position from ${scrimsUser}`))) return false;
 
     const selector = { id_user: scrimsUser.id_user, id_position: position.id_position }
-    const existing = await interaction.client.database.userPositions.find({ ...selector, show_expired: true }, false)
+    const existing = await interaction.client.database.userPositions.find({ ...selector, show_expired: true })
 
     if (!existing) {
 
@@ -131,9 +131,8 @@ async function onTakeSubcommand(interaction) {
     const eventPayload = { guild_id: interaction?.guild?.id , executor_id: interaction.user.id, userPosition: existing }
     interaction.client.database.ipc.notify('audited_user_position_remove', eventPayload)
 
-    const userPositions = Object.values(await scrimsUser.fetchPositions(true))
+    const userPositions = await scrimsUser.fetchPositions().then(v => v.getUserPositions())
     const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, userPositions)
-
     await interaction.reply({ ...positionsMessage, content: `Removed **${position.name}** from ${scrimsUser}.`, allowedMentions: { parse: [] }, ephemeral: true })
 
 }
@@ -201,8 +200,8 @@ async function onGiveSubcommand(interaction) {
 
     }
 
-    const userPositions = await scrimsUser.fetchPositions(true)
-    const existing = userPositions[position.id_position]
+    const usersPositions = await scrimsUser.fetchPositions(true)
+    const existing = usersPositions.hasPosition(position)
     if (existing) {
 
         await interaction.client.database.userPositions.update(existing, { expires_at })
@@ -210,7 +209,7 @@ async function onGiveSubcommand(interaction) {
         const eventPayload = { guild_id: interaction?.guild?.id, executor_id: interaction.user.id, userPosition: existing, expires_at }
         interaction.client.database.ipc.notify('audited_user_position_expire_update', eventPayload)
 
-        const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, Object.values(userPositions)) 
+        const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, usersPositions.getUserPositions()) 
         const content =  `${scrimsUser} **${position.name}** position will now last ${existing.getDuration()}.`
         return interaction.reply({ ...positionsMessage, content, allowedMentions: { parse: [] }, ephemeral: true });
         
@@ -221,7 +220,7 @@ async function onGiveSubcommand(interaction) {
         .setGivenPoint().setExecutor({ discord_id: interaction.user.id })
     
     const created = await interaction.client.database.userPositions.create(userPosition)
-    const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, Object.values(userPositions).concat(created))
+    const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, usersPositions.getUserPositions().concat(created))
     const content = `Added **${position.name}** to ${scrimsUser} ${created.getDuration()}.`
     await interaction.reply({ ...positionsMessage, content, allowedMentions: { parse: [] }, ephemeral: true })
 

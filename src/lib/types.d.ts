@@ -2,7 +2,7 @@ import {
     CommandInteraction, CommandInteractionOptionResolver, ContextMenuInteraction,
     ModalSubmitInteraction, GuildMember, Interaction, MessageComponentInteraction, 
     PartialTextInputData, Modal, AutocompleteInteraction, TextInputComponentOptions,
-    MessageOptions, User
+    MessageOptions, User, MessageReaction, Message
 } from "discord.js";
 
 import { SlashCommandBuilder } from "@discordjs/builders";
@@ -13,6 +13,7 @@ import ScrimsPosition from "./scrims/position";
 import DBClient from "./postgresql/database";
 import ScrimsUser from "./scrims/user";
 import ScrimsBot from "./bot";
+import ScrimsUserPositionsCollection from "./scrims/user_positions";
 
 export interface ScrimsGuildMember extends GuildMember {
 
@@ -20,12 +21,12 @@ export interface ScrimsGuildMember extends GuildMember {
     scrimsUser: ScrimsUser;
     id_user: string;
 
-} 
+}
 
 export interface InteractionScrimsGuildMember extends ScrimsGuildMember {
 
     hasPermission(permissionLevel: string, allowedPositions: string[], requiredPositions: string[]): boolean;
-    userPositions: { [id_position: number]: ScrimsUserPosition };
+    scrimsPositions: ScrimsUserPositionsCollection;
 
 }
 
@@ -55,8 +56,27 @@ export interface ScrimsInteraction extends Interaction {
     client: ScrimsBot; 
     database: DBClient;
     member: InteractionScrimsGuildMember;
+    scrimsPositions: ScrimsUserPositionsCollection;
 
     commandName: string;
+
+}
+
+export class ScrimsMessageReaction extends MessageReaction {
+
+    client: ScrimsBot;
+    scrimsUser: ScrimsUser;
+    id_user: string;
+    user: User;
+
+}
+
+export class ScrimsMessage extends Message {
+
+    client: ScrimsBot;
+    scrimsUser: ScrimsUser;
+    id_user: string;
+    user: User;
 
 }
 

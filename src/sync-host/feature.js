@@ -1,8 +1,6 @@
 const ScrimsPositionUpdater = require("./updater");
-
 const { interactionHandler, commands, eventListeners } = require("./commands");
 const ScrimsUserPosition = require("../lib/scrims/user_position");
-
 
 class ScrimsSyncHostFeature {
 
@@ -14,11 +12,11 @@ class ScrimsSyncHostFeature {
         /** @type {string} */
         this.hostGuildId = config.hostGuildId
         
-        commands.forEach(([ cmdData, cmdPerms, cmdConfig ]) => this.bot.commands.add(cmdData, cmdPerms, cmdConfig))
+        commands.forEach(([ cmdData, cmdPerms, cmdConfig ]) => this.bot.commands.add(cmdData, interactionHandler, cmdPerms, cmdConfig))
+        eventListeners.forEach(eventName => this.bot.commands.add(eventName, interactionHandler))
         
         this.positionUpdater = new ScrimsPositionUpdater(this)
 
-        bot.on('ready', () => this.addEventHandlers())
         bot.on('startupComplete', () => this.startUp().catch(console.error))
 
     }
@@ -54,18 +52,11 @@ class ScrimsSyncHostFeature {
         if (members) {
 
             console.log("Initializing host guild members...")
-            await this.initializeMembers(guild, members)
+            await this.initializeMembers(guild, members).catch(console.error)
             console.log("Host guild members initialized!")
 
         }
 
-    }
-
-    addEventHandlers() {
-
-        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, interactionHandler))
-        eventListeners.forEach(eventName => this.bot.addEventHandler(eventName, interactionHandler))
-        
     }
 
     async fetchHostGuild() {
@@ -89,23 +80,29 @@ class ScrimsSyncHostFeature {
 
     }
 
-    getMemberMissingPositions(member, scrimsUser, userPositions) {
+    getMemberMissingPositions(member, scrimsUser, userPositions, bans) {
 
-        if (!member) return [];
-        const currentPositions = scrimsUser.getUserPositions(userPositions)
+        const currentPositions = scrimsUser.getPositions(userPositions)
 
-        const allPositionRoles = this.permissions.getGuildPositionRoles(member.guild.id)
+        const allPositionRoles = member ? this.permissions.getGuildPositionRoles(member.guild.id) : []
         const allowedPositionRoles = allPositionRoles.filter(pRole => this.permissions.hasRequiredPositionRoles(member, pRole.id_position, true))
-        const missingPositionRoles = allowedPositionRoles.filter(pRole => !(pRole.id_position in currentPositions))
+
+        const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
+        if (bans && bannedPosition && scrimsUser.discord_id && bans.has(scrimsUser.discord_id)) allowedPositionRoles.push(bannedPosition)
         
+        const missingPositionRoles = allowedPositionRoles.filter(pRole => !currentPositions.hasPosition(pRole.id_position))
         return Array.from(new Set(missingPositionRoles.map(pRole => pRole.id_position)));
 
     }
 
-    getMemberUnallowedPositions(member, scrimsUser, userPositions) {
+    getMemberUnallowedPositions(member, scrimsUser, userPositions, bans) {
 
-        const currentPositions = Object.values(scrimsUser.getUserPositions(userPositions))
-        const unallowedPositions = member ? currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true)) : currentPositions.filter(userPos => !userPos.position?.sticky)
+        const currentPositions = scrimsUser.getPositions(userPositions).getUserPositions()
+        const unallowedPositions = member ? currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true)) : currentPositions.filter(userPos => !userPos.position?.sticky && !userPos.position?.name === "banned")
+
+        const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
+        if (bans && bannedPosition && scrimsUser.discord_id && !bans.has(scrimsUser.discord_id) && currentPositions.find(v => v.id_position === bannedPosition.id_position)) 
+            unallowedPositions.push(bannedPosition)
 
         return Array.from(new Set(unallowedPositions.map(userPos => userPos.id_position)));
 
@@ -124,7 +121,7 @@ class ScrimsSyncHostFeature {
 
     async removeUnstickyPositions(scrimsUser, userPositions) {
 
-        const nonStickyPositions = Object.values(scrimsUser.getUserPositions(userPositions)).filter(userPos => !userPos.position?.sticky)
+        const nonStickyPositions = userPositions.getUserPositions().filter(userPos => !userPos.position?.sticky)
         await Promise.all(
             nonStickyPositions.map(userPos => this.bot.database.userPositions.remove(userPos)
                 .catch(error => console.error(`Unable to remove non sticky positions of user!`, error, nonStickyPositions))
@@ -154,10 +151,11 @@ class ScrimsSyncHostFeature {
 
         const userPositions = await this.bot.database.userPositions.getArrayMap({}, ["id_user"], false)
         const scrimsUsers = this.bot.database.users.cache.values()
+        const bans = await guild.bans.fetch()
 
         return scrimsUsers.map(user => [
-            this.getMemberMissingPositions(user.getMember(guild), user, userPositions), 
-            this.getMemberUnallowedPositions(user.getMember(guild), user, userPositions)
+            this.getMemberMissingPositions(user.getMember(guild), user, userPositions, bans), 
+            this.getMemberUnallowedPositions(user.getMember(guild), user, userPositions, bans)
         ]);
 
     }
@@ -166,8 +164,9 @@ class ScrimsSyncHostFeature {
 
         const userPositions = await this.bot.database.userPositions.getArrayMap({}, ["id_user"], false)
         const scrimsUsers = this.bot.database.users.cache.values()
+        const bans = await guild.bans.fetch()
 
-        return Promise.all(scrimsUsers.map(user => this.transferPositionsForMember(id_executor, user, this.getMemberMissingPositions(user.getMember(guild), user, userPositions), this.getMemberUnallowedPositions(user.getMember(guild), user, userPositions))))
+        return Promise.all(scrimsUsers.map(user => this.transferPositionsForMember(id_executor, user, this.getMemberMissingPositions(user.getMember(guild), user, userPositions, bans), this.getMemberUnallowedPositions(user.getMember(guild), user, userPositions, bans))))
             .then(results => results.reduce(([rmv, create], [removeResults, createResults]) => [ [...rmv, ...removeResults], [...create, ...createResults] ], [[], []]))
 
     }
@@ -196,9 +195,9 @@ class ScrimsSyncHostFeature {
 
         await Promise.all(
             this.permissions.getPermissionLevelPositions("staff")
-                .map(position => async () => {
-                    if (member.scrimsUser.permissions.hasPosition(position, userPositions)) await this.givePosition(member, position)
-                })
+                .map(position => (async () => {
+                    if (!member.scrimsUser.getPositions(userPositions).hasPosition(position)) await this.givePosition(member, position)
+                })())
         ) 
 
     }

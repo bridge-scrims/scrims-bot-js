@@ -17,7 +17,8 @@ class SupportFeature {
          */
         this.bot = bot
 
-        commands.forEach(([ cmdData, cmdPerms, cmdOptions ]) => this.bot.commands.add(cmdData, cmdPerms, cmdOptions))
+        commands.forEach(([ cmdData, cmdPerms, cmdOptions ]) => this.bot.commands.add(cmdData, commandHandler, cmdPerms, cmdOptions))
+        eventHandlers.forEach(eventName => this.bot.commands.add(eventName, commandHandler))
 
         this.modalResponses = {}
         this.transcriptChannels = {}
@@ -397,12 +398,9 @@ class SupportFeature {
         this.bot.on('messageDelete', message => this.onMessageDelete(message).catch(console.error))
         this.bot.on('messageDeleteBulk', messages => this.onMessageDeleteBulk(messages).catch(console.error))
         this.bot.on('messageUpdate', (oldMessage, newMessage) => this.onMessageUpdate(oldMessage, newMessage).catch(console.error))
-        this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel).catch(console.error))
+        this.bot.scrimsEvents.on('channelDelete', channel => this.onChannelDelete(channel).catch(console.error))
 
         this.bot.on('guildMemberRemove', member => this.onMemberRemove(member).catch(console.error))
-
-        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
-        eventHandlers.forEach(eventName => this.bot.addEventHandler(eventName, commandHandler))
 
     }
 

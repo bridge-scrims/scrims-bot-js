@@ -1,14 +1,13 @@
-const { GuildMember } = require('discord.js');
+const { GuildMember, GuildBan } = require('discord.js');
 const ScrimsPositionRole = require('../lib/scrims/position_role');
+const ScrimsUserPosition = require('../lib/scrims/user_position');
 
 class ScrimsPositionUpdater {
 
 
     constructor(syncHostFeature) {
 
-        /**
-         * @type { import('./feature') }
-         */
+        /** @type {import('./feature')} */
         this.sync = syncHostFeature
 
         this.bot.on("databaseConnected", () => this.startUp())
@@ -35,12 +34,47 @@ class ScrimsPositionUpdater {
 
     startUp() {
 
-        this.bot.on('scrimsMemberPositionRoleUpdate', ({ member, lostPositionRoles, newPositionRoles, executor }) => this.onMemberUpdate(member, lostPositionRoles, newPositionRoles, executor).catch(console.error))
+        this.bot.scrimsEvents.on('memberRolesUpdate', (oldMember, newMember) => this.onMemberUpdate(oldMember, newMember, newMember.executor).catch(console.error))
         
         this.bot.on('guildMemberRemove', member => this.onMemberRemove(member).catch(console.error))
-        this.bot.on('scrimsGuildMemberAdd', member => this.onMemberAdd(member).catch(console.error))
+        this.bot.scrimsEvents.on('guildMemberAdd', member => this.onMemberAdd(member).catch(console.error))
+
+        this.bot.scrimsEvents.on('banAdd', ban => this.onBanAdd(ban).catch(console.error))
+        this.bot.scrimsEvents.on('banRemove', ban => this.onBanRemove(ban).catch(console.error))
 
         this.database.positionRoles.cache.on('change', positionRole => this.onPositionRoleChange(positionRole).catch(console.error))
+
+    }
+
+    /** @param {GuildBan} ban */
+    async onBanAdd(ban) {
+
+        const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
+        if (!bannedPosition || !ban?.user) return false;
+        if (!ban.user.scrimsUser) this.bot.expandUser(ban.user)
+        if (!ban.user.scrimsUser) return false;
+
+        if ((await ban.user.scrimsUser.fetchPositions(true).then(v => v.hasPosition(bannedPosition)))) return false;
+
+        const userPosition = new ScrimsUserPosition(this.database)
+            .setUser(ban.user.scrimsUser).setPosition(bannedPosition).setGivenPoint().setExecutor(ban?.executor?.scrimsUser)
+        
+        await this.database.userPositions.create(userPosition)
+
+    }
+
+    /** @param {GuildBan} ban */
+    async onBanRemove(ban) {
+
+        const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
+        if (!bannedPosition || !ban?.user?.scrimsUser) return false;
+        if (!ban.user.scrimsUser) this.bot.expandUser(ban.user)
+        if (!ban.user.scrimsUser) return false;
+
+        if (!(await ban.user.scrimsUser.fetchPositions(true).then(v => v.hasPosition(bannedPosition)))) return false;
+
+        const removed = await this.database.userPositions.remove({ id_user: ban.user.scrimsUser.id_user, id_position: bannedPosition.id_position })
+        if (removed.length > 0) this.database.ipc.notify("audited_user_position_remove", { id_executor: ban?.executor?.scrimsUser?.id_user, userPosition: removed[0] })
 
     }
 
@@ -60,7 +94,7 @@ class ScrimsPositionUpdater {
         if (!members) return false;
 
         const position = this.database.positions.cache.find(id_position)
-        if (!position || position.name === "bridge_scrims_member") return false;
+        if (!position) return false;
 
         const scrimsUsers = await this.database.users.getMap({}, ['discord_id'])
             .catch(error => console.error(`Unable to fetch scrims users because of ${error}!`, id_position))
@@ -111,7 +145,7 @@ class ScrimsPositionUpdater {
 
         if (member.guild.id === this.hostGuildId && member.scrimsUser) {
             
-            await this.sync.scrimsMemberRemove(member.scrimsUser, Object.values(await member.scrimsUser.fetchPositions(true)))
+            await this.sync.scrimsMemberRemove(member.scrimsUser, (await member.scrimsUser.fetchPositions(true)))
 
         }
 
@@ -122,82 +156,29 @@ class ScrimsPositionUpdater {
         if (member.guild.id === this.hostGuildId) {
 
             // Make sure the user lost their non sticky positions when they left
-            if (member.scrimsUser) await this.sync.removeUnstickyPositions(member.scrimsUser, Object.values(await member.scrimsUser.fetchPositions(true)))
+            if (member.scrimsUser) await this.sync.removeUnstickyPositions(member.scrimsUser, (await member.scrimsUser.fetchPositions(true)))
 
         }
 
     }
 
     /**
-     * @param {GuildMember} member 
-     * @param {ScrimsPositionRole[]} lostPositionRoles 
-     * @param {ScrimsPositionRole[]} newPositionRoles 
-     * @param {GuildMember} executor 
+     * @param {GuildMember} oldMember 
+     * @param {import("../lib/types").ScrimsGuildMember} member 
+     * @param {import("../lib/types").ScrimsGuildMember} [executor] 
      */
-    async onMemberUpdate(member, lostPositionRoles, newPositionRoles, executor) {
+    async onMemberUpdate(oldMember, member, executor) {
 
+        if (oldMember.roles.cache.size === member.roles.cache.size) return false;
         if (member.guild.id !== this.hostGuildId) return false;
-
-        const id_user = this.database.users.cache.find({ discord_id: member.id })?.id_user
-        if (!id_user) return false; // User has not been added to the bridge scrims database
-
-        if (lostPositionRoles.length > 0) await Promise.allSettled(lostPositionRoles.map(role => this.removeScrimsUserPosition(id_user, member, role, executor).catch(console.error)))
-        if (newPositionRoles.length > 0) await Promise.allSettled(newPositionRoles.map(role => this.addScrimsUserPosition(id_user, role, executor).catch(console.error)))
-            
-
-    }
-
-    async addScrimsUserPosition(id_user, position, executor) {
-
-        if (position.dontLog) return false;
-        const selector = { id_user, id_position: position.id_position }
-        const existing = await this.bot.database.userPositions.fetch({ ...selector, show_expired: true }, false)
-        if (existing && existing.length === 0) return this.sync.createScrimsPosition(selector, executor);
+        if (!member.scrimsUser) return false;
+        
+        const userPositions = await member.scrimsUser.fetchPositions(true)
+        const missing = this.sync.getMemberMissingPositions(member, member.scrimsUser, userPositions)
+        const unallowed = this.sync.getMemberUnallowedPositions(member, member.scrimsUser, userPositions)
+        await this.sync.transferPositionsForMember(executor?.id_user, member.scrimsUser, missing, unallowed)
 
     }
-
-    async removeScrimsUserPosition(id_user, member, position, executor) {
-
-        if (position.dontLog) return false;
-
-        const positionIdentifier = { id_user, id_position: position.id_position }
-
-        const existing = await this.database.userPositions.fetch({ ...positionIdentifier, show_expired: true })
-
-        if (existing.length > 0) {
-
-            const success = await this.database.userPositions.remove(positionIdentifier).then(() => true)
-                .catch(error => console.error(`Unable to remove scrims user position for member ${member.user.tag} because of ${error}!`, positionIdentifier))
-
-            if (success === true) {
-
-                this.database.ipc.notify('audited_user_position_remove', { guild_id: member.guild.id, executor_id: (executor?.id ?? null), userPosition: existing[0] })
-
-            }
-            
-        }
-
-    }
-
-    getRolesDifference(rolesA, rolesB) {
-
-        return rolesA.cache.filter(roleA => rolesB.cache.filter(roleB => roleB.id === roleA.id).size === 0);
-
-    }
-
-    getPositionRoles(guildId, roles) {
-
-        const positionRoles = this.bot.permissions.getGuildPositionRoles(guildId)
-        return [ ...new Set(roles.map(role => positionRoles.filter(roleP => roleP.role_id === role.id)).flat()) ];
-
-    }
-
-    getPositionRolesDifference(guildId, rolesA, rolesB) {
-
-        return this.getPositionRoles(guildId, this.getRolesDifference(rolesA, rolesB));
-
-    }
-
 
 }
 

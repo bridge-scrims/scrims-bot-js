@@ -8,7 +8,8 @@ class PositionsFeature {
         /** @type {import("../bot")} */
         this.bot = bot
 
-        commands.forEach(([ cmdData, cmdPerms, cmdOptions ]) => this.bot.commands.add(cmdData, cmdPerms, cmdOptions))
+        commands.forEach(([ cmdData, cmdPerms, cmdOptions ]) => this.bot.commands.add(cmdData, interactionHandler, cmdPerms, cmdOptions))
+        eventListeners.forEach(eventName => this.bot.commands.add(eventName, interactionHandler))
 
         bot.on('databaseConnected', () => this.onStartup())
 
@@ -30,11 +31,8 @@ class PositionsFeature {
 
     addEventHandlers() {
 
-        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, interactionHandler))
-        eventListeners.forEach(eventName => this.bot.addEventHandler(eventName, interactionHandler))
-
         this.bot.on('roleDelete', role => this.onRoleDelete(role).catch(console.error))
-        this.bot.on('scrimsGuildMemberAdd', member => this.onMemberAdd(member).catch(console.error))
+        this.bot.scrimsEvents.on('guildMemberAdd', member => this.onMemberAdd(member).catch(console.error))
 
     }
 
@@ -53,7 +51,7 @@ class PositionsFeature {
     /** @param {import("../lib/types").ScrimsGuildMember} member */
     async onMemberAdd(member) {
 
-        const userPositions = await this.bot.database.userPositions.fetch({ id_user: member.scrimsUser.id_user, position: { sticky: true } })
+        const userPositions = await member.scrimsUser.fetchPositions().then(v => v.getUserPositions().filter(v => v?.position?.sticky))
         const discordRoleIds = userPositions.map(p => this.bot.permissions.getPositionRequiredRoles(member.guild.id, p.id_position)).flat()
         const missingRoleIds = Array.from(new Set(discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))))
         const missingRoles = missingRoleIds.map(roleId => member.guild.roles.cache.get(roleId))
@@ -156,13 +154,14 @@ class PositionsFeature {
     /** @param {import("../lib/types").ScrimsGuildMember} member */
     getMemberMissingRoles(member, userPositions) {
 
+        const usersPositions = member.scrimsUser.getPositions(userPositions)
         return Array.from(
             new Set(
-                Object.keys(member.scrimsUser.getUserPositions(userPositions))
-                    .map(id_position => this.bot.permissions.getPositionRequiredPositionRoles(member.guild.id, id_position)).flat()
-                        .filter(pRole => !member.roles.cache.has(pRole.role_id))
-                        .filter(pRole => pRole.role && this.bot.hasRolePermissions(pRole.role) && member.guild.id !== pRole.role_id)
-                        .map(pRole => pRole.role_id)
+                usersPositions.getPositions()
+                    .map(pos => this.bot.permissions.getPositionRequiredPositionRoles(member.guild.id, pos)).flat()
+                    .filter(pRole => !member.roles.cache.has(pRole.role_id))
+                    .filter(pRole => pRole.role && this.bot.hasRolePermissions(pRole.role) && member.guild.id !== pRole.role_id)
+                    .map(pRole => pRole.role_id)
             )
         );
 
@@ -171,22 +170,16 @@ class PositionsFeature {
     /** @param {import("../lib/types").ScrimsGuildMember} member */
     getMemberUnallowedRoles(member, userPositions) {
 
+        const usersPositions = member.scrimsUser.getPositions(userPositions)
         return Array.from(
             new Set(
                 this.bot.permissions.getGuildPositionRoles(member.guild.id)
-                    .filter(pRole => !member.scrimsUser.permissions.hasPosition(pRole.id_position, userPositions))
+                    .filter(pRole => !usersPositions.hasPosition(pRole.id_position))
                     .filter(pRole => member.roles.cache.has(pRole.role_id))
                     .filter(pRole => pRole.role && this.bot.hasRolePermissions(pRole.role) && member.guild.id !== pRole.role_id)
                     .map(pRole => pRole.role_id)
             )
         );
-
-    }
-
-    memberIsAllowedPosition(member, position) {
-
-        const requiredRoles = this.bot.permissions.getPositionRequiredRoles(member.guild.id, position.id_position)
-        return (requiredRoles.every(roleId => member.roles.cache.has(roleId)));
 
     }
 

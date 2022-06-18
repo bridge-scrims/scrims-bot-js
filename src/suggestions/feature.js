@@ -28,8 +28,10 @@ class SuggestionsFeature {
         this.configChangeBuffer = new AsyncFunctionBuffer((guildId) => this.onConfigurationChange(guildId))
         this.infoMessageBuffer = new AsyncFunctionBuffer((...args) => this.sendSuggestionInfoMessageTask(...args))
 
-        commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
-        contextMenus.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, cmdPerms))
+        commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, commandHandler, cmdPerms))
+        contextMenus.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, interactionHandler, cmdPerms))
+        listeners.forEach(eventName => this.bot.commands.add(eventName, interactionHandler))
+        eventListeners.forEach(eventName => this.bot.commands.add(eventName, commandHandler))
 
         this.bot.on('ready', () => this.onReady())
         this.bot.on('databaseConnected', () => this.onStartup())
@@ -158,15 +160,13 @@ class SuggestionsFeature {
 
     async onReady() {
 
-        this.bot.on('scrimsMessageCreate', message => this.onMessageCreate(message).catch(console.error))
-        this.bot.on('scrimsMessageDelete', message => this.onMessageDelete(message).catch(console.error))
+        this.bot.scrimsEvents.on('messageCreate', message => this.onMessageCreate(message).catch(console.error))
+        this.bot.scrimsEvents.on('messageDelete', message => this.onMessageDelete(message).catch(console.error))
 
-        this.bot.on('scrimsReactionRemove', reaction => this.onReactionUpdate(reaction).catch(console.error))
-        this.bot.on('scrimsReactionAdd', reaction => this.onReactionUpdate(reaction).catch(console.error))
+        this.bot.scrimsEvents.on('reactionRemove', reaction => this.onReactionUpdate(reaction).catch(console.error))
+        this.bot.scrimsEvents.on('reactionAdd', reaction => this.onReactionUpdate(reaction).catch(console.error))
 
-        this.bot.on('scrimsChannelDelete', channel => this.onChannelDelete(channel).catch(console.error))
-
-        this.addEventHandlers()
+        this.bot.scrimsEvents.on('channelDelete', channel => this.onChannelDelete(channel).catch(console.error))
 
         await this.removeOldMessages().catch(console.error)
         setInterval(() => this.removeOldMessages().catch(console.error), 5*60*1000)
@@ -231,15 +231,6 @@ class SuggestionsFeature {
         if (reaction.userId === this.bot.user.id) return false;
         await onReactionUpdate(reaction).catch(console.error)
         
-    }
-
-    addEventHandlers() {
-
-        listeners.forEach(eventName => this.bot.addEventHandler(eventName, interactionHandler))
-        contextMenus.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, interactionHandler))
-        commands.forEach(([ cmdData, _ ]) => this.bot.addEventHandler(cmdData.name, commandHandler))
-        eventListeners.forEach(eventName => this.bot.addEventHandler(eventName, commandHandler))
-
     }
 
     async sendSuggestionInfoMessage(channel, resend) {

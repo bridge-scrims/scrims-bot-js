@@ -9,8 +9,8 @@ class ScrimsJSBot extends ScrimsBot {
 
     constructor(config) {
 
-        const intents = [ "GUILD_MEMBERS", "GUILDS", "GUILD_MESSAGE_REACTIONS", "GUILD_MESSAGES", "GUILD_VOICE_STATES", "GUILD_PRESENCES" ]
-        const partials = [ 'GUILD_MEMBER', 'USER', 'MESSAGE', 'CHANNEL', 'REACTION' ]
+        const intents = [ "GUILD_MEMBERS", "GUILDS", "GUILD_MESSAGE_REACTIONS", "GUILD_MESSAGES", "GUILD_VOICE_STATES", "GUILD_PRESENCES", "GUILD_BANS" ]
+        const partials = [ 'GUILD_MEMBER', 'USER', 'MESSAGE', 'CHANNEL', 'REACTION', 'GUILD_BAN' ]
         const presence = { activities: [{ name: 'affordable hosting', type: 'WATCHING' }] }
 
         super(intents, partials, presence, config);
