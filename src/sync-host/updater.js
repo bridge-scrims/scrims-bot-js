@@ -176,7 +176,7 @@ class ScrimsPositionUpdater {
         const userPositions = await member.scrimsUser.fetchPositions(true)
         const missing = this.sync.getMemberMissingPositions(member, member.scrimsUser, userPositions)
         const unallowed = this.sync.getMemberUnallowedPositions(member, member.scrimsUser, userPositions)
-        await this.sync.transferPositionsForMember(executor?.id_user, member.scrimsUser, missing, unallowed)
+        await this.sync.transferPositionsForMember(executor?.id_user ?? null, member.scrimsUser, missing, unallowed)
 
     }
 

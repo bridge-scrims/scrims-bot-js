@@ -52,7 +52,7 @@ async function onGetSubcommand(interaction) {
     )
 
     const userPositions = await scrimsUser.fetchPositions().then(v => v.getUserPositions())
-    if (userPositions.length === 0) return interaction.reply( { content: `${user} does not have any positions!`, allowedMentions: { parse: [] }, ephemeral: true } );
+    if (userPositions.length === 0) return interaction.reply( { content: `${scrimsUser} does not have any positions!`, allowedMentions: { parse: [] }, ephemeral: true } );
     await interaction.reply(PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, userPositions))
 
 }
