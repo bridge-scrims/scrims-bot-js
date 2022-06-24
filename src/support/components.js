@@ -123,8 +123,6 @@ async function sendTicketChannelMessages(exchange, ticket, channel) {
     
     await exchange.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
 
-    if (exchange.isNiteBlock()) await channel.send({ content: `<@445556389532925952> 👀` }).catch(console.error)
-    
 }
 
 function getSupportLevelRoles(client, guild) {
@@ -189,6 +187,7 @@ async function onTicketCloseRequest(interaction) {
 
     if (!interaction.ticket || !interaction.executor || interaction.ticket.status.name === 'deleted') {
 
+        interaction.client.support.cancelCloseTimeout(interaction.message.id)
         if (interaction.message.deletable) await interaction.message.delete().catch(() => null)
         else await interaction.editReply({ content: 'This message is invalid.', components: [], embeds: [] }).catch(() => null)
 
@@ -199,7 +198,7 @@ async function onTicketCloseRequest(interaction) {
     const handler = closeRequestHandlers[interaction.args.shift()];
     if (!handler) return interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
     
-    await interaction.deferReply({ ephemeral: true }); // Inform the user that the bot needs to do some thinking
+    await interaction.deferReply({ ephemeral: true })
     return handler(interaction, interaction.ticket);
 
 }
@@ -214,6 +213,7 @@ async function onDeny(interaction, ticket) {
     if (ticketCreatorId !== interaction.user.id)
         return interaction.editReply(getNotAllowedPayload(interaction.i18n, ticket.user));
 
+    interaction.client.support.cancelCloseTimeout(interaction.message.id)
     const transcriber = interaction.client.support.transcriber;
     const message = { 
         id: interaction.id, author: interaction.user, 
@@ -253,7 +253,7 @@ async function onAccept(interaction, ticket) {
     if (!hasPermission) return interaction.editReply(SupportResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, 'You must be bridge scrims support or higher to do this.'))
 
     await interaction.client.support.closeTicket(
-        interaction.ticket, interaction.executor, interaction.user, 
+        ticket, interaction.executor, interaction.user, 
         `forcibly closed this ticket using the request from ${interaction.executor.tag} with reason: ${interaction.reason}`
     )
 

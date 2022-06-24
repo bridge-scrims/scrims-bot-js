@@ -1,8 +1,10 @@
 const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandUserOption } = require("@discordjs/builders");
+const { default: parseDuration } = require("parse-duration");
 const SupportResponseMessageBuilder = require("./responses");
 const ScrimsTicket = require("../lib/scrims/ticket");
 
 const onSupportAction = require("./components");
+const UserError = require("../lib/tools/user_error");
 
 const commandHandlers = {
 
@@ -57,6 +59,7 @@ async function supportMessage(interaction) {
 async function requestTicketClosure(interaction) {
 
     const reason = interaction.options.getString('reason') ?? "no reason provided";
+    const timeout = interaction.options.getString('timeout') ?? null;
 
     const ticket = await interaction.client.database.tickets.fetch({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
     if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage()); // This is no support channel (bruh moment)
@@ -75,7 +78,23 @@ async function requestTicketClosure(interaction) {
 
     }
 
-    await interaction.reply(SupportResponseMessageBuilder.closeRequestMessage(interaction.user, reason, ticket))
+    if (timeout) {
+        
+        const duration = parseDuration(timeout)
+        if (!duration || duration <= 0 || duration > (30*24*60*60*1000)) 
+            throw new UserError("Invalid Timeout", "Please use a valid duration greater then 0 and less then a month and try again.");
+        
+        const message = await interaction.reply({ ...SupportResponseMessageBuilder.closeRequestMessage(interaction.user, reason, ticket, duration), fetchReply: true })
+        const closeCall = () => interaction.client.support.closeTicket(ticket, interaction.user, interaction.user, `had this ticket closed because of ${reason} automatically after ${timeout}`).catch(console.error)
+        interaction.client.support.closeRequestTimeouts[message.id] = setTimeout(closeCall, duration)
+        const existing = interaction.client.support.ticketCloseRequest[ticket.id_ticket] ?? []
+        interaction.client.support.ticketCloseRequest[ticket.id_ticket] = [message.id, ...existing]
+
+    }else {
+
+        await interaction.reply(SupportResponseMessageBuilder.closeRequestMessage(interaction.user, reason, ticket))
+
+    }
 
 }
 
@@ -141,6 +160,12 @@ function buildCloseCommand() {
             option
                 .setName('force')
                 .setDescription('If you would like to use the force or not.')
+                .setRequired(false)
+        ))
+        .addStringOption(option => (
+            option
+                .setName('timeout')
+                .setDescription('Time until this ticket should auto close (e.g. 1d 20hours 3min).')
                 .setRequired(false)
         ))
 

@@ -1,6 +1,8 @@
 const ScrimsUser = require("../lib/scrims/user");
 const ScrimsUserPosition = require("../lib/scrims/user_position");
 const PositionsResponseMessageBuilder = require("./responses");
+const { default: parseDuration } = require("parse-duration");
+const UserError = require("../lib/tools/user_error");
 
 const subCmdHandlers = {
 
@@ -74,19 +76,16 @@ async function getPosition(interaction) {
 }
 
 /** @param {import("../types").ScrimsCommandInteraction} interaction */
-async function getExpiration(interaction) {
+function getExpiration(interaction) {
 
-    const expiration = interaction.options.getInteger("expiration")
-    if (typeof expiration === "number") {
+    const expiration = interaction.options.getString("expiration")
+    if (expiration) {
 
-        if (expiration < 0 || expiration > 8760) {
+        const duration = parseDuration(expiration)
+        if (!duration || duration <= 0 || duration > (100*12*30*24*60*60*1000)) 
+            throw new UserError("Invalid Expiration", "Please use a valid duration greater then 0 and not more then 100 years and try again.")
 
-            return interaction.reply(
-                PositionsResponseMessageBuilder.errorMessage(`Invalid Expiration`, `The expiration must be a number between 0-8760!`)
-            ).then(() => false);
-
-        }  
-        return Math.floor((Date.now()/1000)) + (expiration*60*60);
+        return Math.floor((Date.now()+duration)/1000);
 
     }
     return null;
@@ -180,8 +179,7 @@ async function onGiveSubcommand(interaction) {
     const position = await getPosition(interaction)
     if (!position) return false;
 
-    const expires_at = await getExpiration(interaction)
-    if (expires_at === false) return false;
+    const expires_at = getExpiration(interaction)
 
     if (!(await hasPositionPermissions(interaction, position, `give ${scrimsUser} the \`${position.name}\` position`))) return false;
 

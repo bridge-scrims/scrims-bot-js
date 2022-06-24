@@ -123,7 +123,7 @@ class ScrimsUserUpdater {
         const scrimsUser = new ScrimsUser(this.bot.database).setDiscord(user).setJoinPoint()
         if (discord instanceof GuildMember && discord.guild.id === "759894401957888031") {
             scrimsUser.setDiscordAvatar(discord.avatar)
-            scrimsUser.setJoinPoint(Math.floor(discord.joinedTimestamp/1000) )
+            scrimsUser.setJoinPoint(Math.floor(discord.joinedTimestamp/1000))
         }
 
         const created = await this.bot.database.users.create(scrimsUser)

@@ -195,10 +195,10 @@ function getPositionsGiveSubcommand() {
         .setDescription("Gives a user a bridge scrims position.")
         .addUserOption( getUserOption("The user to give the birdge scrims positions to.") )
         .addIntegerOption( getPositionOption("The birdge scrims positions to give the user.") )
-        .addIntegerOption(option => (
+        .addStringOption(option => (
             option
                 .setName("expiration")
-                .setDescription("The number of hours before this position should expire.")
+                .setDescription("The amount of time before this position should expire (e.g. 5d 2hours 1min)")
                 .setRequired(false)
         ))
 

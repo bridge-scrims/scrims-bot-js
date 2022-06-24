@@ -33,12 +33,13 @@ function getTime() {
     return `[${date.toISOString()}]`;
 }
 
+const log = console.log
+const error = console.error
+const warn = console.warn
+
 async function rotateLog() {
     const logFile = fs.createWriteStream(path.join(LOGGINGPATH, `${stringifyDate(new Date())}.log`), { flags: 'a' });
-    const log = console.log
-    const error = console.error
-    const warn = console.warn
-
+    
     console.log = ((...d) => {
         log.apply(console, [getTime()].concat(d))
         logFile.write(getTime() + " " + util.format(...d) + '\n');

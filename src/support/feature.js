@@ -7,6 +7,7 @@ const TicketTranscriber = require("./ticket-transcriber");
 const ScrimsMessageBuilder = require("../lib/responses");
 
 const { commandHandler, eventHandlers, commands } = require("./interactions");
+const ScrimsTicket = require("../lib/scrims/ticket");
 
 class SupportFeature {
 
@@ -28,6 +29,12 @@ class SupportFeature {
          * @type { Object.<string, StatusChannel> }
          */
         this.statusChannels = {}
+
+        /** @type {Object.<string, NodeJS.Timeout} */
+        this.closeRequestTimeouts = {}
+
+        /** @type {Object.<string, Array.<string>>} */
+        this.ticketCloseRequest = {}
 
         bot.on('databaseConnected', () => this.onReady())
 
@@ -90,6 +97,20 @@ class SupportFeature {
 
             }
 
+        }
+
+    }
+
+    cancelCloseTimeout(messageId) {
+
+        if (messageId in this.closeRequestTimeouts) {
+            clearTimeout(this.closeRequestTimeouts[messageId])
+            delete this.closeRequestTimeouts[messageId]
+        }
+
+        if (messageId in this.ticketCloseRequest) {
+            this.ticketCloseRequest[messageId].forEach(v => this.cancelCloseTimeout(v))
+            delete this.ticketCloseRequest[messageId]
         }
 
     }
@@ -240,6 +261,8 @@ class SupportFeature {
 
     async onMessageDelete(message) {
 
+        this.cancelCloseTimeout(message.id)
+
         const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })
         if (!ticket) return false;
 
@@ -357,8 +380,12 @@ class SupportFeature {
 
     }
 
+    /** @param {ScrimsTicket} ticket */
     async closeTicket(ticket, ticketCloser, executor, content) {
 
+        this.cancelCloseTimeout(ticket.id_ticket)
+        if (ticket?.status?.name === 'deleted') return false;
+    
         const statusName = ticket?.status?.name
         const closer = (ticketCloser?.id) ? { closer: { discord_id: ticketCloser.id } } : { id_closer: null }
         await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" }, ...closer })

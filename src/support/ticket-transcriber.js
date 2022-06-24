@@ -154,7 +154,7 @@ class TicketTranscriber {
     getUserMessageEmbed(ticket) {
 
         return new MessageEmbed()
-            .setColor("#FFFFFF")
+            .setColor("#A14F50")
             .setTitle(`${ticket?.type?.capitalizedName} Ticket Transcript`)
             .setDescription(
                 `Your ${ticket?.type?.name} ticket from <t:${ticket.created_at}:f> was closed. `

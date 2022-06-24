@@ -53,7 +53,7 @@ class TicketCreateExchange extends ModalEphemeralExchange {
     isTest() {
 
         return (this.getValue("reason") === "testing the ticket system without pinging the bridge scrims support team")
-            || (this.getValue("reason") === "testing the ticket system without pinging support");
+            || (this.getValue("reason").includes("testing the ticket system"));
         
     }
 

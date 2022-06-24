@@ -85,13 +85,14 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
     
     }
     
-    static closeRequestEmbed(user, reason) {
+    static closeRequestEmbed(user, reason, timeout) {
     
+        const timeoutText = (timeout ? ` If you do not respond with **<t:${Math.floor((Date.now()+timeout)/1000)}:R> this ticket will auto close**.` : "")
         return new MessageEmbed()
             .setColor("#5D9ACF")
             .setTitle("Close Request")
             .addField("Reason", `\`\`\`${reason}\`\`\``, false)
-            .setDescription(`${user} has requested to close this ticket. Please accept or deny using the buttons below.`)
+            .setDescription( `${user} has requested to close this ticket. Please accept or deny using the buttons below.${timeoutText}`)
             .setTimestamp()
 
     }
@@ -101,10 +102,10 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
      * @param { string } reason 
      * @param { ScrimsTicket } ticket 
      */
-    static closeRequestMessage(user, reason, ticket) {
+    static closeRequestMessage(user, reason, ticket, timeout) {
 
         const content = (ticket.user) ? ticket.user.getMention('**') : null
-        const embed = this.closeRequestEmbed(user, reason)
+        const embed = this.closeRequestEmbed(user, reason, timeout)
         const actions = this.closeRequestActions(user.id, ticket.id_ticket)
 
         return { content, embeds: [embed], components: [actions] };
@@ -210,13 +211,13 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
         if (exchange.isNiteBlock()) {
 
             const embed = new MessageEmbed()
-                .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
-                .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. Niteblock has been alerted because we detected that this is minecraft server related.`)
+                .setTitle(`Minecraft Server Support Ticket`)
+                .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. <@445556389532925952> has been alerted because we detected that this is minecraft server related.`)
                 .setFields(exchange.getEmbedFields())
                 .setColor('#ff9d00')
 
-            const content = `${exchange.creator}`
-            return { content, embeds: [embed], allowedMentions: { roles: [], users: [exchange.creator.discord_id] } };
+            const content = `${exchange.creator} <@445556389532925952>`
+            return { content, embeds: [embed], allowedMentions: (exchange.isTest() ? { users: [exchange.creator.discord_id] } : {}) };
 
         }
 

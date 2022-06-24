@@ -1,6 +1,7 @@
-const { Interaction, CommandInteraction, AutocompleteInteraction, MessageComponentInteraction, ModalSubmitInteraction } = require("discord.js");
+const { Interaction, CommandInteraction, AutocompleteInteraction, MessageComponentInteraction } = require("discord.js");
 const ScrimsMessageBuilder = require("../responses.js");
 const I18n = require("./internationalization.js");
+const UserError = require("./user_error.js");
 
 class ScrimsCommandHandler {
 
@@ -146,7 +147,7 @@ class ScrimsCommandHandler {
 
             // Fail safe for unexpected command handler errors e.g. database errors
 
-            if (!['Unknown interaction', 'The user aborted a request.'].includes(error.message))
+            if (!['Unknown interaction', 'The user aborted a request.'].includes(error.message) && !(error instanceof UserError))
                 console.error(`Unexpected error while handling a command!`, error)
 
             if (!(interaction.isAutocomplete())) {
@@ -171,8 +172,9 @@ class ScrimsCommandHandler {
      * @param {I18n} i18n 
      * @param {Error} error
      */
-     getErrorPayload(i18n, error) {
+    getErrorPayload(i18n, error) {
 
+        if (error instanceof UserError) return error.toMessage();
         if (error?.code == 'ECONNREFUSED') return ScrimsMessageBuilder.errorMessage(i18n.get('command_failed_title'), i18n.get('command_failed'));
         return ScrimsMessageBuilder.errorMessage(i18n.get('unexpected_error_title'), i18n.get('unexpected_error'));
 
