@@ -272,7 +272,7 @@ function getPositionRolesCommandGroup() {
         .addSubcommand( getPositionRolesAddSubcommand() )
         .addSubcommand( getPositionRolesRemoveSubcommand() )
 
-    return [ getPositionRolesCommandGroup, { permissionLevel: "staff" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
+    return [ getPositionRolesCommandGroup, { permissionLevel: "staff" }, { forceGuild: true, forceScrimsUser: false } ];
 
 }
 
@@ -286,7 +286,7 @@ function getPositionsCommandGroup() {
         .addSubcommand( getPositionsTakeSubcommand() )
         .addSubcommand( getPositionsInfoSubcommand() )
 
-    return [ positionsCommandGroup, { permissionLevel: "support" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
+    return [ positionsCommandGroup, { permissionLevel: "support" }, { forceGuild: true, forceScrimsUser: false } ];
 
 }
 
@@ -296,7 +296,7 @@ function getBridgeScrimsSyncCommand() {
         .setName("scrims-sync-members")
         .setDescription("Use this command to sync everyones bridge scrims position roles.")
 
-    return [ syncCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false, ephemeralDefer: true } ];
+    return [ syncCommand, { permissionLevel: "owner" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: false, ephemeralDefer: true } ];
 
 }
 

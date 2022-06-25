@@ -1,4 +1,4 @@
-const { Client, Role } = require("discord.js");
+const { Client, Role, CachedManager, Collection } = require("discord.js");
 
 const LimitedComponentContainer = require("./components/limited_components");
 const ScrimsCommandInstaller = require("./tools/command_installer");
@@ -95,11 +95,11 @@ class ScrimsBot extends Client {
         console.log("Commands initialized!")
 
         console.log("Initializing guilds...")
-        await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild)))
+        await Promise.all(guilds.map(guild => this.updateScrimsGuild(null, guild).catch(console.error)))
         console.log("Guilds initialized!")
-        
+
         console.log("Initializing guild members...")
-        await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild)))
+        await Promise.all(guilds.map(guild => this.scrimsUsers.initializeGuildMembers(guild).catch(console.error)))
         console.log("Guild members initialized!")
         
         this.emit("startupComplete")
@@ -162,6 +162,46 @@ class ScrimsBot extends Client {
         this.on('guildCreate', guild => this.updateScrimsGuild(null, guild).catch(console.error))
         this.on('guildUpdate', (oldGuild, newGuild) => this.updateScrimsGuild(oldGuild, newGuild).catch(console.error))
         this.on('guildCreate', guild => this.commands.updateGuildCommandsPermissions(guild).catch(console.error))
+
+    }
+
+    /**
+     * @template K, V 
+     * @param {CachedManager<K, V>} cacheManager 
+     * @param {number} [chunkSize] 
+     * @param {number} [limit] 
+     * @returns {AsyncGenerator<Collection<K, V>, void, Collection<K, V>>} 
+     */
+    async* multiFetch(cacheManager, chunkSize=100, limit) {
+
+        /** @type {Collection<K, V>} */
+        let chunk = await cacheManager.fetch({ limit: chunkSize })
+        
+        while (true) {
+            
+            if (limit !== undefined) limit -= chunk.size
+            if (chunk.size === 0) break;
+            yield chunk;
+            if (chunk.size !== chunkSize || (limit !== undefined && limit <= 0)) break;
+            chunk = await cacheManager.fetch({ limit: chunkSize, after: chunk.lastKey() })
+
+        }
+
+    }
+
+    /**
+     * @template K, V 
+     * @param {CachedManager<K, V>} cacheManager  
+     * @param {number} [chunkSize] 
+     * @param {number} [limit] 
+     * @returns {Promise<Collection<K, V>>} 
+     */
+    async completelyFetch(cacheManager, chunkSize=100, limit) {
+
+        let results = new Collection()
+        for await (const fetched of this.multiFetch(cacheManager, chunkSize, limit)) 
+            results = results.concat(fetched)
+        return results;
 
     }
 

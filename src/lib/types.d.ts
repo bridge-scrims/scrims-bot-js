@@ -43,7 +43,7 @@ export interface ScrimsCommandConfiguration {
     forceGuild?: boolean;
     forceScrimsUser?: boolean;
     ephemeralDefer?: boolean;
-    bypassBlock?: boolean;
+    denyWhenBlocked?: boolean;
     
 }
 
@@ -108,6 +108,7 @@ export interface ScrimsModalSubmitInteraction extends ScrimsInteraction, ModalSu
 export interface EphemeralExchangeInputField extends TextInputComponentOptions {
 
     type: InputType;
+    force: boolean;
 
 }
 

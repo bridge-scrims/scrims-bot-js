@@ -45,7 +45,7 @@ class ScrimsMessageBuilder {
     /**
      * @param { string } text 
      */
-    static stripText(text) {
+    static stripText(text, charLimit) {
 
         while (text.includes("\n\n\n")) 
             text = text.replace("\n\n\n", "\n\n");
@@ -53,9 +53,11 @@ class ScrimsMessageBuilder {
         const lines = text.split("\n").map(v => v.trim())
         if (lines.length > 10)
             text = lines.slice(0, lines.length-(lines.length-10)).join("\n") + lines.slice(lines.length-(lines.length-10)).map(v => v.trim()).join(" ")
-
-        return text.trim();
-
+        
+        text = text.trim()
+        if (text.length > charLimit) text = text.slice(0, charLimit-12) + " ...and more"
+        return text;
+        
     }
 
     static hsv2rgb(h, s, v) {

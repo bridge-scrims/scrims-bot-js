@@ -15,7 +15,7 @@ function getInputFields(type) {
         fields.push({ 
             type: "USERS", customId: "targets", label: "Who are you reporting?", 
             maxLength: 1024, minLength: 3, placeholder: "@FirstUser#1188 @SecondUser#2299 @UserId ...", 
-            required: true, style: "SHORT" 
+            required: true, style: "SHORT"
         })
 
     }
@@ -71,8 +71,11 @@ class TicketCreateExchange extends ModalEphemeralExchange {
         if (currentIndex === -1) return { content: "Ticket creation process was forcibly aborted.", embeds: [] }
 
         embed.setTitle(`Ticket Create Confirmation`)
-        embed.setDescription(`Please verify that all fields are filled to your liking, then create this ticket using the button below.`)
-        embed.setColor('#ffffff')
+        embed.setDescription(
+            `🔍 Please **verify all fields** are filled out as intended before you 📨 **Submit** this.`
+            + `\n💔 **Joke tickets** could result in **punishments**.`
+        )
+        embed.setColor('#BBDDF5')
 
         const content = (this.isTest() ? ' *(Test ticket detected)*' : null)
         return { content, embeds: [embed] };

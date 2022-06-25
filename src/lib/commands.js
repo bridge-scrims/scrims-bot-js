@@ -254,7 +254,7 @@ function getReloadCommand() {
     return [ 
         reloadCommand, 
         { permissionLevel: "staff" }, 
-        { forceGuild: false, bypassBlock: false, forceScrimsUser: false, ephemeralDefer: true } 
+        { forceGuild: false, denyWhenBlocked: true, forceScrimsUser: false, ephemeralDefer: true } 
     ];
 
 }
@@ -284,7 +284,7 @@ function getConfigCommand() {
     return [ 
         configCommand, 
         { permissionLevel: "owner" }, 
-        { forceGuild: true, bypassBlock: true, forceScrimsUser: true, ephemeralDefer: true } 
+        { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } 
     ];
 
 }
@@ -298,7 +298,7 @@ function getPingCommand() {
         .setName("ping")
         .setDescription("Used to test the bots connection.")
     
-    return [ pingCommand, { }, { forceGuild: false, bypassBlock: true, forceScrimsUser: false } ];
+    return [ pingCommand, { }, { forceGuild: false, forceScrimsUser: false } ];
 
 }
 
@@ -311,7 +311,7 @@ function getKillCommand() {
         .setName("kill")
         .setDescription("Used to kill the bot.")
     
-    return [ killCommand, { permissionLevel: "owner" }, { forceGuild: false, bypassBlock: true, forceScrimsUser: false } ];
+    return [ killCommand, { permissionLevel: "owner" }, { forceGuild: false, forceScrimsUser: false } ];
 
 }
 
@@ -330,7 +330,7 @@ function getFindCommand() {
                 .setRequired(true)
         ))
     
-    return [ command, { permissionLevel: "support" }, { forceGuild: false, bypassBlock: true, forceScrimsUser: false, ephemeralDefer: false } ];
+    return [ command, { permissionLevel: "support" }, { forceGuild: false, forceScrimsUser: false, ephemeralDefer: false } ];
 
 }
 

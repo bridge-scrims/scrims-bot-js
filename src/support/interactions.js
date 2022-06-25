@@ -61,6 +61,7 @@ async function requestTicketClosure(interaction) {
     const reason = interaction.options.getString('reason') ?? "no reason provided";
     const timeout = interaction.options.getString('timeout') ?? null;
 
+    if (!interaction.channel) return false;
     const ticket = await interaction.client.database.tickets.fetch({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
     if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage()); // This is no support channel (bruh moment)
 
@@ -170,7 +171,7 @@ function buildCloseCommand() {
         ))
 
 
-    return [closeCommand, { permissionLevel: "support" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: true }];
+    return [closeCommand, { permissionLevel: "support" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: true }];
 
 }
 
@@ -180,7 +181,7 @@ function buildSupportMessageCommand() {
         .setName("support-message")
         .setDescription("Sends the support message in the channel.")
 
-    return [supportMessageCommand, { permissionLevel: "support" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false }];
+    return [supportMessageCommand, { permissionLevel: "support" }, { forceGuild: true, forceScrimsUser: false }];
 
 }
 
@@ -201,7 +202,7 @@ function buildSupportTicketCommand() {
             .setRequired(true)
         )
 
-    return [supportTicketOptionCommand, { permissionLevel: "support" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false }];
+    return [supportTicketOptionCommand, { permissionLevel: "support" }, { forceGuild: true, forceScrimsUser: false }];
     
 }
 
@@ -209,7 +210,6 @@ function buildSupportTicketCommand() {
 module.exports = {
 
     commandHandler: onCommand,
-    eventHandlers: [ 'support' ],
     commands: [ buildCloseCommand(), buildSupportMessageCommand(), buildSupportTicketCommand() ]
 
 }

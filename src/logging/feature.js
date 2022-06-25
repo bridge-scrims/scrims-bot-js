@@ -107,6 +107,13 @@ class LoggingFeature {
 
     }
 
+    stringifyUpdate(oldValue, update) {
+
+        return Object.entries(update)
+            .map(([key, value]) => `\`•\` **${key}:** \`${oldValue[key] ?? 'none'}\` **->** \`${value}\``).join("\n ")
+
+    }
+
     /**
      * @returns { Promise<TextChannel[]> }
      */
@@ -150,11 +157,8 @@ class LoggingFeature {
 
         }
 
-        if (payload.error) {
-
-            embed.addField(payload.error?.name || 'Error', `${payload.error?.message || 'Unknown error.'}`, false)
-
-        }
+        if (payload.error) embed.addField(payload.error?.name || 'Error', `${payload.error?.message || 'Unknown error.'}`, false)
+        if (payload.update && payload.oldValue) embed.addField("Updates", this.stringifyUpdate(payload.oldValue, payload.update))
 
         const mentions = [ authorData?.mention, ...(payload?.mentions ?? []) ].filter(v => v).map(v => `${v}`)
         const msgPayload = { content: (mentions.length > 0) ? mentions.join(' ') : null, embeds: [embed], allowedMentions: { parse: [] } }

@@ -26,12 +26,13 @@ class SuggestionsFeature {
         this.suggestionChannels = {}
 
         this.configChangeBuffer = new AsyncFunctionBuffer((guildId) => this.onConfigurationChange(guildId))
-        this.infoMessageBuffer = new AsyncFunctionBuffer((...args) => this.sendSuggestionInfoMessageTask(...args))
+        this.infoMessageBuffer = new AsyncFunctionBuffer((...args) => this.sendSuggestionInfoMessageTask(...args), -5)
 
         commands.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, commandHandler, cmdPerms))
         contextMenus.forEach(([ cmdData, cmdPerms ]) => this.bot.commands.add(cmdData, interactionHandler, cmdPerms))
         listeners.forEach(eventName => this.bot.commands.add(eventName, interactionHandler))
         eventListeners.forEach(eventName => this.bot.commands.add(eventName, commandHandler))
+        this.bot.commands.add("suggestionCreate", interactionHandler, {}, { denyWhenBlocked: true })
 
         this.bot.on('ready', () => this.onReady())
         this.bot.on('databaseConnected', () => this.onStartup())

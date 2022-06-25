@@ -60,11 +60,11 @@ class ModalEphemeralExchange extends EphemeralExchange {
 
     }
 
-    getEmbedFields() {
+    getEmbedFields(showExtras=false) {
 
         return this.fields
             .filter(field => field.value !== undefined)
-            .map(field => ({ name: field.label, value: this.stringifyFieldValue(field.type, field.value).substring(0, 1024) }));
+            .map(field => ({ name: field.label, value: this.stringifyFieldValue(field.type, field.value, field.force, showExtras).substring(0, 1024) }));
 
     }
 
@@ -72,7 +72,7 @@ class ModalEphemeralExchange extends EphemeralExchange {
 
         const embed = new MessageEmbed()
             .setFooter({ text: `${this.title}  •  ${this.currentIndex+1}/${this.length}` })
-            .setFields(this.getEmbedFields())
+            .setFields(this.getEmbedFields(true))
 
         return this.getModalResponseCall(embed, this.fields, this.currentIndex);          
 
@@ -83,10 +83,10 @@ class ModalEphemeralExchange extends EphemeralExchange {
      */
     getNextButton(...args) {
 
-        if (this.currentIndex+1 < this.length) return super.getNextButton(...args);
+        if (this.currentIndex+1 < this.length) return super.getNextButton(...args).setDisabled(this.nextDisabled());
         
         return new MessageButton()
-            .setLabel('Submit').setCustomId(`${this.customId}/NEXT`).setStyle('SUCCESS');
+            .setLabel('Submit').setCustomId(`${this.customId}/NEXT`).setStyle('SUCCESS').setDisabled(this.nextDisabled()).setEmoji("📨");
 
     }
 
@@ -101,16 +101,41 @@ class ModalEphemeralExchange extends EphemeralExchange {
         return [this.getNextButton(response.nextOption), this.getEditButton(), this.getBackButton(response.backOption), this.getCancelButton(response.cancelOption)].filter(v => v);
     }
 
+    nextDisabled() {
+
+        return this.fields
+            .filter(field => field.value !== undefined)
+            .some(field => field.force && this.getFieldExtra(field.type, field.value, field.force).length > 0)
+
+    }
+
     /**
      * @param { import('../types').InputType } type
      * @param { any } value
      */
-    stringifyFieldValue(type, value) {
+    getFieldExtra(type, value, force) {
+
+        if (type === 'USERS') {
+            if (value.filter(v => (v?.id || v?.discord_id)).length === 0 && force) return `\n\`\`\`⛔️ Please input a valid user and try again.\`\`\``;
+            if (value.filter(v => (v?.id || v?.discord_id)).length !== value.length) return `\n\`\`\`❌ One or more users could not be resolved. Please make sure that you got their id/tag correct.\`\`\``;
+        }
+
+        return "";
+
+    }
+
+    /**
+     * @param { import('../types').InputType } type
+     * @param { any } value
+     */
+    stringifyFieldValue(type, value, force, showExtras) {
+
+        const extra = showExtras ? this.getFieldExtra(type, value, force) : ''
 
         if (type === 'USERS') 
-            return (value.length > 0) ? value.map(v => (v?.id || v?.discord_id) ? `${v} (${v?.discord_id ?? v?.id})` : `**${v}**`).map(v => `\`•\` ${v}`).join("\n") : '``` ```';
+            return ((value.length > 0) ? value.map(v => (v?.id || v?.discord_id) ? `${v} (${v?.discord_id ?? v?.id})` : `**${v.slice(0, 37)}**`).map(v => `\`•\` ${v}`).join("\n").slice(0, 1024-extra.length) + extra : `\`\`\`${extra.replaceAll("`", "")}\`\`\``);
         
-        return `\`\`\`${ScrimsMessageBuilder.stripText(value).substring(0, 1018)}\`\`\``;
+        return `\`\`\`${ScrimsMessageBuilder.stripText(value, 1024-6-extra.length)}\`\`\`${extra}`;
 
     }
 
@@ -173,7 +198,6 @@ class ModalEphemeralExchange extends EphemeralExchange {
     async onModalSubmit(interaction) {
 
         await this.parseFieldValues(interaction)
-        
         const response = await this.getResponse()
         if (response) {
             if (interaction.message.flags?.has(MessageFlags.FLAGS.EPHEMERAL)) await interaction.update(response)
@@ -221,7 +245,7 @@ class ModalEphemeralExchange extends EphemeralExchange {
     getTextInputComponent(field) {
 
         if (!field.type) field.type = 'TEXT'
-        if (field.value !== undefined) field.value = this.modalifyFieldValue(field.type, field.value)
+        if (field.value !== undefined) field.value = this.modalifyFieldValue(field.type, field.value).slice(0, field.maxLength)
         return new TextInputComponent(field);
 
     }

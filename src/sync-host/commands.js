@@ -124,6 +124,7 @@ async function onUpdatePositionCommand(interaction) {
     if (Object.keys(update).length === 0) 
         return interaction.editReply(ScrimsMessageBuilder.errorMessage("Invalid Parameters", "There is nothing to update here!"));
 
+    interaction.database.ipc.notify("audited_position_update", { id_executor: interaction.scrimsUser.id_user, position, update })
     await interaction.database.positions.update(position, update)
     await interaction.editReply({ content: "Position updated." })
 
@@ -175,7 +176,7 @@ function getTransferPositionsCommand() {
         .setName("transfer-user-positions")
         .setDescription("Will add user positions based off their discord roles.")
     
-    return [ transferPositionsCommand, { permissionLevel: "staff" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: false } ];
+    return [ transferPositionsCommand, { permissionLevel: "staff" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: false } ];
 
 }
 
@@ -188,7 +189,7 @@ function getCreatePositionCommand() {
         .addBooleanOption(option => option.setName("sticky").setDescription("Whether the position should always stay."))
         .addIntegerOption(option => option.setName("level").setDescription("The level in the bridge scrims hierarchy."))
     
-    return [ createPositionCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: true, ephemeralDefer: true } ];
+    return [ createPositionCommand, { permissionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
 
 }
 
@@ -199,7 +200,7 @@ function getRemovePositionCommand() {
         .setDescription("Removes a bridge scrims position.")
         .addIntegerOption(option => option.setName("position").setDescription("The name of the position that should be removed.").setRequired(true).setAutocomplete(true))
     
-    return [ removePositionCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: true, ephemeralDefer: true } ];
+    return [ removePositionCommand, { permissionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
 
 }
 
@@ -213,7 +214,7 @@ function getUpdatePositionCommand() {
         .addBooleanOption(option => option.setName("sticky").setDescription("Whether the position should always stay.").setRequired(false))
         .addIntegerOption(option => option.setName("level").setDescription("The new level in the bridge scrims hierarchy.").setRequired(false))
     
-    return [ updatePositionCommand, { permissionLevel: "owner" }, { forceGuild: true, bypassBlock: false, forceScrimsUser: true, ephemeralDefer: true } ];
+    return [ updatePositionCommand, { permissionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
 
 }
 

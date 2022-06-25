@@ -4,6 +4,7 @@ const SuggestionsResponseMessageBuilder = require("./responses");
 const ScrimsMessageBuilder = require("../lib/responses");
 const ScrimsSuggestion = require("../lib/scrims/suggestion");
 const ScrimsAttachment = require("../lib/scrims/attachment");
+const UserError = require("../lib/tools/user_error");
 
 const commandHandlers = {
 
@@ -38,12 +39,9 @@ async function onSuggestionCommand(interaction) {
 
 }
 
-async function getBlacklisted(interaction) {
-
-    return interaction.client.database.userPositions.find(
-        { id_user: interaction.scrimsUser.id_user, position: { name: "suggestion_blacklisted" } }
-    );
-
+/** @param {import('../types').ScrimsInteraction} interaction */
+function getBlacklisted(interaction) {
+    return interaction.scrimsPositions.hasPosition("suggestion_blacklisted");
 }
 
 /**
@@ -52,17 +50,11 @@ async function getBlacklisted(interaction) {
  */
 async function getSuggestions(interaction) {
 
-    if (!interaction.scrimsUser) return interaction.reply( ScrimsMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
+    if (!interaction.scrimsUser) throw new UserError(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
-    const blacklisted = await getBlacklisted(interaction)
-    if (blacklisted) {
-
-        const length = blacklisted.expires_at ? `until <t:${blacklisted.expires_at}:f>` : `permanently`;
-        return interaction.reply( 
-            ScrimsMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to use suggestions ${length} since you didn't follow the rules.`) 
-        ).then(() => false);
-
-    }
+    const blacklisted = getBlacklisted(interaction)
+    if (blacklisted)
+        throw new UserError(ScrimsMessageBuilder.scrimsUserNeededMessage(`Not Allowed`, `You are not allowed to use suggestions ${blacklisted.getDuration()} since you didn't follow the rules.`));
 
     return interaction.client.database.suggestions.fetch({ id_creator: interaction.scrimsUser.id_user })
         .then(suggestions => suggestions.sort((a, b) => b.created_at - a.created_at));
@@ -75,8 +67,6 @@ async function getSuggestions(interaction) {
 async function suggestionDetachCommand(interaction) {
 
     const suggestions = await getSuggestions(interaction)
-    if (suggestions === false) return false;
-
     const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
 
     if (suggestions.length === 0) 
@@ -103,8 +93,6 @@ async function suggestionDetachCommand(interaction) {
 async function suggestionAttachCommand(interaction) {
 
     const suggestions = await getSuggestions(interaction)
-    if (suggestions === false) return false;
-    
     const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
 
     if (suggestions.length === 0) 
@@ -175,35 +163,27 @@ async function suggestionAttachComponent(interaction) {
 async function suggestionRemoveCommand(interaction) {
 
     const suggestions = await getSuggestions(interaction)
-    if (suggestions === false) return false;
-    
     const removeableSuggestions = suggestions.filter(suggestion => !suggestion.epic)
     const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
 
     if (removeableSuggestions.length === 0) 
-        return interaction.reply( ScrimsMessageBuilder.errorMessage(
+        throw new UserError(
             'No Removable Suggestions', `You currently have no removable suggestions. `
-            + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
-            + `If your suggestion has a lot of up-votes it may not show up as removable.`
-        ));
+            + (suggestionsChannel ? `To create a suggestion, check out ${suggestionsChannel} and click on the **Make a Suggestion** button at the bottom. ` : '')
+            + `*If your suggestion has a lot of up-votes it may not show up as removable.*`
+        );
 
-    return interaction.reply( SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(removeableSuggestions.slice(0, 5)) );
+    return interaction.reply( SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(removeableSuggestions.slice(0, 4)) );
 
 }
 
 async function suggestionRemoveComponent(interaction) {
 
-    if (!interaction.scrimsUser) return interaction.reply( ScrimsMessageBuilder.scrimsUserNeededMessage() );
+    if (!interaction.scrimsUser) return interaction.update(ScrimsMessageBuilder.scrimsUserNeededMessage());
 
-    const blacklisted = await getBlacklisted(interaction)
-    if (blacklisted) {
-
-        const length = blacklisted.expires_at ? `until <t:${blacklisted.expires_at}:f>` : `permanently`;
-        return interaction.update( 
-            ScrimsMessageBuilder.errorMessage(`Not Allowed`, `You are not allowed to use suggestions ${length} since you didn't follow the rules.`) 
-        );
-
-    }
+    const blacklisted = getBlacklisted(interaction)
+    if (blacklisted)
+        throw new UserError(ScrimsMessageBuilder.scrimsUserNeededMessage(`Not Allowed`, `You are not allowed to use suggestions ${blacklisted.getDuration()} since you didn't follow the rules.`));
 
     const id_suggestion = interaction.args.shift()
     const suggestion = await interaction.client.database.suggestions.find(id_suggestion)
@@ -222,7 +202,6 @@ async function suggestionRemoveComponent(interaction) {
     
             // Deleting the message failed so add the suggestion back to cache
             interaction.client.database.suggestions.cache.push(removed)
-    
             throw response;
     
         }
@@ -233,7 +212,10 @@ async function suggestionRemoveComponent(interaction) {
 
     interaction.client.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: interaction.user.id })
     
-    await interaction.update({ content: `Suggestion successfully removed.`, embeds: [], components: [], ephemeral: true })
+    const suggestions = await getSuggestions(interaction)
+    const removeableSuggestions = suggestions.filter(suggestion => !suggestion.epic)
+    if (removeableSuggestions.length === 0) await interaction.update({ content: "Suggestion removed.", embeds: [], components: [] });
+    else await interaction.update(SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(removeableSuggestions.slice(0, 4)));
 
 }
 
@@ -277,7 +259,7 @@ function buildSuggestionCommandGroup() {
         //.addSubcommand( getAttachSubcommand() )
         //.addSubcommand( getDetachSubcommand() )
 
-    return [ group, {}, { forceGuild: false, bypassBlock: false, forceScrimsUser: true } ];
+    return [ group, {}, { forceGuild: false, forceScrimsUser: true } ];
 
 }
 

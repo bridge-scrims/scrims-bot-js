@@ -6,8 +6,9 @@ const SupportResponseMessageBuilder = require("./responses");
 const TicketTranscriber = require("./ticket-transcriber");
 const ScrimsMessageBuilder = require("../lib/responses");
 
-const { commandHandler, eventHandlers, commands } = require("./interactions");
+const { commandHandler, commands } = require("./interactions");
 const ScrimsTicket = require("../lib/scrims/ticket");
+const AsyncFunctionBuffer = require("../lib/tools/buffer");
 
 class SupportFeature {
 
@@ -19,11 +20,13 @@ class SupportFeature {
         this.bot = bot
 
         commands.forEach(([ cmdData, cmdPerms, cmdOptions ]) => this.bot.commands.add(cmdData, commandHandler, cmdPerms, cmdOptions))
-        eventHandlers.forEach(eventName => this.bot.commands.add(eventName, commandHandler))
+        this.bot.commands.add("support", commandHandler, {}, { denyWhenBlocked: true })
 
         this.modalResponses = {}
         this.transcriptChannels = {}
         this.ticketCategorys = {}
+
+        this.closeTicketBuffer = new AsyncFunctionBuffer((...args) => this.__closeTicket(...args))
 
         /**
          * @type { Object.<string, StatusChannel> }
@@ -384,13 +387,18 @@ class SupportFeature {
     async closeTicket(ticket, ticketCloser, executor, content) {
 
         this.cancelCloseTimeout(ticket.id_ticket)
-        if (ticket?.status?.name === 'deleted') return false;
-    
-        const statusName = ticket?.status?.name
-        const closer = (ticketCloser?.id) ? { closer: { discord_id: ticketCloser.id } } : { id_closer: null }
-        await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" }, ...closer })
+        await this.closeTicketBuffer.run(ticket, ticketCloser, executor, content)
 
-        if (!statusName || statusName !== 'deleted') {
+    }
+
+    /** @param {ScrimsTicket} ticket */
+    async __closeTicket(ticket, ticketCloser, executor, content) {
+
+        this.cancelCloseTimeout(ticket.id_ticket)
+        if (ticket?.status?.name !== 'deleted') {
+
+            const closer = (ticketCloser?.id) ? { closer: { discord_id: ticketCloser.id } } : { id_closer: null }
+            await this.database.tickets.update({ id_ticket: ticket.id_ticket }, { status: { name: "deleted" }, ...closer })
 
             if (content && executor) {
                 const message = { id: SnowflakeUtil.generate(), author: executor, content }

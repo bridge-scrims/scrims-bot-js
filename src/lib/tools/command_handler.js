@@ -58,7 +58,7 @@ class ScrimsCommandHandler {
             return interaction.reply({ content: `pong`, embeds: [], components: [], ephemeral: true });
 
         if (
-            this.bot.blocked && !(interaction?.commandConfig?.bypassBlock)
+            this.bot.blocked && (interaction?.commandConfig?.denyWhenBlocked)
             && (this.bot.handles.indexOf(interaction.id) === -1) && (this.bot.handles.indexOf(interaction.commandName) === -1)
             && !(interaction.commandName === "killAction")
         ) {

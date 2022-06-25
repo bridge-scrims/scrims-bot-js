@@ -1,5 +1,6 @@
 const { MessageEmbed, GuildMember, MessageActionRow, Guild } = require("discord.js");
 const ScrimsTicket = require('../lib/scrims/ticket');
+const AsyncFunctionBuffer = require("../lib/tools/buffer");
 const SupportResponseMessageBuilder = require('./responses');
 const TicketCreateExchange = require("./ticket_create_exchange");
 
@@ -49,10 +50,12 @@ async function onTicketCreateRequest(interaction) {
     const allowed = await interaction.client.support.verifyTicketRequest(interaction.scrimsUser, interaction.guildId, ticketType.name)
     if (allowed !== true) return interaction.reply(allowed);
 
-    const exchange = new TicketCreateExchange(interaction.client, interaction.guild, interaction.scrimsUser, ticketType, interaction.channel.parentId, createTicket)
+    const exchange = new TicketCreateExchange(interaction.client, interaction.guild, interaction.scrimsUser, ticketType, interaction.channel.parentId, exchange => createTicketBuffer.run(exchange))
     await exchange.send(interaction)
 
 }
+
+const createTicketBuffer = new AsyncFunctionBuffer(createTicket)
 
 /**
  * @param { TicketCreateExchange } exchange 
@@ -65,14 +68,6 @@ async function createTicket(exchange) {
     const category = exchange.client.support.getTicketCategory(exchange.guild.id, exchange.ticketType.name)?.id ?? exchange.categoryId
     const ticketIndex = await exchange.client.database.tickets.callFunction("nextval", ["support_ticket_index"])
     const channel = await createTicketChannel(exchange.client, exchange.guild, category, exchange.creator.discordUser, exchange.ticketType.name, ticketIndex)
-
-    const stillAllowed = await exchange.client.support.verifyTicketRequest(exchange.creator, exchange.guildId, exchange.ticketType.name)
-    if (stillAllowed !== true) {
-        
-        await channel.delete().catch(console.error)
-        return stillAllowed;
-
-    }
 
     const ticket = await exchange.client.database.tickets.create(
         

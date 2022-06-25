@@ -6,12 +6,12 @@ const ScrimsTicketMessageAttachment = require("../lib/scrims/ticket_message_atta
 
 class TicketTranscriber {
 
-    constructor(transcriptTableClient) {
+    constructor(database) {
 
         /**
          * @type { import("../lib/postgresql/database") }
          */
-        this.client = transcriptTableClient 
+        this.client = database 
 
     }
     
@@ -21,14 +21,14 @@ class TicketTranscriber {
 
             message.mentions.users.forEach(mentionedUser => message.content = message.content.replaceAll(`<@${mentionedUser.id}>`, `@${mentionedUser.tag}`))
             
-            const notAddedAttachments = message.attachments.filter(value => this.client.attachments.cache.get({ attachment_id: value.id }).length === 0)
+            const notAddedAttachments = message.attachments.filter(value => !this.client.attachments.cache.find({ attachment_id: value.id }))
             
-            Promise.allSettled(notAddedAttachments.map(value => got(value.url).catch(console.error)))
-            await Promise.allSettled(
+            Promise.all(notAddedAttachments.map(value => got(value.url).catch(console.error)))
+            await Promise.all(
                 notAddedAttachments.map(value => this.client.attachments.create(ScrimsAttachment.fromMessageAttachment(this.client, value)).catch(console.error))
             )
 
-            await Promise.allSettled(
+            await Promise.all(
                 message.attachments.filter(value => !this.client.ticketMessageAttachments.cache.find({ id_ticket: ticketId, attachment_id: value.id }))
                     .map(value => (
                         this.client.ticketMessageAttachments.create(
@@ -88,7 +88,7 @@ class TicketTranscriber {
                         + `<tr>`
                             + `<td>\${getDate(${message.created_at*1000})}</td>`
                             + `<td>\${getTime(${message.created_at*1000})}</td>`
-                            + `<td>${escape(message.author.discord_username + "#" + message.author.discord_discriminator)}</td>`
+                            + `<td>${escape(message.author.tag)}</td>`
                             + `<td class="last">${escape(((message?.edits?.slice(-1) ?? [])[0] ?? message).content)}${getMessageAttachments(message)}${getMessageExtra(message)}</td>`
                         + `</tr>` 
                     + `\`);`

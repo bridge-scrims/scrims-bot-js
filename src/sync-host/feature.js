@@ -140,9 +140,7 @@ class ScrimsSyncHostFeature {
     async initializeMembers(guild, members) {
 
         members = members.filter(m => m.scrimsUser)
-
         const userPositions = await this.bot.database.userPositions.getArrayMap({}, ['id_user'], false)
-
         for (const member of members.values()) await this.initializeMember(member, userPositions)
         
     }
@@ -151,7 +149,7 @@ class ScrimsSyncHostFeature {
 
         const userPositions = await this.bot.database.userPositions.getArrayMap({}, ["id_user"], false)
         const scrimsUsers = this.bot.database.users.cache.values()
-        const bans = await guild.bans.fetch()
+        const bans = await this.bot.completelyFetch(guild.bans, 1000)
 
         return scrimsUsers.map(user => [
             this.getMemberMissingPositions(user.getMember(guild), user, userPositions, bans), 
@@ -164,7 +162,7 @@ class ScrimsSyncHostFeature {
 
         const userPositions = await this.bot.database.userPositions.getArrayMap({}, ["id_user"], false)
         const scrimsUsers = this.bot.database.users.cache.values()
-        const bans = await guild.bans.fetch()
+        const bans = await this.bot.completelyFetch(guild.bans, 1000)
 
         return Promise.all(scrimsUsers.map(user => this.transferPositionsForMember(id_executor, user, this.getMemberMissingPositions(user.getMember(guild), user, userPositions, bans), this.getMemberUnallowedPositions(user.getMember(guild), user, userPositions, bans))))
             .then(results => results.reduce(([rmv, create], [removeResults, createResults]) => [ [...rmv, ...removeResults], [...create, ...createResults] ], [[], []]))

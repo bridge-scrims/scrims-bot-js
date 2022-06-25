@@ -40,6 +40,7 @@ class PositionLoggingFeature {
         
         this.database.ipc.on('audited_position_create', message => this.onPositionCreate(message.payload).catch(console.error))
         this.database.ipc.on('audited_position_remove', message => this.onPositionRemove(message.payload).catch(console.error))
+        this.database.ipc.on('audited_position_update', message => this.onPositionUpdate(message.payload).catch(console.error))
         
         this.database.ipc.on('joined_discord_roles_received', message => this.onJoinedRolesReceived(message.payload).catch(console.error))
         this.database.ipc.on('position_discord_roles_received', message => this.onPositionRolesReceived(message.payload).catch(console.error))
@@ -159,6 +160,16 @@ class PositionLoggingFeature {
             + `with a level of \`${position.level}\` in the hierarchy and a sticky value of \`${position.sticky}\`. `
         
         return this.logging.sendLogMessages({ msg, id_executor: payload.id_executor ?? null }, "positions_log_channel", "Position Removed", '#FF0000');
+
+    }
+
+    async onPositionUpdate(payload) {
+
+        const position = new ScrimsPosition(this.database, payload.position)
+        const userPositions = await this.database.userPositions.count({ id_position: position.id_position }, false)
+        const msg = `Updated the position called **${position.name}** that is owned by \`${userPositions}\` **member(s)**.`
+        
+        return this.logging.sendLogMessages({ msg, id_executor: payload.id_executor ?? null, oldValue: position, update: payload.update }, "positions_log_channel", "Position Updated", '#ff9a51');
 
     }
 

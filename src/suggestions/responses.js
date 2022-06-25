@@ -34,7 +34,7 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
             .addComponents(
                 new MessageButton()
                     .setLabel('Make a Suggestion')
-                    .setCustomId(`suggestion/create`)
+                    .setCustomId(`suggestionCreate/create`)
                     .setStyle('PRIMARY')
                     .setEmoji('📢')
             )
@@ -109,22 +109,13 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
         return {
 
             embeds: [
-
                 new MessageEmbed()
                     .setColor('#FF255F')
                     .setTitle("Remove Suggestion")
                     .setDescription(`Please confirm which suggestion you would like to remove.`)
                     .addFields(this.getSuggestionFields(suggestions))
-
             ],
-
-            components: [
-
-                new MessageActionRow().addComponents(this.getSuggestionRemoveButtons(suggestions)),
-                new MessageActionRow().addComponents(this.cancelButton())
-
-            ],
-
+            components: [new MessageActionRow().addComponents(this.getSuggestionRemoveButtons(suggestions)).addComponents(this.cancelButton())],
             ephemeral: true
 
         }
@@ -136,7 +127,8 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
         return suggestions.map((suggestion, idx) => (
 
             new MessageButton()
-                .setLabel(`Remove ${idx+1}.`)
+                .setLabel(`${idx+1}`)
+                .setEmoji("💣")
                 .setCustomId(`suggestionRemove/${suggestion.id_suggestion}`)
                 .setStyle('DANGER')
 
@@ -149,7 +141,7 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
         return suggestions.map((suggestion, idx) => (
 
             new MessageButton()
-                .setLabel(`Attach to ${idx+1}.`)
+                .setLabel(`${idx+1}.`)
                 .setCustomId(`suggestionAttach/${suggestion.id_suggestion}/${attachment_id}`)
                 .setStyle('PRIMARY')
 

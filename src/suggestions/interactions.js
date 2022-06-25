@@ -233,7 +233,7 @@ function buildRemoveSuggestionContextMenuCommand() {
 module.exports = {
 
     interactionHandler: onInteraction,
-    listeners: [ "suggestion" ],
+    listeners: ["suggestion"],
     contextMenus: [ buildRemoveSuggestionContextMenuCommand() ]
 
 };

@@ -2,17 +2,16 @@ const ScrimsMessageBuilder = require("../responses")
 
 class UserError extends Error {
 
-    constructor(title, message) {
+    constructor(...args) {
 
-        super(message)
-        this.title = title
-        this.message = message
+        super();
+        this.payload = (args.length === 1) ? args[0] : ScrimsMessageBuilder.errorMessage(args[0], args[1]);
         
     }
 
     toMessage() {
 
-        return ScrimsMessageBuilder.errorMessage(this.title, this.message);
+        return this.payload;
 
     }
 

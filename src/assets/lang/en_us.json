@@ -1,6 +1,6 @@
 {
     "operation_cancelled": "Operation cancelled.",
-    "blocked_cancel": "I am currently restarting. Please try again in a minute.",
+    "blocked_cancel": "I am currently restarting. Please try again in a couple minutes.",
     "missing_command_permissions": "You are missing the required permissions to use this command!",
     "message_not_hosted": "This message is no longer being hosted.",
     "missing_command_handler": "This command does not have a handler. Please refrain from trying again.",
