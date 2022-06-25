@@ -171,7 +171,7 @@ function buildCloseCommand() {
         ))
 
 
-    return [closeCommand, { permissionLevel: "support" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: true }];
+    return [closeCommand, { positionLevel: "support" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: true }];
 
 }
 
@@ -181,7 +181,7 @@ function buildSupportMessageCommand() {
         .setName("support-message")
         .setDescription("Sends the support message in the channel.")
 
-    return [supportMessageCommand, { permissionLevel: "support" }, { forceGuild: true, forceScrimsUser: false }];
+    return [supportMessageCommand, { positionLevel: "support" }, { forceGuild: true, forceScrimsUser: false }];
 
 }
 
@@ -202,7 +202,7 @@ function buildSupportTicketCommand() {
             .setRequired(true)
         )
 
-    return [supportTicketOptionCommand, { permissionLevel: "support" }, { forceGuild: true, forceScrimsUser: false }];
+    return [supportTicketOptionCommand, { positionLevel: "support" }, { forceGuild: true, forceScrimsUser: false }];
     
 }
 

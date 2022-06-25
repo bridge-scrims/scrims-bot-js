@@ -7,13 +7,12 @@ import {
 
 import { SlashCommandBuilder } from "@discordjs/builders";
 
-import ScrimsUserPosition from "./scrims/user_position";
+import ScrimsUserPositionsCollection from "./scrims/user_positions";
 import I18n from "./tools/internationalization";
 import ScrimsPosition from "./scrims/position";
 import DBClient from "./postgresql/database";
 import ScrimsUser from "./scrims/user";
 import ScrimsBot from "./bot";
-import ScrimsUserPositionsCollection from "./scrims/user_positions";
 
 export interface ScrimsGuildMember extends GuildMember {
 
@@ -25,16 +24,24 @@ export interface ScrimsGuildMember extends GuildMember {
 
 export interface InteractionScrimsGuildMember extends ScrimsGuildMember {
 
-    hasPermission(permissionLevel: string, allowedPositions: string[], requiredPositions: string[]): boolean;
+    hasPermission(permissions: ScrimsPermissions): boolean;
     scrimsPositions: ScrimsUserPositionsCollection;
 
 }
 
 export interface ScrimsPermissions {
 
-    permissionLevel: string;
+    positionLevel: string;
     allowedPositions: string[]; 
     requiredPositions: string[];
+
+    allowedPermissions: string[];
+    requiredPermissions: string[];
+    
+    allowedRoles: string[];
+    requiredRoles: string[];
+
+    allowedUsers: string[];
 
 }
 

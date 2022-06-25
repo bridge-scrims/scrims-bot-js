@@ -49,7 +49,7 @@ async function hasPositionPermissions(interaction, position, action) {
     if (typeof position.level === "number") {
 
         // For example if staff wants to change the roll for owner position
-        if (!(interaction.member.hasPermission(position.name))) {
+        if (!(interaction.scrimsPositions.hasPositionLevel(position))) {
 
             return interaction.editReply(
                 PositionsResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, `You are not allowed to ${action}!`)

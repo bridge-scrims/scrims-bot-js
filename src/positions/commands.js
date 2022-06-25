@@ -57,6 +57,7 @@ async function onPositionAutoComplete(interaction) {
     
         return interaction.respond(
             userPositions
+                .filter(userPos => interaction.scrimsPositions.hasPositionLevel("staff") || userPos.position.name.includes("blacklisted"))
                 .filter(userPos => userPos.position.name.toLowerCase().includes(focused))
                 .map(userPos => ({ name: userPos.position.name, value: userPos.position.id_position }))
                 .slice(0, 25)
@@ -68,6 +69,7 @@ async function onPositionAutoComplete(interaction) {
 
     await interaction.respond(
         positions
+            .filter(position => interaction.options.getSubcommand() !== "give" || interaction.scrimsPositions.hasPositionLevel("staff") || position.name.includes("blacklisted"))
             .filter(position => position.name.toLowerCase().includes(focused))
             .filter(position => !userPositions.find(userPos => userPos.id_position === position.id_position))
             .map(position => ({ name: position.name, value: position.id_position }))
@@ -272,7 +274,7 @@ function getPositionRolesCommandGroup() {
         .addSubcommand( getPositionRolesAddSubcommand() )
         .addSubcommand( getPositionRolesRemoveSubcommand() )
 
-    return [ getPositionRolesCommandGroup, { permissionLevel: "staff" }, { forceGuild: true, forceScrimsUser: false } ];
+    return [ getPositionRolesCommandGroup, { positionLevel: "staff" }, { forceGuild: true, forceScrimsUser: false } ];
 
 }
 
@@ -286,7 +288,7 @@ function getPositionsCommandGroup() {
         .addSubcommand( getPositionsTakeSubcommand() )
         .addSubcommand( getPositionsInfoSubcommand() )
 
-    return [ positionsCommandGroup, { permissionLevel: "support" }, { forceGuild: true, forceScrimsUser: false } ];
+    return [ positionsCommandGroup, { positionLevel: "support" }, { forceGuild: false, forceScrimsUser: false } ];
 
 }
 
@@ -296,7 +298,7 @@ function getBridgeScrimsSyncCommand() {
         .setName("scrims-sync-members")
         .setDescription("Use this command to sync everyones bridge scrims position roles.")
 
-    return [ syncCommand, { permissionLevel: "owner" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: false, ephemeralDefer: true } ];
+    return [ syncCommand, { positionLevel: "owner" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: false, ephemeralDefer: true } ];
 
 }
 

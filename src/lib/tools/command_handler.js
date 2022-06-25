@@ -89,7 +89,6 @@ class ScrimsCommandHandler {
                 if (!interaction.user.scrimsUser) {
                     if (!interaction.isAutocomplete()) 
                         await interaction.reply(ScrimsMessageBuilder.scrimsUserNeededMessage(interaction.i18n)).catch(console.error);
-        
                     return false;
                 }
             }
@@ -198,28 +197,23 @@ class ScrimsCommandHandler {
         if (!interaction.scrimsPermissions) return true;
         if (!interaction.scrimsPositions) return false;
 
-        const { permissionLevel, allowedPositions, requiredPositions } = interaction.scrimsPermissions
-        if (!permissionLevel && !allowedPositions && !requiredPositions) return true;
-        
-        if (interaction.member)
-            return interaction.member.hasPermission(permissionLevel, allowedPositions, requiredPositions);
-        
-        return interaction.scrimsPositions.hasPermission(permissionLevel, allowedPositions, requiredPositions);
+        if (interaction.member) 
+            return interaction.member.hasPermission(interaction.scrimsPermissions);
+
+        return interaction.scrimsPositions.hasPermission(interaction.scrimsPermissions);
 
     }
 
     async expandInteractionMember(interation) {
 
         if (interation.scrimsUser) {
-
             interation.scrimsPositions = await interation.scrimsUser.fetchPositions() 
-            if (interation.member) {
-                interation.member.scrimsPositions = interation.scrimsPositions
-                interation.member.hasPermission = (...args) => this.bot.permissions.hasPermission(interation.scrimsPositions, interation.member, ...args);
-            }
-
             interation.user.scrimsPositions = interation.scrimsPositions
+        }
 
+        if (interation.member) {
+            interation.member.scrimsPositions = interation.scrimsPositions
+            interation.member.hasPermission = (scrimsPermissions) => this.bot.permissions.hasPermission(interation.scrimsPositions, interation.member, scrimsPermissions);
         }
 
     }

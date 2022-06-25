@@ -1,7 +1,6 @@
 
 import ScrimsJSBot from "./bot";
-import { ScrimsInteraction, ScrimsCommandInteraction, ScrimsComponentInteraction, ScrimsModalSubmitInteraction } from './lib/types';
-import { ScrimsAutoCompleteInteraction } from './lib_old/types.d';
+import { ScrimsInteraction, ScrimsCommandInteraction, ScrimsComponentInteraction, ScrimsModalSubmitInteraction, ScrimsAutoCompleteInteraction } from './lib/types';
 
 export interface ScrimsInteraction extends ScrimsInteraction {
 

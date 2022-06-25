@@ -134,8 +134,16 @@ class ScrimsUserPosition extends TableRow {
 
     getExpirationDetail() {
 
-        return (this.expires_at === null) ? `\`permanent\`` 
-            : ((!this.expires_at) ? '\`unknown duration\`' : `expires <t:${this.expires_at}:R>`);
+        return (this.expires_at === null) ? `[permanent]` 
+            : ((!this.expires_at) ? '[unknown-duration]' : `[expires <t:${this.expires_at}:R>]`);
+
+    }
+
+    toString(guild_id) {
+
+        const connectivity = ((guild_id && this.position && this.position.getConnectedRoles(guild_id).length > 0) ? (" **⇨** " + this.position.getConnectedRoles(guild_id).join(" ")) : "")
+        const expiration = (this.expires_at ? ` (expires <t:${this.expires_at}:R>)` : "")
+        return `**${this.position?.name}** (${this.id_position})${connectivity}${expiration}`;
 
     }
 

@@ -96,7 +96,7 @@ class ScrimsPosition extends TableRow {
 
     }
 
-    getPermissionLevelPositions() {
+    getPositionLevelPositions() {
 
        if (!this.hasLevel()) return [ this ];
        return this.client.positions.cache.filter(pos => pos.hasLevel() && (pos.level <= this.level));

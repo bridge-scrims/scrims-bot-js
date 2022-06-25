@@ -228,19 +228,6 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
             .setTimestamp(suggestion.created_at*1000)
             .setImage(suggestion.attachmentURL)
     }
-
-    static errorMessage(title, description) {
-        return {
-            ephemeral: true,
-            embeds: [
-                new MessageEmbed()
-                    .setColor(this.errorRed)
-                    .setTitle(title)
-                    .setDescription(description)
-                    .setTimestamp()
-            ]
-        }
-    }
     
 }
 

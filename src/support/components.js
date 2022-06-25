@@ -122,7 +122,9 @@ async function sendTicketChannelMessages(exchange, ticket, channel) {
 
 function getSupportLevelRoles(client, guild) {
 
-    return client.permissions.getPermissionLevelPositions("support").map(position => client.permissions.getPositionRequiredRoles(guild.id, position)).flat();
+    const support = client.database.positions.cache.find({ name: "support" })
+    if (!support) return [];
+    return support.getPositionLevelPositions().map(position => client.permissions.getPositionRequiredRoles(guild.id, position)).flat();
 
 }
 
@@ -244,7 +246,7 @@ async function onAccept(interaction, ticket) {
  */
  async function onForce(interaction, ticket) {
 
-    const hasPermission = interaction.member.hasPermission('support')
+    const hasPermission = interaction.scrimsPositions.hasPositionLevel('support')
     if (!hasPermission) return interaction.editReply(SupportResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, 'You must be bridge scrims support or higher to do this.'))
 
     await interaction.client.support.closeTicket(

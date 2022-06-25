@@ -1,18 +1,20 @@
+const ScrimsUserPositionsCollection = require('./scrims/user_positions');
 const ScrimsPositionRole = require('./scrims/position_role');
-const ScrimsUserPosition = require('./scrims/user_position');
 const ScrimsPosition = require('./scrims/position');
 const { GuildMember } = require('discord.js');
-const ScrimsUserPositionsCollection = require('./scrims/user_positions');
 
 /**
+ * Manages the permissions of `GuildMembers`, unlike the `ScrimsUserPositionsCollection` that manages the permissions of a `ScrimsUser`.
+ * Different to the **hasPossition** of `ScrimsUserPositionsCollection` the **hasPosition** of this will also ensure the member has the 
+ * required position's roles (defined by `positionRoles`) and can check for discord permissions.
+ * 
  * **Definitions:**
  *  - `position:` The bridge scrims version of discord roles e.g. developer or prime
  *  - `role:` Discord roles
  *  - `hierarchy:` Since positions can have a level they can form a hierarchy e.g. owner is above staff
  *  - `positionRoles:` The discord role(s) that indicate that a member has a position
- *  - `permissionLevel:` Name of a permission in the hierarchy, where positions above will also have permissions
+ *  - `positionLevel:` Resolvable of a position in the hierarchy, where positions above will also have permissions
  */
-
 class ScrimsPermissionsClient {
     
     /**
@@ -30,6 +32,15 @@ class ScrimsPermissionsClient {
 
         return this.database.positions.cache.values();
     
+    }
+
+    /**
+     * @param {import('../types').PositionResolvable} positionResolvable
+     */
+    resolvePosition(positionResolvable) {
+
+        return this.database.positions.cache.filter(v => v === positionResolvable || v.id_position === positionResolvable || v.name === positionResolvable)[0] ?? null;
+
     }
 
     /**
@@ -65,44 +76,103 @@ class ScrimsPermissionsClient {
     }
 
     /**
-     * @param  {{ permissionLevel: ?String, allowedPositions: ?String[], requiredPositions: ?String[] }} cmd
+     * @param  {{ positionLevel: ?String, allowedPositions: ?String[], requiredPositions: ?String[] }} cmd
      * @returns  {string[]} The positions that have permission to run the command
      */
     getCommandAllowedPositions(cmd) {
 
-        const permissionLevelRoles = (cmd?.permissionLevel ? this.getPermissionLevelPositions(cmd.permissionLevel) : [])
+        const permissionLevelRoles = (cmd?.positionLevel ? this.getPositionLevelPositions(cmd.positionLevel) : [])
         return permissionLevelRoles.concat(cmd?.allowedPositions || []).concat(cmd?.requiredPositions || []);
 
     }
     
     /**
-     * @param {ScrimsUserPositionsCollection} userPositions 
-     * @param {import("./types").ScrimsGuildMember} member
-     * @param {string} permissionLevel
-     * @param {string[]} allowedPositions Positions that alone will give permission (or)
-     * @param {string[]} requiredPositions Positions that are all required for permission (and)
-     * @returns {boolean} If the permissible has the permissionlevel **OR** higher **OR** the allowedPositions **AND** all the requiredPositions
+     * @param {ScrimsUserPositionsCollection|null} userPositions 
+     * @param {import("./types").ScrimsGuildMember|string|null} member
+     * @param {import("./types").ScrimsPermissions} permissions
      */
-    hasPermission(userPositions, member, permissionLevel, allowedPositions=[], requiredPositions=[]) {
+    hasPermission(userPositions, member, permissions) {
 
-        if (!member.scrimsUser) return false;
-
-        const hasRequiredPositions = this.hasRequiredPositions(member, requiredPositions, userPositions)
-        const hasPermissionLevel = this.hasPermissionLevel(member, permissionLevel, userPositions)
-        const hasAllowedPositions = this.hasAllowedPositions(member, allowedPositions, userPositions)
+        if (!userPositions && !member) return false;
         
-        return hasRequiredPositions && (hasPermissionLevel || hasAllowedPositions);
+        const hasRequiredRoles = this.hasRequiredRoles(member, permissions.requiredRoles ?? [])
+        const hasRequiredPermissions = this.hasRequiredPermissions(member, permissions.requiredPermissions ?? [])
+        const hasRequiredPositions = this.hasRequiredPositions(member, permissions.requiredPositions ?? [], userPositions)
+        
+        const hasPositionLevel = this.hasPositionLevel(member, permissions.positionLevel ?? null, userPositions)
+        const hasAllowedPositions = this.hasAllowedPositions(member, permissions.allowedPositions ?? [], userPositions)
+        const hasAllowedPermissions = this.hasAllowedPermissions(member, permissions.allowedPermissions ?? [])
+        const hasAllowedRoles = this.hasAllowedRoles(member, permissions.allowedRoles ?? [])
+        const hasAllowedUsers = this.hasAllowedUsers(member, permissions.allowedUsers ?? [], userPositions)
+        
+        const allowed = [hasPositionLevel, hasAllowedPositions, hasAllowedPermissions, hasAllowedRoles, hasAllowedUsers]
+        return hasRequiredRoles && hasRequiredPermissions && hasRequiredPositions && (allowed.every(v => v === null) || allowed.some(v => v === true));
 
     }
 
     /**
-     * @param {import("./types").ScrimsGuildMember} member
+     * @param {import("./types").ScrimsGuildMember|string|null} member
+     * @param {import('discord.js').RoleResolvable[]} roles
+     */
+    hasRequiredRoles(member, roles) {
+
+        return roles.every(role => !member || member.roles.cache.has(member.roles.resolveId(role)));
+
+    }
+
+    /**
+     * @param {import("./types").ScrimsGuildMember|string|null} member
+     * @param {import('discord.js').RoleResolvable[]} roles
+     */
+    hasAllowedRoles(member, roles) {
+
+        if (roles.length === 0) return null;
+        return roles.some(role => !member || member.roles.cache.has(member.roles.resolveId(role)));
+
+    }
+
+    /**
+     * @param {import("./types").ScrimsGuildMember|string|null} member
+     * @param {string[]} allowedUsers
+     * @param {ScrimsUserPositionsCollection|null} userPositions 
+     */
+    hasAllowedUsers(member, allowedUsers, userPositions) {
+
+        if (allowedUsers.length === 0) return null;
+        return allowedUsers.includes(member?.id) || allowedUsers.includes(userPositions?.user?.discord_id);
+
+    }
+
+    /**
+     * @param {import("./types").ScrimsGuildMember|string|null} member
+     * @param {import('discord.js').PermissionResolvable[]} permissions
+     */
+    hasRequiredPermissions(member, permissions) {
+
+        return permissions.every(perm => !member || member.permissions.has(perm, true));
+
+    }
+
+    /**
+     * @param {import("./types").ScrimsGuildMember|null} member
+     * @param {import('discord.js').PermissionResolvable[]} permissions
+     */
+    hasAllowedPermissions(member, permissions) {
+
+        if (permissions.length === 0) return null;
+        return permissions.some(perm => !member || member.permissions.has(perm, true));
+
+    }
+
+    /**
+     * @param {import("./types").ScrimsGuildMember|null} member
      * @param {import('./types').PositionResolvable} positionResolvable
      * @param {ScrimsUserPositionsCollection} userPositions 
      */
-    hasRequiredPosition(member, positionResolvable, userPositions) {
+    hasPosition(member, positionResolvable, userPositions) {
 
-        return userPositions.hasPosition(positionResolvable) && this.hasRequiredPositionRoles(member, positionResolvable, true);
+        if (!userPositions && !member) return false;
+        return (!userPositions || userPositions.hasPosition(positionResolvable)) && (!member || this.hasRequiredPositionRoles(member, positionResolvable, true));
 
     }
 
@@ -128,7 +198,7 @@ class ScrimsPermissionsClient {
      */
     hasRequiredPositions(member, requiredPositions, userPositions) {
 
-        return requiredPositions.map(r => this.hasRequiredPosition(member, r, userPositions)).every(v => v);
+        return requiredPositions.every(r => this.hasPosition(member, r, userPositions));
 
     }
 
@@ -139,32 +209,22 @@ class ScrimsPermissionsClient {
      */
     hasAllowedPositions(member, allowedPositions, userPositions) {
 
-        if (allowedPositions.length === 0) return false;
-        return allowedPositions.map(r => this.hasRequiredPosition(member, r, userPositions)).some(v => v);
-
-    }
-
-    /**
-     * @param {string} permissionLevel
-     * @return {string[]} Any positions that are above or at the permissionLevel in the scrims hierarchy
-     */
-    getPermissionLevelPositions(permissionLevel) {
-
-        const position = this.positions.filter(pos => pos.name === permissionLevel)[0]
-        if (!position) return []
-        return position.getPermissionLevelPositions().map(pos => pos.name);
+        if (allowedPositions.length === 0) return null;
+        return allowedPositions.some(r => this.hasPosition(member, r, userPositions));
 
     }
 
     /**
      * @param {import("./types").ScrimsGuildMember} member
-     * @param {string} permissionLevel
+     * @param {import("./types").PositionResolvable} positionLevel
      * @param {ScrimsUserPositionsCollection} userPositions 
      */
-    hasPermissionLevel(member, permissionLevel, userPositions) {
+    hasPositionLevel(member, positionLevel, userPositions) {
 
-        const allowedPositions = this.getPermissionLevelPositions(permissionLevel)
-        return this.hasAllowedPositions(member, allowedPositions, userPositions);
+        const position = this.resolvePosition(positionLevel)
+        if (!position) return null;
+
+        return this.hasAllowedPositions(member, position.getPositionLevelPositions(), userPositions);
 
     }
 

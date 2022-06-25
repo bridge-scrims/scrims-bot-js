@@ -57,7 +57,7 @@ async function verifySuggestionRequest(interaction) {
     }
         
     const cooldown = cooldowns[interaction.userId] ?? null
-    if (cooldown && (!(interaction.member.hasPermission("support")))) {
+    if (cooldown && (!(interaction.scrimsPositions.hasPositionLevel("support")))) {
 
         return interaction.reply({ 
             content: `You are currently on suggestion cooldown! You can create a suggestion again <t:${Math.round(cooldown/1000)}:R>.`, 
@@ -131,7 +131,7 @@ async function onRemoveSuggestion(interaction) {
     if (suggestion.epic && interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Not Removable", "Since your suggestion is so liked it can not be removed! Have a nice day :)"));
 
-    if (!(interaction.member.hasPermission("staff")) && !interactorIsAuthor) 
+    if (!(interaction.scrimsPositions.hasPositionLevel("support")) && !interactorIsAuthor) 
         return interaction.reply(SuggestionsResponseMessageBuilder.errorMessage("Insufficient Permissions", "You are not allowed to remove this suggestion!"));
 
     // Remove from cache so that when the message delete event arrives it will not trigger anything
@@ -208,7 +208,7 @@ async function onModalSubmit(interaction) {
     suggestion.setChannel(message.channel)
     suggestion.setMessage(message)
 
-    if (!(interaction.member.hasPermission("staff"))) addCooldown(interaction.userId)
+    if (!(interaction.scrimsPositions.hasPositionLevel("staff"))) addCooldown(interaction.userId)
 
     const createResult = await interaction.client.database.suggestions.create(suggestion)
         .catch(error => onError(interaction, `add suggestion to database`, error, true))

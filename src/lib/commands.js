@@ -253,7 +253,7 @@ function getReloadCommand() {
     
     return [ 
         reloadCommand, 
-        { permissionLevel: "staff" }, 
+        { positionLevel: "staff" }, 
         { forceGuild: false, denyWhenBlocked: true, forceScrimsUser: false, ephemeralDefer: true } 
     ];
 
@@ -283,7 +283,7 @@ function getConfigCommand() {
     
     return [ 
         configCommand, 
-        { permissionLevel: "owner" }, 
+        { positionLevel: "owner" }, 
         { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } 
     ];
 
@@ -311,7 +311,7 @@ function getKillCommand() {
         .setName("kill")
         .setDescription("Used to kill the bot.")
     
-    return [ killCommand, { permissionLevel: "owner" }, { forceGuild: false, forceScrimsUser: false } ];
+    return [ killCommand, { positionLevel: "owner", allowedUsers: ["568427070020124672"] }, { forceGuild: false, forceScrimsUser: false } ];
 
 }
 
@@ -330,7 +330,7 @@ function getFindCommand() {
                 .setRequired(true)
         ))
     
-    return [ command, { permissionLevel: "support" }, { forceGuild: false, forceScrimsUser: false, ephemeralDefer: false } ];
+    return [ command, { positionLevel: "support" }, { forceGuild: false, forceScrimsUser: false, ephemeralDefer: false } ];
 
 }
 

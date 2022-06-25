@@ -1,5 +1,5 @@
 
-const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent } = require("discord.js");
+const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent, GuildMember, Guild } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
 const ScrimsPosition = require("../lib/scrims/position");
 const ScrimsPositionRole = require("../lib/scrims/position_role");
@@ -81,23 +81,27 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
     }
 
-    /** @param {ScrimsUser} scrimsUser */
-    static getUserPositionsMessage(scrimsUser, userPositions) {
+    /** 
+     * @param {ScrimsUser} scrimsUser 
+     * @param {Guild} [member] 
+     */
+    static getUserPositionsMessage(scrimsUser, userPositions, guild) {
 
         userPositions = userPositions.filter(ScrimsUserPosition.removeExpired).sort(ScrimsUserPosition.sortByLevel)
         const username = scrimsUser.discord_username
         return { 
 
-            ephemeral: true,
+            ephemeral: false,
             components: [],
+            content: scrimsUser?.discordUser ? `${scrimsUser?.discordUser }` : null,
             embeds: this.createMultipleEmbeds(userPositions, (userPositions, idx, containers) => (
                 new MessageEmbed()
-                    .setTitle(`${(username.endsWith('s') ? username : `${username}'s`)} Positions`)
-                    .setColor(this.syncViolet)
-                    .setDescription(userPositions.map(userPos => `\`•\` **${userPos.position?.name}** (${userPos.getExpirationDetail()})`).join("\n"))
+                    .setAuthor({ name: `${(username.endsWith('s') ? `${username}'` : `${username}'s`)} Positions`, iconURL: scrimsUser.avatarURL() })
+                    .setColor(scrimsUser.getMember(guild)?.displayColor ?? "#FFFFFF")
+                    .setDescription(userPositions.map(userPos => `\`•\` ${userPos.toString(guild?.id)}`).join("\n"))
                     .setFooter({ text: `Page ${idx+1}/${containers.length}` })
-                    .setTimestamp(Date.now())
-            ))
+            )),
+            allowedMentions: { parse: [] }
 
         };
 

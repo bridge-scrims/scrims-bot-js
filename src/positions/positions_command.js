@@ -30,10 +30,8 @@ async function onInfoSubcommand(interaction) {
 
     if (positionId) {
 
-        const position = await getPosition(interaction)
-        if (!position) return false
-
-        const positionRole = await interaction.client.database.positionRoles.find({ id_position: position.id_position, guild_id: interaction?.guild?.id })
+        const position = getPosition(interaction)
+        const positionRole = (interaction.guild ? (await interaction.client.database.positionRoles.find({ id_position: position.id_position, guild_id: interaction.guild.id })) : null)
         await interaction.reply(PositionsResponseMessageBuilder.getPositionInfoMessage(position, positionRole, userPositions))
     
     }else {
@@ -48,29 +46,23 @@ async function onInfoSubcommand(interaction) {
 async function onGetSubcommand(interaction) {
 
     /** @type {ScrimsUser} */
-    const scrimsUser = interaction.options.getMember('user')?.scrimsUser
+    const scrimsUser = interaction.options.getUser('user')?.scrimsUser
     if (!scrimsUser) return interaction.reply(
         PositionsResponseMessageBuilder.unexpectedFailureMessage(interaction.i18n, interaction.i18n.get("not_scrims_guild_member"))
     )
 
     const userPositions = await scrimsUser.fetchPositions().then(v => v.getUserPositions())
     if (userPositions.length === 0) return interaction.reply( { content: `${scrimsUser} does not have any positions!`, allowedMentions: { parse: [] }, ephemeral: true } );
-    await interaction.reply(PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, userPositions))
+    await interaction.reply(PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, userPositions, interaction.guild))
 
 }
 
 /** @param {import("../types").ScrimsCommandInteraction} interaction */
-async function getPosition(interaction) {
+function getPosition(interaction) {
 
     const positionId = interaction.options.getInteger("position")
     const position = interaction.client.database.positions.cache.resolve(positionId)
-    if (!position) {
-
-        return interaction.reply(
-            PositionsResponseMessageBuilder.errorMessage(`Invalid Position`, `Please pick a valid bridge scrims position and try again!`)
-        ).then(() => false);
-
-    }
+    if (!position) throw new UserError(`Invalid Position`, `Please pick a valid bridge scrims position and try again!`);
     return position;
 
 }
@@ -96,15 +88,13 @@ function getExpiration(interaction) {
 async function onTakeSubcommand(interaction) {
 
     /** @type {ScrimsUser} */
-    const scrimsUser = interaction.options.getMember('user')?.scrimsUser
+    const scrimsUser = interaction.options.getUser('user')?.scrimsUser
     if (!scrimsUser) return interaction.reply(
         PositionsResponseMessageBuilder.unexpectedFailureMessage(interaction.i18n, interaction.i18n.get("not_scrims_guild_member"))
     )
     
-    const position = await getPosition(interaction)
-    if (!position) return false;
-
-    if (!(await hasPositionPermissions(interaction, position, `take the \`${position.name}\` position from ${scrimsUser}`))) return false;
+    const position = getPosition(interaction)
+    verifyPositionPermissions(interaction, position, `take the \`${position.name}\` position from ${scrimsUser}`)
 
     const selector = { id_user: scrimsUser.id_user, id_position: position.id_position }
     const existing = await interaction.client.database.userPositions.find({ ...selector, show_expired: true })
@@ -127,43 +117,26 @@ async function onTakeSubcommand(interaction) {
 
     }
 
-    const eventPayload = { guild_id: interaction?.guild?.id , executor_id: interaction.user.id, userPosition: existing }
+    const eventPayload = { executor_id: interaction.user.id, userPosition: existing }
     interaction.client.database.ipc.notify('audited_user_position_remove', eventPayload)
 
     const userPositions = await scrimsUser.fetchPositions().then(v => v.getUserPositions())
-    const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, userPositions)
-    await interaction.reply({ ...positionsMessage, content: `Removed **${position.name}** from ${scrimsUser}.`, allowedMentions: { parse: [] }, ephemeral: true })
+    const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, userPositions, interaction.guild)
+    await interaction.reply({ ...positionsMessage, content: `Removed **${position.name}** from ${scrimsUser}.`, allowedMentions: { parse: [] }, ephemeral: false })
 
 }
 
-async function hasPositionPermissions(interaction, position, action) {
+function verifyPositionPermissions(interaction, position, action) {
 
-    if (!(interaction.member.hasPermission("staff"))) {
-        
-        if (position.name !== "suggestion_blacklisted" && position.name !== "support_blacklisted") {
-
-            return interaction.reply(
-                PositionsResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, `You are not allowed to ${action}!`)
-            ).then(() => false);
-
-        }
-
-    }
+    if (!(interaction.scrimsPositions.hasPositionLevel("staff")))
+        if (!position.name.includes("blacklisted"))
+            throw new UserError(PositionsResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, `You are not allowed to ${action}!`))
 
     if (typeof position.level === "number") {
-
         // For example if staff wants to add someone to owner position 
-        if (!(interaction.member.hasPermission(position.name))) {
-
-            return interaction.reply(
-                PositionsResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, `You are not allowed to ${action}!`)
-            ).then(() => false);
-
-        } 
-            
+        if (!(interaction.scrimsPositions.hasPositionLevel(position)))
+            throw new UserError(PositionsResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, `You are not allowed to ${action}!`));
     }
-
-    return true;
 
 }
 
@@ -171,32 +144,15 @@ async function hasPositionPermissions(interaction, position, action) {
 async function onGiveSubcommand(interaction) {
 
     /** @type {ScrimsUser} */
-    const scrimsUser = interaction.options.getMember('user')?.scrimsUser
+    const scrimsUser = interaction.options.getUser('user')?.scrimsUser
     if (!scrimsUser) return interaction.reply(
         PositionsResponseMessageBuilder.unexpectedFailureMessage(interaction.i18n, interaction.i18n.get("not_scrims_guild_member"))
     )
 
-    const position = await getPosition(interaction)
-    if (!position) return false;
-
+    const position = getPosition(interaction)
     const expires_at = getExpiration(interaction)
 
-    if (!(await hasPositionPermissions(interaction, position, `give ${scrimsUser} the \`${position.name}\` position`))) return false;
-
-    if (!(interaction.member.hasPermission("staff"))) {
-
-        if (expires_at === null) {
-
-            return interaction.reply(
-                PositionsResponseMessageBuilder.missingPermissionsMessage(
-                    interaction.i18n,
-                    `You must be a staff member or higher to give someone a position without an expiration!`
-                )
-            );
-
-        }
-
-    }
+    verifyPositionPermissions(interaction, position, `give ${scrimsUser} the \`${position.name}\` position`)
 
     const usersPositions = await scrimsUser.fetchPositions(true)
     const existing = usersPositions.hasPosition(position)
@@ -204,12 +160,12 @@ async function onGiveSubcommand(interaction) {
 
         await interaction.client.database.userPositions.update(existing, { expires_at })
 
-        const eventPayload = { guild_id: interaction?.guild?.id, executor_id: interaction.user.id, userPosition: existing, expires_at }
+        const eventPayload = { executor_id: interaction.user.id, userPosition: existing, expires_at }
         interaction.client.database.ipc.notify('audited_user_position_expire_update', eventPayload)
 
-        const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, usersPositions.getUserPositions()) 
+        const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, usersPositions.getUserPositions(), interaction.guild) 
         const content =  `${scrimsUser} **${position.name}** position will now last ${existing.getDuration()}.`
-        return interaction.reply({ ...positionsMessage, content, allowedMentions: { parse: [] }, ephemeral: true });
+        return interaction.reply({ ...positionsMessage, content, allowedMentions: { parse: [] }, ephemeral: false });
         
     }
 
@@ -218,9 +174,9 @@ async function onGiveSubcommand(interaction) {
         .setGivenPoint().setExecutor({ discord_id: interaction.user.id })
     
     const created = await interaction.client.database.userPositions.create(userPosition)
-    const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, usersPositions.getUserPositions().concat(created))
+    const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, usersPositions.getUserPositions().concat(created), interaction.guild)
     const content = `Added **${position.name}** to ${scrimsUser} ${created.getDuration()}.`
-    await interaction.reply({ ...positionsMessage, content, allowedMentions: { parse: [] }, ephemeral: true })
+    await interaction.reply({ ...positionsMessage, content, allowedMentions: { parse: [] }, ephemeral: false })
 
 }
 

@@ -173,7 +173,7 @@ class ScrimsSyncHostFeature {
 
         const removeResults = await Promise.all(
             remove.map(id_position => this.bot.database.userPositions.remove({ id_user: scrimsUser.id_user, id_position })
-                .then(removed => this.bot.database.ipc.notify("audited_user_position_remove", { id_executor, userPosition: removed[0] })).then(() => true)
+                .then(removed => removed.length > 0 ? this.bot.database.ipc.notify("audited_user_position_remove", { id_executor, userPosition: removed[0] }) : null).then(() => true)
                 .catch(error => console.error(`Unable to remove user position because of ${error}!`, scrimsUser, id_position))
             )
         )
@@ -191,8 +191,11 @@ class ScrimsSyncHostFeature {
 
     async initializeMember(member, userPositions) {
 
+        const staff = this.bot.database.positions.cache.find({ name: "staff" })
+        if (!staff) return false;
+        
         await Promise.all(
-            this.permissions.getPermissionLevelPositions("staff")
+            staff.getPositionLevelPositions()
                 .map(position => (async () => {
                     if (!member.scrimsUser.getPositions(userPositions).hasPosition(position)) await this.givePosition(member, position)
                 })())

@@ -2,6 +2,9 @@ const ScrimsUserPosition = require("./user_position");
 const ScrimsUser = require("./user");
 const { Guild } = require("discord.js");
 
+/**
+ * Manages the permissions of `ScrimsUsers`, unlike the `ScrimsPermissionsClient` that manages the permissions of a `GuildMember`.
+ */
 class ScrimsUserPositionsCollection {
 
     constructor(user) {
@@ -114,67 +117,37 @@ class ScrimsUserPositionsCollection {
     }
 
     /**
-     * @param {string} permissionLevel
-     * @param {string[]} allowedPositions Positions that alone will give permission (or)
-     * @param {string[]} requiredPositions Positions that are all required for permission (and)
-     * @returns {boolean} If the permissible has the permissionlevel **OR** higher **OR** the allowedPositions **AND** all the requiredPositions
+     * @param {import("../types").ScrimsPermissions} permissions
+     * @param {Guild} guild
      */
-    hasPermission(permissionLevel, allowedPositions, requiredPositions) {
+    hasPermission(permissions, guild) {
 
-        const hasRequiredPositions = this.hasEveryPosition(requiredPositions ?? [])
-        const hasPermissionLevel = this.hasPermissionLevel(permissionLevel)
-        const hasAllowedPositions = this.hasSomePositions(allowedPositions ?? [])
-        
-        return hasRequiredPositions && (hasPermissionLevel || hasAllowedPositions);
+        const member = (this.user.discord_id && guild) ? guild.members.cache.get(this.user.discord_id) ?? null : null
+        return this.bot.permissions.hasPermission(this, member, permissions);
 
     }
 
     /**
+     * @param {import("../types").ScrimsPermissions} permissions
      * @param {Guild} guild
-     * @param {string} permissionLevel
-     * @param {string[]} allowedPositions Positions that alone will give permission (or)
-     * @param {string[]} requiredPositions Positions that are all required for permission (and)
-     * @returns {boolean} If the permissible has the permissionlevel **OR** higher **OR** the allowedPositions **AND** all the requiredPositions
      */
-    hasGuildPermission(guild, permissionLevel, allowedPositions, requiredPositions) {
+    async fetchHasPermission(guild, permissions) {
 
-        if (!this.user.discord_id) return false;
-
-        const member = guild.members.cache.get(this.user.discord_id)
-        if (!member) return false;
-
-        return this.bot.permissions.hasPermission(this, member, permissionLevel, allowedPositions, requiredPositions);
-
-    }
-
-    /**
-     * @param {Guild} guild
-     * @param {string} permissionLevel
-     * @param {string[]} allowedPositions Positions that alone will give permission (or)
-     * @param {string[]} requiredPositions Positions that are all required for permission (and)
-     * @returns {Promise<boolean>} If the permissible has the permissionlevel **OR** higher **OR** the allowedPositions **AND** all the requiredPositions
-     */
-    async fetchHasGuildPermission(guild, permissionLevel, allowedPositions, requiredPositions) {
-
-        if (!this.user.discord_id) return false;
-
-        const member = await guild.members.fetch(this.user.discord_id)
-        if (!member) return false;
-
+        const member = (this.user.discord_id && guild) ? (await guild.members.fetch(this.user.discord_id)) ?? null : null
         await this.fetchPositions()
-        return this.bot.permissions.hasPermission(this, member, permissionLevel, allowedPositions, requiredPositions);
+        return this.bot.permissions.hasPermission(this, member, permissions);
 
     }
 
     /**
-     * @param {import('../types').PositionResolvable} permissionLevel
+     * @param {import('../types').PositionResolvable} positionLevel
      */
-    hasPermissionLevel(permissionLevel) {
-
-        const position = this.resolvePosition(permissionLevel)
+    hasPositionLevel(positionLevel) {
+        
+        const position = this.resolvePosition(positionLevel)
         if (!position) return false;
 
-        return this.hasSomePositions(position.getPermissionLevelPositions())
+        return this.hasSomePositions(position.getPositionLevelPositions())
 
     }
 

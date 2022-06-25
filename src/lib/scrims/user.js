@@ -276,7 +276,7 @@ class ScrimsUser extends TableRow {
         const title = this.tag + ((member && member.displayName.toLowerCase() !== this.discord_username.toLowerCase()) ? ` (${member.displayName})` : '') 
         
         const embed = new MessageEmbed()
-            .setColor(this.discord_accent_color ?? "#A14F50")
+            .setColor(member?.displayColor ?? this.discord_accent_color ?? "#A14F50")
             .setThumbnail(this.avatarURL())
             .setTitle(title)
 
@@ -289,17 +289,9 @@ class ScrimsUser extends TableRow {
         if (this.getUTCOffset()) embed.addField("Timezone", `${this.timezone} (${this.getUTCOffset()})`, true)
         if (userPositions) {
 
-            const positions = this.getPositions(userPositions).getPositions()
+            const positions = this.getPositions(userPositions).getUserPositions()
             if (positions.length > 0) embed.addField(
-                "Scrims Positions", positions.sort(ScrimsPosition.sortByLevel)
-                    .map(position => {
-                        const text = `\`•\` **${position.name}** (${position.id_position})`
-                        if (guild) {
-                            const connectedRoles = position.getConnectedRoles(guild.id)
-                            if (connectedRoles?.length > 0) return `${text} **⇨** ${connectedRoles.join(' ')}`;
-                        }
-                        return text;
-                    }).join('\n')
+                "Scrims Positions", positions.sort(ScrimsUserPosition.sortByLevel).map(userPos => `\`•\` ${userPos.toString(guild?.id)}`).join('\n')
             )
 
         }

@@ -176,7 +176,7 @@ function getTransferPositionsCommand() {
         .setName("transfer-user-positions")
         .setDescription("Will add user positions based off their discord roles.")
     
-    return [ transferPositionsCommand, { permissionLevel: "staff" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: false } ];
+    return [ transferPositionsCommand, { positionLevel: "staff" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: false } ];
 
 }
 
@@ -189,7 +189,7 @@ function getCreatePositionCommand() {
         .addBooleanOption(option => option.setName("sticky").setDescription("Whether the position should always stay."))
         .addIntegerOption(option => option.setName("level").setDescription("The level in the bridge scrims hierarchy."))
     
-    return [ createPositionCommand, { permissionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
+    return [ createPositionCommand, { positionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
 
 }
 
@@ -200,7 +200,7 @@ function getRemovePositionCommand() {
         .setDescription("Removes a bridge scrims position.")
         .addIntegerOption(option => option.setName("position").setDescription("The name of the position that should be removed.").setRequired(true).setAutocomplete(true))
     
-    return [ removePositionCommand, { permissionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
+    return [ removePositionCommand, { positionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
 
 }
 
@@ -214,7 +214,7 @@ function getUpdatePositionCommand() {
         .addBooleanOption(option => option.setName("sticky").setDescription("Whether the position should always stay.").setRequired(false))
         .addIntegerOption(option => option.setName("level").setDescription("The new level in the bridge scrims hierarchy.").setRequired(false))
     
-    return [ updatePositionCommand, { permissionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
+    return [ updatePositionCommand, { positionLevel: "owner" }, { forceGuild: true, forceScrimsUser: true, ephemeralDefer: true } ];
 
 }
 
