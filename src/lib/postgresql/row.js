@@ -84,7 +84,7 @@ class TableRow {
 
             if (resolvable && foreignIdKeys.every(key => resolvable[key] !== undefined))
                 this[objKey] = table.cache.find(foreignIdKeys.map(key => resolvable[key]))
-            else if (localIdKeys.every(key => this[key] !== undefined))
+            else if (!resolvable && localIdKeys.every(key => this[key] !== undefined))
                 this[objKey] = table.cache.find(localIdKeys.map(key => this[key]))
             else if (resolvable)
                 this[objKey] = table.cache.find(resolvable)
@@ -100,6 +100,7 @@ class TableRow {
         }
 
         if (this[objKey]) localIdKeys.forEach((key, idx) => this[key] = this[objKey][foreignIdKeys[idx]] ?? null)
+        if (resolvable && !this[objKey]) localIdKeys.forEach(key => this[key] = null)
 
     }
 
@@ -166,6 +167,11 @@ class TableRow {
 
         return Object.fromEntries(Object.entries(this).filter(([key, _]) => allValues ? (!key.startsWith('_')) : this.columns.includes(key)));
 
+    }
+
+    /** @returns {this} */
+    clone() {
+        return new this.constructor(this.client, this);
     }
 
 }

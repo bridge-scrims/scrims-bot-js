@@ -110,8 +110,9 @@ class ScrimsBot extends Client {
     /** @param {Role} role */
     hasRolePermissions(role) {
 
-        const botMember = role.guild.me
         if (role.managed) return false;
+        
+        const botMember = role.guild.me
         if (!(role.guild.ownerId === this.user.id || botMember.permissions.has("ADMINISTRATOR") || botMember.permissions.has("MANAGE_ROLES"))) return false;
         
         const largest = Math.max( ...botMember.roles.cache.map(role => role.position) )

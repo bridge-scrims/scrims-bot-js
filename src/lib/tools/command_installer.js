@@ -145,6 +145,8 @@ class ScrimsCommandInstaller {
 
     getCommandPermissionsGuildCommandPermissions(guild, perms) {
 
+        return [];
+        
         const positions = this.bot.permissions.getCommandAllowedPositions(perms)
         if (positions.length === 0) return [];
 

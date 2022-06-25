@@ -110,18 +110,17 @@ class PositionsResponseMessageBuilder extends ScrimsMessageBuilder {
     static positionRolesAddConfirmMessage(existing, role, position) {
 
         return { 
-
             ephemeral: true,
-            content: `${role} is already connected to the bridge scrims position **${existing.position.name}**. Would you like to overrite this?`,
+            content: `${role} is already connected to bridge scrims **${existing.position.name}**. Are you sure you want to add this?`,
             components: [ 
                 new MessageActionRow()
                     .addComponents(
-                        this.button(`Overrite`, 4, `PositionRoles/overwrite/${role.id}/${position.id_position}`),
+                        this.button(`Add`, 3, `PositionRoles/button/${role.id}/${position.id_position}/join`),
+                        this.button(`Replace`, 4, `PositionRoles/button/${role.id}/${position.id_position}/replace/${existing.id_position}`),
                         this.cancelButton(),
                     ) 
             ],
             embeds: []
-
         };
 
     }

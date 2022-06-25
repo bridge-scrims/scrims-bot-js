@@ -184,8 +184,7 @@ class PositionLoggingFeature {
     async onPositionRolesReceived(payload) {
 
         const position = this.database.positions.cache.resolve(payload.id_position)?.name ?? "unknown-position"
-        const roles = payload.roles
-        const msg = `Received ${roles.join(", ")} discord role(s) because of their **${position}** bridge scrims position.`
+        const msg = `Received ${payload.roles.join(" ")} discord role(s) because of their **${position}** bridge scrims position.`
         return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Received", '#7800E0', [payload.guild_id]);
 
     }
@@ -193,8 +192,7 @@ class PositionLoggingFeature {
     async onPositionRolesLost(payload) {
 
         const position = this.database.positions.cache.resolve(payload.id_position)?.name ?? "unknown-position"
-        const roles = payload.roles
-        const msg = `Lost ${roles.join(", ")} discord role(s) because of losing their **${position}** bridge scrims position.`
+        const msg = `Lost ${payload.roles.join(", ")} discord role(s) because of losing their **${position}** bridge scrims position.`
         return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Lost", '#EB00A4', [payload.guild_id]);
 
     }

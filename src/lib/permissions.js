@@ -45,7 +45,7 @@ class ScrimsPermissionsClient {
 
     /**
      * @param {string} guild_id
-     * @returns {PositionRole[]} All the position roles in the guild.
+     * @returns {ScrimsPositionRole[]} All the position roles in the guild.
      */
     getGuildPositionRoles(guild_id) {
 
@@ -56,7 +56,7 @@ class ScrimsPermissionsClient {
     /**
      * @param {string} guildId
      * @param {string|number|ScrimsPosition} positionResolvable Either the position name, id or the position itself
-     * @returns {ScrimsPositionRole[]} The discord role ids that are required for the position
+     * @returns {ScrimsPositionRole[]}
      */
     getPositionRequiredPositionRoles(guildId, positionResolvable) {
 
@@ -76,11 +76,23 @@ class ScrimsPermissionsClient {
     }
 
     /**
+     * @param {string} guildId
+     * @param {import('discord.js').RoleResolvable} roleResolvable
+     */
+    getRoleRequiredPositions(guildId, roleResolvable) {
+
+        return this.getGuildPositionRoles(guildId).filter(p => (p.role === roleResolvable || p.role_id === roleResolvable)).map(p => p.position);
+    
+    }
+
+
+    /**
      * @param  {{ positionLevel: ?String, allowedPositions: ?String[], requiredPositions: ?String[] }} cmd
      * @returns  {string[]} The positions that have permission to run the command
      */
     getCommandAllowedPositions(cmd) {
 
+        return [];
         const permissionLevelRoles = (cmd?.positionLevel ? this.getPositionLevelPositions(cmd.positionLevel) : [])
         return permissionLevelRoles.concat(cmd?.allowedPositions || []).concat(cmd?.requiredPositions || []);
 
@@ -179,7 +191,7 @@ class ScrimsPermissionsClient {
     /**
      * @param {GuildMember} member
      * @param {import('./types').PositionResolvable} positionResolvable Either the position name, id or the position itself
-     * @param {boolean} allowNone
+     * @param {boolean} [allowNone]
      */
     hasRequiredPositionRoles(member, positionResolvable, allowNone=true) {
 
@@ -188,6 +200,21 @@ class ScrimsPermissionsClient {
         if (requiredRoles.length === 0) return allowNone;
 
         return (requiredRoles.some(roleId => member.roles.cache.has(roleId)));
+
+    }
+
+    /**
+     * @param {GuildMember} member
+     * @param {ScrimsUserPositionsCollection} userPositions
+     * @param {import('discord.js').RoleResolvable} roleResolvable
+     * @param {boolean} [allowNone]
+     */
+    hasRequiredRolesPositions(member, userPositions, roleResolvable, allowNone=true) {
+
+        const positions = this.getRoleRequiredPositions(member.guild.id, roleResolvable) 
+        if (positions.length === 0) return allowNone;
+
+        return (positions.some(pos => this.hasPosition(member, pos, userPositions)));
 
     }
 

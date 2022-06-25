@@ -120,10 +120,12 @@ class PositionsFeature {
         const scrimsUser = this.database.users.cache.find(id_user)
         if (!scrimsUser) return false;
 
+        const userPositions = await scrimsUser.fetchPositions()
+
         await Promise.allSettled(
             this.bot.guilds.cache.map(
                 guild => guild.members.fetch(scrimsUser.discord_id)
-                    .then(member => this.removePositionRoles(member, id_position).catch(console.error))
+                    .then(member => this.removePositionRoles(member, userPositions, id_position).catch(console.error))
             )
         )
 
@@ -133,9 +135,10 @@ class PositionsFeature {
      * @param {GuildMember} member 
      * @param {number} id_position 
      */
-    async removePositionRoles(member, id_position) {
+    async removePositionRoles(member, userPositions, id_position) {
 
         const roles = this.bot.permissions.getPositionRequiredRoles(member.guild.id, id_position)
+            .filter(roleId => !this.bot.permissions.hasRequiredRolesPositions(member, userPositions, roleId, true))
             .map(roleId => member.roles.cache.get(roleId))
             .filter(role => role && this.bot.hasRolePermissions(role) && member.guild.id !== role.id)
   
@@ -174,7 +177,7 @@ class PositionsFeature {
         return Array.from(
             new Set(
                 this.bot.permissions.getGuildPositionRoles(member.guild.id)
-                    .filter(pRole => !usersPositions.hasPosition(pRole.id_position))
+                    .filter(pRole => !this.bot.permissions.hasRequiredRolesPositions(member, usersPositions, pRole.role_id, true))
                     .filter(pRole => member.roles.cache.has(pRole.role_id))
                     .filter(pRole => pRole.role && this.bot.hasRolePermissions(pRole.role) && member.guild.id !== pRole.role_id)
                     .map(pRole => pRole.role_id)
