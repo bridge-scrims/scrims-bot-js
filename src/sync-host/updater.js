@@ -49,16 +49,20 @@ class ScrimsPositionUpdater {
     /** @param {GuildBan} ban */
     async onBanAdd(ban) {
 
+        if (ban.guild.id !== this.hostGuildId) return false;
+
         const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
         if (!bannedPosition || !ban?.user) return false;
         if (!ban.user.scrimsUser) this.bot.expandUser(ban.user)
         if (!ban.user.scrimsUser) return false;
 
-        if ((await ban.user.scrimsUser.fetchPositions(true).then(v => v.hasPosition(bannedPosition)))) return false;
+        const usersPositions = await ban.user.scrimsUser.fetchPositions(true)
+        if (usersPositions.hasPosition(bannedPosition)) return false;
 
         const userPosition = new ScrimsUserPosition(this.database)
             .setUser(ban.user.scrimsUser).setPosition(bannedPosition).setGivenPoint().setExecutor(ban?.executor?.scrimsUser)
         
+        await this.sync.removeUnstickyPositions(ban.user.scrimsUser, usersPositions)
         await this.database.userPositions.create(userPosition)
 
     }
@@ -66,12 +70,15 @@ class ScrimsPositionUpdater {
     /** @param {GuildBan} ban */
     async onBanRemove(ban) {
 
+        if (ban.guild.id !== this.hostGuildId) return false;
+
         const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
         if (!bannedPosition || !ban?.user?.scrimsUser) return false;
         if (!ban.user.scrimsUser) this.bot.expandUser(ban.user)
         if (!ban.user.scrimsUser) return false;
 
-        if (!(await ban.user.scrimsUser.fetchPositions(true).then(v => v.hasPosition(bannedPosition)))) return false;
+        const usersPositions = await ban.user.scrimsUser.fetchPositions(true)
+        if (!usersPositions.hasPosition(bannedPosition)) return false;
 
         const removed = await this.database.userPositions.remove({ id_user: ban.user.scrimsUser.id_user, id_position: bannedPosition.id_position })
         if (removed.length > 0) this.database.ipc.notify("audited_user_position_remove", { id_executor: ban?.executor?.scrimsUser?.id_user, userPosition: removed[0] })
