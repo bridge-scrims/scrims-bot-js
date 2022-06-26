@@ -115,9 +115,8 @@ class PositionLoggingFeature {
 
     async onUserPositionCreate(userPositionData) {
 
-        if (userPositionData?.position?.name === "bridge_scrims_member") return false;
-
         const userPosition = new ScrimsUserPosition(this.database, userPositionData)
+        if (userPosition?.position?.dontLog) return false;
 
         const msg = `Got bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}** `
             + `${userPosition.getDuration()} from ${(userPosition?.executor?.getMention('**') ?? 'an **unknown-user**')}.`

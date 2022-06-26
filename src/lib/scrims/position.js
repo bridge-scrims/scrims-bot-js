@@ -38,7 +38,7 @@ class ScrimsPosition extends TableRow {
 
     get dontLog() {
 
-        //return this.name === "bridge_scrims_member";
+        return false;
 
     }
 

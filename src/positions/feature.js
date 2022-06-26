@@ -51,22 +51,19 @@ class PositionsFeature {
     /** @param {import("../lib/types").ScrimsGuildMember} member */
     async onMemberAdd(member) {
 
-        const userPositions = await member.scrimsUser.fetchPositions().then(v => v.getUserPositions().filter(v => v?.position?.sticky))
-        const discordRoleIds = userPositions.map(p => this.bot.permissions.getPositionRequiredRoles(member.guild.id, p.id_position)).flat()
-        const missingRoleIds = Array.from(new Set(discordRoleIds.filter(roleId => !member.roles.cache.has(roleId))))
-        const missingRoles = missingRoleIds.map(roleId => member.guild.roles.cache.get(roleId))
-            .filter(role => role && this.bot.hasRolePermissions(role) && member.guild.id !== role.id)
+        const userPositions = await member.scrimsUser.fetchUserPositionsArray()
+        const missingRoles = this.getMemberMissingRoles(member, userPositions)
 
         if (missingRoles.length > 0) {
 
             await Promise.all(
                 missingRoles.map(
                     role => member.roles.add(role)
-                        .catch(error => console.error(`Unable to add position roles to ${member.user.tag} because of ${error}!`, userPositions, role))
+                        .catch(error => console.error(`Unable to add position roles to ${member.user.tag} because of ${error}!`, role))
                 )
             )
 
-            const addedRoles = missingRoles.filter(role => member.roles.cache.has(role.id)).map(role => `${role}`)
+            const addedRoles = missingRoles.map(role => member.guild.roles.cache.get(role)).filter(v => v).map(role => `${role}`)
             if (addedRoles.length > 0) this.database.ipc.notify(`joined_discord_roles_received`, { guild_id: member.guild.id, executor_id: member.id, roles: addedRoles })
         
         }
