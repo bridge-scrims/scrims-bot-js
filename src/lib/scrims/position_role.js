@@ -10,9 +10,8 @@ class ScrimsPositionRole extends TableRow {
     static columns = ['id_position', 'role_id', 'guild_id']
 
     static sortByLevel(a, b) {
-
-        return ((a?.position?.level ?? 99) - (b?.position?.level ?? 99));
-        
+        const getPosition = (e) => (e.position ?? { id_position: e.id_position });
+        return ScrimsPosition.sortByLevel(getPosition(a), getPosition(b));
     }
     
     constructor(client, positionRoleData) {

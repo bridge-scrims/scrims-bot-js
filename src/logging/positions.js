@@ -36,7 +36,7 @@ class PositionLoggingFeature {
         this.database.ipc.on('audited_user_position_remove', message => this.onUserPositionRemove(message.payload).catch(console.error))
         this.database.ipc.on('audited_user_position_expire_update', message => this.onUserPositionExpireUpdate(message.payload).catch(console.error))
         this.database.ipc.on('scrims_user_position_create', message => this.onUserPositionCreate(message.payload).catch(console.error))
-        this.database.userPositions.cache.on('remove', userPosition => this.onCacheUserPositionRemove(userPosition).catch(console.error))
+        this.database.ipc.on('scrims_user_position_expire', message => this.onUserPositionExpire(message.payload).catch(console.error))
         
         this.database.ipc.on('audited_position_create', message => this.onPositionCreate(message.payload).catch(console.error))
         this.database.ipc.on('audited_position_remove', message => this.onPositionRemove(message.payload).catch(console.error))
@@ -45,7 +45,8 @@ class PositionLoggingFeature {
         this.database.ipc.on('joined_discord_roles_received', message => this.onJoinedRolesReceived(message.payload).catch(console.error))
         this.database.ipc.on('position_discord_roles_received', message => this.onPositionRolesReceived(message.payload).catch(console.error))
         this.database.ipc.on('position_discord_roles_lost', message => this.onPositionRolesLost(message.payload).catch(console.error))
-
+        this.database.ipc.on('position_discord_roles_lost_expired', message => this.onPositionRolesLostExpired(message.payload).catch(console.error))
+        
     }
 
     async onPositionsError(payload) {
@@ -101,15 +102,13 @@ class PositionLoggingFeature {
 
     }
 
-    async onCacheUserPositionRemove(userPosition) {
+    async onUserPositionExpire(userPositionData) {
 
+        const userPosition = new ScrimsUserPosition(this.database, userPositionData)
         if (userPosition?.position?.dontLog) return false;
-        if (userPosition.isExpired()) {
 
-            const msg = `Lost bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}**, because of it expiring.`
-            return this.logging.sendLogMessages({ msg, id_executor: userPosition?.user?.id_user ?? null }, "positions_log_channel", "Position Expired", '#170055');
-
-        }
+        const msg = `Lost bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}**, because of it expiring.`
+        return this.logging.sendLogMessages({ msg, id_executor: userPosition?.user?.id_user ?? null }, "positions_log_channel", "Position Expired", '#643cd3');
 
     }
 
@@ -136,7 +135,7 @@ class PositionLoggingFeature {
         const msg = `Got their bridge scrims **${userPosition?.position?.name || userPosition?.id_position || 'unknown-position'}** `
             + `updated by ${(executor?.getMention('**') ?? 'an **unknown-user**')} it will now last ${userPosition.getDuration()}.`
         
-        return this.logging.sendLogMessages({ msg, mentions: [executor?.discordUser], executor_id: userPosition?.user?.discord_id ?? null }, "positions_log_channel", "Position Updated", '#237793');
+        return this.logging.sendLogMessages({ msg, mentions: [executor?.discordUser], executor_id: userPosition?.user?.discord_id ?? null }, "positions_log_channel", "Position Updated", '#5dfee3');
 
     }
 
@@ -175,24 +174,39 @@ class PositionLoggingFeature {
     async onJoinedRolesReceived(payload) {
 
         const roles = payload.roles
-        const msg = `Received ${roles.join(", ")} discord role(s) after joining the server.`
+        const msg = `Received ${roles.join(" ")} discord role(s) after joining the server.`
         return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Received", '#FFE633', [payload.guild_id]);
 
     }
 
     async onPositionRolesReceived(payload) {
 
-        const position = this.database.positions.cache.resolve(payload.id_position)?.name ?? "unknown-position"
-        const msg = `Received ${payload.roles.join(" ")} discord role(s) because of their **${position}** bridge scrims position.`
-        return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Received", '#7800E0', [payload.guild_id]);
+        const guild = this.bot.guilds.resolve(payload.guild_id)
+        const userPosition = new ScrimsUserPosition(this.database, payload.userPosition)
+        const position = (userPosition?.position?.name ?? "unknown-position")
+        const expiration = (userPosition.expires_at ? ` ${userPosition.getDuration()}` : "")
+        const msg = `Received ${payload.roles.join(" ")} discord role(s)${expiration} from ${userPosition.getExecutorMention("**", guild)} giving them **${position}** position.`
+        return this.logging.sendLogMessages({ msg, mentions: [userPosition.executor], ...payload }, "guild_positions_log_channel", "Roles Received", '#9387ff', [payload.guild_id]);
 
     }
 
     async onPositionRolesLost(payload) {
 
-        const position = this.database.positions.cache.resolve(payload.id_position)?.name ?? "unknown-position"
-        const msg = `Lost ${payload.roles.join(", ")} discord role(s) because of losing their **${position}** bridge scrims position.`
-        return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Lost", '#EB00A4', [payload.guild_id]);
+        const guild = this.bot.guilds.resolve(payload.guild_id)
+        const remover = this.logging.getUser(payload.remover.id_user, payload.remover.discord_id)
+        const userPosition = new ScrimsUserPosition(this.database, payload.userPosition)
+        const position = (userPosition?.position?.name ?? "unknown-position")
+        const msg = `Lost ${payload.roles.join(" ")} discord role(s) because of ${remover?.getMention("**", guild) ?? "an unknown-user"} taking their **${position}** position.`
+        return this.logging.sendLogMessages({ msg, mentions: [remover], ...payload }, "guild_positions_log_channel", "Roles Lost", '#ec8cff', [payload.guild_id]);
+
+    }
+
+    async onPositionRolesLostExpired(payload) {
+
+        const userPosition = new ScrimsUserPosition(this.database, payload.userPosition)
+        const position = (userPosition?.position?.name ?? "unknown-position")
+        const msg = `Lost ${payload.roles.join(" ")} discord role(s) because of their **${position}** position expiring.`
+        return this.logging.sendLogMessages({ msg, ...payload }, "guild_positions_log_channel", "Roles Expired", '#8ad2ff', [payload.guild_id]);
 
     }
 

@@ -214,7 +214,8 @@ class ScrimsPermissionsClient {
         const positions = this.getRoleRequiredPositions(member.guild.id, roleResolvable) 
         if (positions.length === 0) return allowNone;
 
-        return (positions.some(pos => this.hasPosition(member, pos, userPositions)));
+        if (userPositions.hasPosition("banned") && !(positions.find(pos => pos.name === "banned"))) return false;
+        return (positions.some(pos => this.hasPosition(null, pos, userPositions)));
 
     }
 

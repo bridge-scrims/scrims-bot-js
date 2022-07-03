@@ -46,7 +46,7 @@ async function onInfoSubcommand(interaction) {
 async function onGetSubcommand(interaction) {
 
     /** @type {ScrimsUser} */
-    const scrimsUser = interaction.options.getUser('user')?.scrimsUser
+    const scrimsUser = interaction.options.getUser('user')?.scrimsUser ?? (await interaction.database.users.find({ discord_id: interaction.options.get("user").value }))
     if (!scrimsUser) return interaction.reply(
         PositionsResponseMessageBuilder.unexpectedFailureMessage(interaction.i18n, interaction.i18n.get("not_scrims_guild_member"))
     )
@@ -74,8 +74,8 @@ function getExpiration(interaction) {
     if (expiration) {
 
         const duration = parseDuration(expiration)
-        if (!duration || duration <= 0 || duration > (100*12*30*24*60*60*1000)) 
-            throw new UserError("Invalid Expiration", "Please use a valid duration greater then 0 and not more then 100 years and try again.")
+        if (!duration || duration < (1000*60) || duration > (100*12*30*24*60*60*1000)) 
+            throw new UserError("Invalid Expiration", "Please use a valid duration between 1 minute and 100 years and try again.")
 
         return Math.floor((Date.now()+duration)/1000);
 
@@ -88,7 +88,7 @@ function getExpiration(interaction) {
 async function onTakeSubcommand(interaction) {
 
     /** @type {ScrimsUser} */
-    const scrimsUser = interaction.options.getUser('user')?.scrimsUser
+    const scrimsUser = interaction.options.getUser('user')?.scrimsUser ?? (await interaction.database.users.find({ discord_id: interaction.options.get("user").value }))
     if (!scrimsUser) return interaction.reply(
         PositionsResponseMessageBuilder.unexpectedFailureMessage(interaction.i18n, interaction.i18n.get("not_scrims_guild_member"))
     )
@@ -144,7 +144,7 @@ function verifyPositionPermissions(interaction, position, action) {
 async function onGiveSubcommand(interaction) {
 
     /** @type {ScrimsUser} */
-    const scrimsUser = interaction.options.getUser('user')?.scrimsUser
+    const scrimsUser = interaction.options.getUser('user')?.scrimsUser ?? (await interaction.database.users.find({ discord_id: interaction.options.get("user").value }))
     if (!scrimsUser) return interaction.reply(
         PositionsResponseMessageBuilder.unexpectedFailureMessage(interaction.i18n, interaction.i18n.get("not_scrims_guild_member"))
     )

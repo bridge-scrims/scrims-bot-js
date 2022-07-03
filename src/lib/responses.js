@@ -1,6 +1,7 @@
-const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent, GuildMember, Guild } = require("discord.js");
+const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent, GuildMember, Guild, SnowflakeUtil } = require("discord.js");
 const I18n = require("./tools/internationalization");
 const ScrimsUser = require("./scrims/user");
+const UserError = require("./tools/user_error");
 
 class ScrimsMessageBuilder {
 
@@ -200,10 +201,18 @@ class ScrimsMessageBuilder {
         const max = 25
         
         const containers = Array.from((new Array(Math.ceil(items.length / max))).keys())
+        if (containers.length > 10) {
+            console.error(new Error(`Someone tried to fit ${items.length} items into a single message :/`))
+            throw new UserError(
+                "There is too much!", `Unfortunately, I am unable to fit all \`${items.length}\` items into this message. `
+                    + `The bridge scrims **developer team have been alerted** and will be finding an alternative way to display your items. `
+                    + `In the meantime **please refrain from using this command again**.`
+            )
+        }
+
         const containerSize = Math.floor(items.length / containers.length)
         const overflow = items.length % containerSize
-
-        const embedData = containers.map((_, i) => items.slice(i*containerSize, containerSize))
+        const embedData = containers.map((_, i) => items.slice(i*containerSize, (i+1)*containerSize+1))
 
         const lastIdx = embedData.length-1
         if (overflow > 0) embedData[lastIdx] = embedData[lastIdx].concat(items.slice(-overflow))

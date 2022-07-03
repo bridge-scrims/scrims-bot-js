@@ -28,17 +28,13 @@ async function onReactionUpdate(reaction) {
     const voteConst = reaction.client.suggestions.getVoteConst(reaction.message.guild.id)
     if (!voteConst) return false;
     
-    const [suggestionUpVote, suggestionDownVote] = reaction.client.suggestions.getVoteEmojis(reaction.message.guild)
-
     const suggestion = reaction.client.database.suggestions.cache.find({ message_id: reaction.message.id })
     if (!suggestion) return false;
 
-    const upVotes = reaction.message.reactions.cache.get(suggestionUpVote.id ?? suggestionUpVote)?.count || 1;
-    const downVotes = reaction.message.reactions.cache.get(suggestionDownVote.id ?? suggestionDownVote)?.count || 1;
-    const rating = { upVotes, downVotes }
+    const rating = reaction.client.suggestions.getMessageRating(reaction.message)
+    const { upVotes, downVotes } = rating
 
     if ((downVotes/upVotes) > voteConst) return onUnpopularSuggestion(reaction.client, reaction.message, suggestion, rating);
-
     if ((upVotes/downVotes) > voteConst) return onPopularSuggestion(reaction.client, reaction.message, suggestion, rating);
 
     const ratio = (upVotes > downVotes) ? (upVotes / downVotes) : -(downVotes / upVotes)

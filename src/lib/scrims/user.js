@@ -195,9 +195,9 @@ class ScrimsUser extends TableRow {
 
     }
 
-    getMention(effect="") {
+    getMention(effect="", guild=null) {
 
-        if (this.discordUser) return `${this.discordUser}`;
+        if (this.discordUser && (!guild || this.getMember(guild))) return `${this.discordUser}`;
         if (this.tag) return `${effect}@${this.tag}${effect}`;
         return `${effect}@unknown-user${effect}`;
 
@@ -247,13 +247,6 @@ class ScrimsUser extends TableRow {
     }
 
     async fetchUserPositions(show_expired=false) {
-
-        const userPositions = await this.fetchUserPositionsArray(show_expired)
-        return Object.fromEntries(userPositions.map(userPos => [userPos.id_position, userPos]));
-
-    }
-
-    async fetchUserPositionsArray(show_expired=false) {
 
         return this.client.userPositions.fetch({ id_user: this.id_user, show_expired }, false);
 

@@ -49,6 +49,7 @@ class ScrimsPositionUpdater {
     /** @param {GuildBan} ban */
     async onBanAdd(ban) {
 
+        await ban.fetch()
         if (ban.guild.id !== this.hostGuildId) return false;
 
         const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
@@ -70,10 +71,11 @@ class ScrimsPositionUpdater {
     /** @param {GuildBan} ban */
     async onBanRemove(ban) {
 
+        await ban.fetch()
         if (ban.guild.id !== this.hostGuildId) return false;
 
         const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
-        if (!bannedPosition || !ban?.user?.scrimsUser) return false;
+        if (!bannedPosition || !ban?.user) return false;
         if (!ban.user.scrimsUser) this.bot.expandUser(ban.user)
         if (!ban.user.scrimsUser) return false;
 
@@ -178,9 +180,11 @@ class ScrimsPositionUpdater {
 
         if (oldMember.roles.cache.size === member.roles.cache.size) return false;
         if (member.guild.id !== this.hostGuildId) return false;
+        if (executor?.id === this.bot.user.id) return false;
         if (!member.scrimsUser) return false;
         
         const userPositions = await member.scrimsUser.fetchPositions(true)
+        
         const missing = this.sync.getMemberMissingPositions(member, member.scrimsUser, userPositions)
         const unallowed = this.sync.getMemberUnallowedPositions(member, member.scrimsUser, userPositions)
         await this.sync.transferPositionsForMember(executor?.id_user ?? null, member.scrimsUser, missing, unallowed)

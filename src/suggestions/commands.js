@@ -57,6 +57,7 @@ async function getSuggestions(interaction) {
         throw new UserError(ScrimsMessageBuilder.scrimsUserNeededMessage(`Not Allowed`, `You are not allowed to use suggestions ${blacklisted.getDuration()} since you didn't follow the rules.`));
 
     return interaction.client.database.suggestions.fetch({ id_creator: interaction.scrimsUser.id_user })
+        .then(suggestions => suggestions.filter(v => interaction.client.guilds.cache.has(v.guild_id)))
         .then(suggestions => suggestions.sort((a, b) => b.created_at - a.created_at));
 
 }
@@ -196,6 +197,7 @@ async function suggestionRemoveComponent(interaction) {
     const removed = interaction.client.database.suggestions.cache.remove(id_suggestion)
 
     const message = await suggestion.fetchMessage()
+    const rating = message ? this.getMessageRating(message) : undefined
     if (message) {
         const response = await message.delete().catch(error => error)
         if (response instanceof Error) {
@@ -210,7 +212,7 @@ async function suggestionRemoveComponent(interaction) {
     await interaction.client.database.suggestions.remove({ id_suggestion })
         .catch(error => console.error(`Unable to remove a suggestion from the database because of ${error}!`, id_suggestion))
 
-    interaction.client.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: interaction.user.id })
+    interaction.client.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: interaction.user.id, rating })
     
     const suggestions = await getSuggestions(interaction)
     const removeableSuggestions = suggestions.filter(suggestion => !suggestion.epic)

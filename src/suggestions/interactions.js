@@ -149,7 +149,8 @@ async function onRemoveSuggestion(interaction) {
     await interaction.client.database.suggestions.remove({ id_suggestion: suggestion.id_suggestion })
         .catch(error => onError(interaction, `remove suggestion from the database`, error, false))
 
-    interaction.client.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: interaction.user.id })
+    const rating = interaction.client.suggestions.getMessageRating(interaction.targetMessage)
+    interaction.client.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: interaction.user.id, rating })
     
     const message = (interactorIsAuthor) ? `Your suggestion was successfully removed.` : `The suggestion was foribly removed.`
     await interaction.reply({ content: message, ephemeral: true })

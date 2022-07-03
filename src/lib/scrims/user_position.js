@@ -1,5 +1,6 @@
 const TableRow = require("../postgresql/row");
 const ScrimsPosition = require("./position");
+const ScrimsUser = require("./user");
 
 class ScrimsUserPosition extends TableRow {
 
@@ -7,7 +8,8 @@ class ScrimsUserPosition extends TableRow {
     static columns = ['id_user', 'id_position', 'id_executor', 'given_at', 'expires_at']
 
     static sortByLevel(a, b) {
-        return ((a?.position?.level ?? 99) - (b?.position?.level ?? 99));
+        const getPosition = (e) => (e.position ?? { id_position: e.id_position });
+        return ScrimsPosition.sortByLevel(getPosition(a), getPosition(b));
     }
 
     static removeExpired(v) {
@@ -55,6 +57,13 @@ class ScrimsUserPosition extends TableRow {
 
     }
 
+    getUserMention(effect, ...args) {
+
+        if (!this.user) return `${effect}unknown-user${effect}`;
+        return this.user.getMention(effect, ...args);
+
+    }
+
     /**
      * @param {string|number|Object.<string, any>|ScrimsPosition} positionResolvable 
      */
@@ -74,6 +83,13 @@ class ScrimsUserPosition extends TableRow {
 
         this._setForeignObjectReference(this.client.users, 'executor', ['id_executor'], ['id_user'], userResolvable)
         return this;
+
+    }
+
+    getExecutorMention(effect, ...args) {
+
+        if (!this.executor) return `${effect}unknown-user${effect}`;
+        return this.executor.getMention(effect, ...args);
 
     }
 

@@ -58,15 +58,17 @@ class ScrimsBotEventEmitter extends EventEmitter {
     async findExecutor(object, type, validater) {
         if (object.guild) {
     
-            const fetchedLogs = await object.guild.fetchAuditLogs({ limit: 1, type })
+            const fetchedLogs = await object.guild.fetchAuditLogs({ limit: 3, type })
                 .catch(error => console.error(`Unable to fetch audit logs because of ${error}!`))
     
-            if (fetchedLogs && fetchedLogs.entries.size > 0) {
-    
-                const log = fetchedLogs.entries.first()
-                if (validater(object, log)) object.executor = log.executor;
-                if (object.executor && !object.executor.scrimsUser) this.bot.expandUser(log.executor)
-
+            if (fetchedLogs) {
+                const log = fetchedLogs.entries.filter(log => validater(object, log)).first()
+                if (log) {
+                    
+                    object.executor = log.executor;
+                    if (object.executor && !object.executor.scrimsUser) this.bot.expandUser(object.executor)
+        
+                }
             }
             
         }

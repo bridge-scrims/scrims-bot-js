@@ -206,7 +206,14 @@ class LoggingFeature {
     async onSuggestionRemove(payload) {
 
         const executorIsCreator = (payload?.executor_id === payload?.suggestion?.creator?.discord_id)
-        const msg = (executorIsCreator ? `Removed their own suggestion.` : `Removed a suggestion.`)
+        const rating = (() => {
+            const guild = this.bot.guilds.cache.get(payload.suggestion?.guild_id)
+            if (!this.bot.suggestions || !payload.rating || !guild) return "";
+            const [suggestionUpVote, suggestionDownVote] = this.bot.suggestions.getVoteEmojis(guild)
+            return ` with **${payload.rating.upVotes}**${suggestionUpVote}  and  **${payload.rating.downVotes}**${suggestionDownVote}`;
+        })()
+
+        const msg = (executorIsCreator ? `Removed their own suggestion${rating}.` : `Removed a suggestion${rating}.`)
         return this.sendLogMessages({ msg, ...payload }, "suggestions_log_channel", "Suggestions Remove", '#fc2344', [payload?.suggestion?.guild_id]);
 
     }

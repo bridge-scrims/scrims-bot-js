@@ -98,12 +98,12 @@ class ScrimsSyncHostFeature {
     getMemberUnallowedPositions(member, scrimsUser, userPositions, bans) {
 
         const currentPositions = scrimsUser.getPositions(userPositions).getUserPositions()
-        const unallowedPositions = member ? currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true)) : currentPositions.filter(userPos => (!userPos.position?.sticky) && (userPos.position?.name !== "banned"))
 
         const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
-        if (bans && bannedPosition && scrimsUser.discord_id && !bans.has(scrimsUser.discord_id) && currentPositions.find(v => v.id_position === bannedPosition.id_position)) 
-            unallowedPositions.push(bannedPosition)
+        if (bannedPosition && currentPositions.find(v => v.id_position === bannedPosition.id_position))
+            return (bans && scrimsUser.discord_id && !bans.has(scrimsUser.discord_id)) ? [bannedPosition] : [];
 
+        const unallowedPositions = member ? currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true)) : currentPositions.filter(userPos => (!userPos.position?.sticky) && (userPos.position?.name !== "banned"))
         return Array.from(new Set(unallowedPositions.map(userPos => userPos.id_position)));
 
     }

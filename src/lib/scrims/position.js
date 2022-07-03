@@ -3,9 +3,8 @@ const TableRow = require("../postgresql/row");
 class ScrimsPosition extends TableRow {
 
     static sortByLevel(a, b) {
-
-        return ((a.level ?? 99) - (b.level ?? 99));
-        
+        const getWorth = (e) => (((e.level ?? undefined) < 100) ? e.level : (e.name.length*1000));
+        return (getWorth(a) - getWorth(b)) || (a.id_position - b.id_position);
     }
 
     static uniqueKeys = ['id_position']
@@ -25,7 +24,7 @@ class ScrimsPosition extends TableRow {
         /** @type {boolean} */
         this.sticky
 
-        /** @type {number} */
+        /** @type {number|null} */
         this.level
 
     }

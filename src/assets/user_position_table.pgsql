@@ -27,9 +27,16 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION remove_expired_user_positions() 
 RETURNS VOID
-AS $$ BEGIN
+AS $$ 
+DECLARE 
+    expired_position scrims_user_position;
+BEGIN
 
-DELETE FROM scrims_user_position WHERE (NOT (scrims_user_position.expires_at is null)) AND is_expired(scrims_user_position.expires_at);
+FOR expired_position IN
+        DELETE FROM scrims_user_position WHERE (NOT (expires_at is null)) AND is_expired(expires_at) RETURNING *
+    LOOP
+        PERFORM pg_notify('scrims_user_position_expire', to_json(expired_position)::text);
+    END LOOP;
 
 END $$
 LANGUAGE plpgsql;

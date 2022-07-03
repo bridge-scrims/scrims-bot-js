@@ -55,6 +55,17 @@ class SuggestionsFeature {
 
     }
 
+    /** @param {Message} message */
+    getMessageRating(message) {
+
+        const [suggestionUpVote, suggestionDownVote] = this.getVoteEmojis(message.guild)
+
+        const upVotes = (message.reactions.cache.get(suggestionUpVote.id ?? suggestionUpVote)?.count || 1);
+        const downVotes = (message.reactions.cache.get(suggestionDownVote.id ?? suggestionDownVote)?.count || 1);
+        return { upVotes, downVotes };
+
+    }
+
     getChannelId(guildId) {
 
         return this.bot.getConfig(guildId, "suggestions_channel");
@@ -214,12 +225,14 @@ class SuggestionsFeature {
 
     async onMessageDelete(message) {
 
+        if (message.author.id !== this.bot.user.id) return false;
         const suggestion = this.database.suggestions.cache.find({ message_id: message.id })
 
         if (suggestion) {
 
+            const rating = this.getMessageRating(message)
             await this.database.suggestions.remove({ message_id: message.id })
-            this.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: message?.executor?.id })
+            this.database.ipc.send('audited_suggestion_remove', { suggestion, executor_id: message?.executor?.id, rating })
 
         }
         
