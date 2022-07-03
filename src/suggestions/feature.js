@@ -225,7 +225,7 @@ class SuggestionsFeature {
 
     async onMessageDelete(message) {
 
-        if (message.author.id !== this.bot.user.id) return false;
+        if (message.author?.id !== this.bot.user?.id) return false;
         const suggestion = this.database.suggestions.cache.find({ message_id: message.id })
 
         if (suggestion) {
