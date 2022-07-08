@@ -9,6 +9,8 @@
     "unexpected_error_title": "Unexpected Exception",
     "unexpected_error": "Unfortunately your command could not be handled due to an unexpected error. This error was automatically reported to the bridge scrims developer team. Sorry for any inconvenience. Please try again later.",
     "cancel": "Cancel",
+    "confirm": "Confirm",
+    "success": "Success!",
     "guild_only_title": "Guild Only",
     "guild_only": "This command can only be used in discord servers!",
     "missing_scrims_user_title": "Unknown Scrims User",
@@ -30,5 +32,15 @@
     "no_voice_channel_title": "No Voice Channel",
     "no_voice_channel": "You can only use this command in voice channels!",
     "unexpected_failure_title": "Well, this is akward",
-    "not_scrims_guild_member": "The user you choose has not been added to our system yet. Please try again later."
+    "not_scrims_guild_member": "The user you choose has not been added to our system yet. Please try again later.",
+    "minecraft_connect_account_embed": {
+        "title": "Connect Your Minecraft Account!",
+        "description": "Please log into your Minecraft account, join `play.bridgescrims.com` and then use the /verify command to recieve a 6 digit verification code. Once you have the code use the button below, to verify your account. If you have any questions, please open a support ticket."
+    },
+    "minecraft_connect_account_button": "Connect Minecraft Account",
+    "minecraft_connect_account_success": "Your Minecraft account has been successfully connected!",
+    "minecraft_connect_account_invalid_code": "The code you entered is invalid. Please read the instructions carefully and try again.",
+    "minecraft_connect_account_confirmation": "Please press to confirm and connect your account to `%s`. You can disconnect it at any time, using the same button again.",
+    "minecraft_connect_account_already_connected": "Your Minecraft account is already connected to `%s`! Press the `confirm` button if you want to disconnect it! *Note: You can always connect your account to a different minecraft account.*",
+    "minecraft_connect_account_disconnect_success": "Your Minecraft account has been successfully disconnected! You can reconnect it at any time, using the button above."
 }

@@ -23,6 +23,7 @@ const ScrimsSuggestion = require('../scrims/suggestion');
 
 const ScrimsUserPositionTable = require("../scrims/user_position_table");
 const ScrimsUserTable = require("../scrims/user_table");
+const PendingUserMerge = require('../scrims/pending_user_merge');
 
 class DBClient {
 
@@ -99,6 +100,10 @@ class DBClient {
         /** @type {DBTable<ScrimsSuggestion} */
         this.suggestions
 
+
+        /** @type {DBTable<PendingUserMerge>} */
+        this.pendingUserMerges
+
     }
 
     __addScrimsTables() {
@@ -139,6 +144,8 @@ class DBClient {
             ["position", "id_position", "get_position_id"],
             ["executor", "id_executor", "get_user_id"]
         ]
+
+        this.addTable("pendingUserMerges", new DBTable(this, "pending_user_merge", null, {}, [[ "to_link", "id_to_link", "get_user_id" ]], PendingUserMerge))
     }
 
     generateUUID() {

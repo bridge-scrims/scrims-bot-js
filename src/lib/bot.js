@@ -14,6 +14,8 @@ const ScrimsPermissionsClient = require("./permissions");
 const ScrimsBotEventEmitter = require("./events");
 const ScrimsGuild = require("./scrims/guild");
 
+
+
 class ScrimsBot extends Client {
 
     constructor(intents, partials, presence, config) {

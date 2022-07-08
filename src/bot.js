@@ -3,6 +3,7 @@ const SuggestionFeature = require("./suggestions/feature");
 const PositionsFeature = require("./positions/feature");
 const LoggingFeature = require("./logging/feature");
 const SupportFeature = require("./support/feature");
+const MinecraftFeature = require("./minecraft/feature");
 const ScrimsBot = require("./lib/bot");
 
 class ScrimsJSBot extends ScrimsBot {
@@ -19,6 +20,7 @@ class ScrimsJSBot extends ScrimsBot {
         this.positions = new PositionsFeature(this, config)
         this.suggestions = new SuggestionFeature(this, config)
         this.syncHost = new ScrimsSyncHostFeature(this, config)
+        this.minecraft = new MinecraftFeature(this, config) 
 
         this.logging = new LoggingFeature(this, config)
 
