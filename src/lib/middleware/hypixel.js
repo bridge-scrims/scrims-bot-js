@@ -178,7 +178,7 @@ class HypixelClient {
             const code = error.response.statusCode
             if (code === 403) throw new HypixelAPIError(`The Hypixel API denied the given authorization, please try again later.`, true, debug);
             if (code === 429) {
-                this.enableThrottling(error.response.headers['ratelimit-reset'] || response.headers['retry-after'])
+                this.enableThrottling(error.response.headers['ratelimit-reset'] || error.response.headers['retry-after'])
                 throw new HypixelAPIError(
                     `This application was throttled by the Hypixel API, please try again in a minute.`,
                     true, { ...debug, ThrottleActivated: true, ThrottleType: 'Subsequent' }

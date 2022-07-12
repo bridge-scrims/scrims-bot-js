@@ -1,5 +1,4 @@
-const { SnowflakeUtil, MessageActionRow, MessageButton, Guild } = require("discord.js");
-const ScrimsUser = require("../scrims/user");
+const { SnowflakeUtil, MessageActionRow, MessageButton } = require("discord.js");
 
 /**
  * @callback getResponseCall

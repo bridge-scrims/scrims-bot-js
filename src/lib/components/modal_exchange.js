@@ -1,4 +1,4 @@
-const { TextInputComponent, Modal, MessageOptions, MessageActionRow, MessageEmbed, MessageButton, MessageFlags } = require("discord.js");
+const { TextInputComponent, Modal, MessageActionRow, MessageEmbed, MessageButton, MessageFlags } = require("discord.js");
 const ScrimsMessageBuilder = require("../responses");
 const EphemeralExchange = require("./exchange");
 

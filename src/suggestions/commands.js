@@ -7,12 +7,10 @@ const ScrimsAttachment = require("../lib/scrims/attachment");
 const UserError = require("../lib/tools/user_error");
 
 const commandHandlers = {
-
     "suggestions": onSuggestionCommand,
-    //"suggestionAttach": suggestionAttachComponent,
-    //"suggestionDeattach":suggestionDeattachComponent,
+    // "suggestionAttach": suggestionAttachComponent,
+    // "suggestionDeattach":suggestionDeattachComponent,
     "suggestionRemove": suggestionRemoveComponent
-
 }
 async function onCommand(interaction) {
 
@@ -24,11 +22,9 @@ async function onCommand(interaction) {
 }
 
 const suggestionCommandHandlers = {
-
-    //"attach": suggestionAttachCommand,
+    // "attach": suggestionAttachCommand,
     "remove": suggestionRemoveCommand,
-    //"detach": suggestionDetachCommand
-
+    // "detach": suggestionDetachCommand
 }
 async function onSuggestionCommand(interaction) {
 
@@ -84,7 +80,7 @@ async function suggestionDetachCommand(interaction) {
         ));
     }
 
-    await interaction.reply( SuggestionsResponseMessageBuilder.deattachSuggestionConfirmMessage(attachedSuggestions.slice(0, 5)) )
+    await interaction.reply(SuggestionsResponseMessageBuilder.deattachSuggestionConfirmMessage(attachedSuggestions.slice(0, 5)))
 
 }
 
@@ -97,7 +93,7 @@ async function suggestionAttachCommand(interaction) {
     const suggestionsChannel = interaction.client.suggestions.suggestionChannels[interaction?.guild?.id]
 
     if (suggestions.length === 0) 
-        return interaction.reply( ScrimsMessageBuilder.errorMessage(
+        return interaction.reply(ScrimsMessageBuilder.errorMessage(
             'No Suggestions', `You currently have no suggestions created. `
             + (suggestionsChannel ? `To create a suggestion go to the ${suggestionsChannel} and click on the **Make a Suggestion** button. ` : '')
         ));
@@ -108,7 +104,7 @@ async function suggestionAttachCommand(interaction) {
     await interaction.client.database.attachments.create(scrimsAttachment)
 
     setTimeout(() => interaction.client.database.attachments.remove({ attachment_id: `_${attachment.id}` }).catch(console.error), 15*60*1000)
-    await interaction.reply( SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(suggestions.slice(0, 5), attachment) )
+    await interaction.reply(SuggestionsResponseMessageBuilder.attachSuggestionConfirmMessage(suggestions.slice(0, 5), attachment))
 
 }
 
@@ -174,7 +170,7 @@ async function suggestionRemoveCommand(interaction) {
             + `*If your suggestion has a lot of up-votes it may not show up as removable.*`
         );
 
-    return interaction.reply( SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(removeableSuggestions.slice(0, 4)) );
+    return interaction.reply(SuggestionsResponseMessageBuilder.removeSuggestionConfirmMessage(removeableSuggestions.slice(0, 4)));
 
 }
 
@@ -234,7 +230,7 @@ function getAttachSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("attach")
         .setDescription("Use this command to atach a file to one of your suggestions.")
-        .addAttachmentOption( attachmentOption => (
+        .addAttachmentOption(attachmentOption => (
                 attachmentOption 
                     .setName('attachment')
                     .setDescription("The file you would like to attach to a suggestion.")
@@ -257,18 +253,16 @@ function buildSuggestionCommandGroup() {
     const group = new SlashCommandSubcommandGroupBuilder()
         .setName('suggestions')
         .setDescription('Commands used to do stuff with suggestions.')
-        .addSubcommand( getRemoveSubcommand() )
-        //.addSubcommand( getAttachSubcommand() )
-        //.addSubcommand( getDetachSubcommand() )
+        .addSubcommand(getRemoveSubcommand())
+        // .addSubcommand(getAttachSubcommand())
+        // .addSubcommand(getDetachSubcommand())
 
     return [ group, {}, { forceGuild: false, forceScrimsUser: true } ];
 
 }
 
 module.exports = {
-
     commandHandler: onCommand,
     eventListeners: [ "suggestionRemove", "suggestionAttach", "suggestionDeattach" ],
     commands: [ buildSuggestionCommandGroup() ]
-
 }

@@ -210,7 +210,7 @@ class LoggingFeature {
             const guild = this.bot.guilds.cache.get(payload.suggestion?.guild_id)
             if (!this.bot.suggestions || !payload.rating || !guild) return "";
             const [suggestionUpVote, suggestionDownVote] = this.bot.suggestions.getVoteEmojis(guild)
-            return ` with **${payload.rating.upVotes}**${suggestionUpVote}  and  **${payload.rating.downVotes}**${suggestionDownVote}`;
+            return ` with **${payload.rating.upVotes}** ${suggestionUpVote}  and  **${payload.rating.downVotes}** ${suggestionDownVote}`;
         })()
 
         const msg = (executorIsCreator ? `Removed their own suggestion${rating}.` : `Removed a suggestion${rating}.`)

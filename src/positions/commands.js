@@ -139,8 +139,7 @@ async function onSyncMembersComponent(interaction) {
     const content = `**${removed.filter(v => v === true).length}/${removed.length}** \`removed\` successfully and `
         + `**${added.filter(v => v === true).length}/${added.length}** \`added\` successfully`
 
-    await interaction.editReply({ content, embeds: [], components: [], ephemeral: true })
-        .catch(() => {/* This could take more then 15 minutes, making the interaction token expire. */})
+    await interaction.editReply({ content, embeds: [], components: [], ephemeral: true }).catch(() => null)
 
 }
 
@@ -186,7 +185,7 @@ function getPositionsGetSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("get")
         .setDescription("Get a users bridge scrims positions.")
-        .addUserOption( getUserOption("The user to get the birdge scrims positions of.") )
+        .addUserOption(getUserOption("The user to get the birdge scrims positions of."))
 
 }
 
@@ -195,8 +194,8 @@ function getPositionsGiveSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("give")
         .setDescription("Gives a user a bridge scrims position.")
-        .addUserOption( getUserOption("The user to give the birdge scrims positions to.") )
-        .addIntegerOption( getPositionOption("The birdge scrims positions to give the user.") )
+        .addUserOption(getUserOption("The user to give the birdge scrims positions to."))
+        .addIntegerOption(getPositionOption("The birdge scrims positions to give the user."))
         .addStringOption(option => (
             option
                 .setName("expiration")
@@ -211,8 +210,8 @@ function getPositionsTakeSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("take")
         .setDescription("Takes away a bridge scrims position from a user.")
-        .addUserOption( getUserOption("The user to take the birdge scrims positions from.") )
-        .addIntegerOption( getPositionOption("The birdge scrims positions to remove from the user.") )
+        .addUserOption(getUserOption("The user to take the birdge scrims positions from."))
+        .addIntegerOption(getPositionOption("The birdge scrims positions to remove from the user."))
 
 }
 
@@ -221,7 +220,7 @@ function getPositionsInfoSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("info")
         .setDescription("Get information about bridge scrims positions.")
-        .addIntegerOption( getPositionOption("The birdge scrims positions to get information about.").setRequired(false) )
+        .addIntegerOption(getPositionOption("The birdge scrims positions to get information about.").setRequired(false))
 
 }
 
@@ -230,7 +229,7 @@ function getPositionRolesStatusSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("status")
         .setDescription("Shows the current servers position roles.")
-        .addStringOption( getGuildOption() )
+        .addStringOption(getGuildOption())
 
 }
 
@@ -248,8 +247,8 @@ function getPositionRolesAddSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("add")
         .setDescription("Adds a role that is connected to a bridge scrims position.")
-        .addRoleOption( getRoleOption("The role that should be connected to the position.") )
-        .addIntegerOption( getPositionOption("The position that should be connected to the role.") )
+        .addRoleOption(getRoleOption("The role that should be connected to the position."))
+        .addIntegerOption(getPositionOption("The position that should be connected to the role."))
 
 }
 
@@ -259,22 +258,22 @@ function getPositionRolesRemoveSubcommand() {
     return new SlashCommandSubcommandBuilder()
         .setName("remove")
         .setDescription("Removes a role that is currently connected to a bridge scrims position.")
-        .addRoleOption( getRoleOption("The role that should be disconnected from any scrims position roles.") )
-        .addIntegerOption( getPositionOption("The position that should be disconnected from the role.").setRequired(false) )
+        .addRoleOption(getRoleOption("The role that should be disconnected from any scrims position roles."))
+        .addIntegerOption(getPositionOption("The position that should be disconnected from the role.").setRequired(false))
 
 }
 
 function getPositionRolesCommandGroup() {
 
-    const getPositionRolesCommandGroup = new SlashCommandSubcommandGroupBuilder()
+    const positionRolesCommandGroup = new SlashCommandSubcommandGroupBuilder()
         .setName("position-roles")
         .setDescription("Commands used to manage this servers position roles.")
-        .addSubcommand( getPositionRolesStatusSubcommand() )
-        .addSubcommand( getPositionRolesReloadSubcommand() )
-        .addSubcommand( getPositionRolesAddSubcommand() )
-        .addSubcommand( getPositionRolesRemoveSubcommand() )
+        .addSubcommand(getPositionRolesStatusSubcommand())
+        .addSubcommand(getPositionRolesReloadSubcommand())
+        .addSubcommand(getPositionRolesAddSubcommand())
+        .addSubcommand(getPositionRolesRemoveSubcommand())
 
-    return [ getPositionRolesCommandGroup, { positionLevel: "staff" }, { forceGuild: true, forceScrimsUser: false } ];
+    return [ positionRolesCommandGroup, { positionLevel: "staff", allowedRoles: ["891147725557608508"] }, { forceGuild: true, forceScrimsUser: false } ];
 
 }
 
@@ -283,12 +282,12 @@ function getPositionsCommandGroup() {
     const positionsCommandGroup = new SlashCommandSubcommandGroupBuilder()
         .setName("positions")
         .setDescription("Commands used to manage a users positions.")
-        .addSubcommand( getPositionsGetSubcommand() )
-        .addSubcommand( getPositionsGiveSubcommand() )
-        .addSubcommand( getPositionsTakeSubcommand() )
-        .addSubcommand( getPositionsInfoSubcommand() )
+        .addSubcommand(getPositionsGetSubcommand())
+        .addSubcommand(getPositionsGiveSubcommand())
+        .addSubcommand(getPositionsTakeSubcommand())
+        .addSubcommand(getPositionsInfoSubcommand())
 
-    return [ positionsCommandGroup, { positionLevel: "support" }, { forceGuild: false, forceScrimsUser: false } ];
+    return [ positionsCommandGroup, { positionLevel: "support", allowedRoles: ["891147725557608508"] }, { forceGuild: false, forceScrimsUser: false } ];
 
 }
 
@@ -298,7 +297,7 @@ function getBridgeScrimsSyncCommand() {
         .setName("scrims-sync-members")
         .setDescription("Use this command to sync everyones bridge scrims position roles.")
 
-    return [ syncCommand, { positionLevel: "owner" }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: false, ephemeralDefer: true } ];
+    return [ syncCommand, { positionLevel: "owner", allowedRoles: ["891147725557608508"] }, { forceGuild: true, denyWhenBlocked: true, forceScrimsUser: false, ephemeralDefer: true } ];
 
 }
 

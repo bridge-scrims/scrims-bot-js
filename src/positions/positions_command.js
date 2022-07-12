@@ -1,4 +1,3 @@
-const ScrimsUser = require("../lib/scrims/user");
 const ScrimsUserPosition = require("../lib/scrims/user_position");
 const PositionsResponseMessageBuilder = require("./responses");
 const { default: parseDuration } = require("parse-duration");
@@ -29,15 +28,11 @@ async function onInfoSubcommand(interaction) {
     const userPositions = await interaction.client.database.userPositions.fetch({}, false)
 
     if (positionId) {
-
         const position = getPosition(interaction)
         const positionRole = (interaction.guild ? (await interaction.client.database.positionRoles.find({ id_position: position.id_position, guild_id: interaction.guild.id })) : null)
         await interaction.reply(PositionsResponseMessageBuilder.getPositionInfoMessage(position, positionRole, userPositions))
-    
     }else {
-
         await interaction.reply(PositionsResponseMessageBuilder.getPositionsInfoMessage(interaction.client.database.positions.cache.values(), userPositions))
-    
     }
 
 }
@@ -52,7 +47,7 @@ async function onGetSubcommand(interaction) {
     )
 
     const userPositions = await scrimsUser.fetchPositions().then(v => v.getUserPositions())
-    if (userPositions.length === 0) return interaction.reply( { content: `${scrimsUser} does not have any positions!`, allowedMentions: { parse: [] }, ephemeral: true } );
+    if (userPositions.length === 0) return interaction.reply({ content: `${scrimsUser} does not have any positions!`, allowedMentions: { parse: [] }, ephemeral: true });
     await interaction.reply(PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, userPositions, interaction.guild))
 
 }
@@ -77,7 +72,7 @@ function getExpiration(interaction) {
         if (!duration || duration < (1000*60) || duration > (100*12*30*24*60*60*1000)) 
             throw new UserError("Invalid Expiration", "Please use a valid duration between 1 minute and 100 years and try again.")
 
-        return Math.floor((Date.now()+duration)/1000);
+        return Math.floor((Date.now()+ duration)/1000);
 
     }
     return null;
@@ -164,7 +159,7 @@ async function onGiveSubcommand(interaction) {
         interaction.client.database.ipc.notify('audited_user_position_expire_update', eventPayload)
 
         const positionsMessage = PositionsResponseMessageBuilder.getUserPositionsMessage(scrimsUser, usersPositions.getUserPositions(), interaction.guild) 
-        const content =  `${scrimsUser} **${position.name}** position will now last ${existing.getDuration()}.`
+        const content = `${scrimsUser} **${position.name}** position will now last ${existing.getDuration()}.`
         return interaction.reply({ ...positionsMessage, content, allowedMentions: { parse: [] }, ephemeral: false });
         
     }

@@ -174,6 +174,10 @@ class TableRow {
         return new this.constructor(this.client, this);
     }
 
+    destroy() {
+        // Cleanup can be done here (e.g. removing listeners)
+    }
+
 }
 
 module.exports = TableRow;

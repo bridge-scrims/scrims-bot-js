@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS scrims_user (
     discord_accent_color int NULL,
     discord_avatar text NULL,
     
-    mc_uuid text NULL,
+    mc_uuid uuid NULL,
     mc_name text NULL,
     mc_verified boolean DEFAULT false,
 
@@ -18,6 +18,15 @@ CREATE TABLE IF NOT EXISTS scrims_user (
     timezone text NULL
     
 );
+
+DO
+$do$
+BEGIN
+    DROP FUNCTION get_user_id(uuid, text, text, int, text, text);
+    DROP FUNCTION get_users(uuid, bigint, text, text, int, int, text, text, text, boolean, text, text);
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$do$;
 
 CREATE OR REPLACE FUNCTION get_users (
     id_user uuid default null,
@@ -29,7 +38,7 @@ CREATE OR REPLACE FUNCTION get_users (
     discord_accent_color int default null,
     discord_avatar text default null,
 
-    mc_uuid text default null,
+    mc_uuid uuid default null,
     mc_name text default null,
     mc_verified boolean default null,
 
@@ -60,7 +69,7 @@ EXECUTE '
     ($11 is null or country = $11) AND
     ($12 is null or timezone = $12)
 ' USING id_user, joined_at, discord_id, discord_username, discord_discriminator, 
-    discord_accent_color, discord_avatar,  mc_uuid, mc_name, mc_verified, country, timezone
+    discord_accent_color, discord_avatar, mc_uuid, mc_name, mc_verified, country, timezone
 INTO retval;
 RETURN COALESCE(retval, '[]'::json);
 END $$ 
@@ -72,7 +81,7 @@ CREATE OR REPLACE FUNCTION get_user_id (
     discord_id text default null,
     discord_username text default null,
     discord_discriminator int default null,
-    mc_uuid text default null,
+    mc_uuid uuid default null,
     mc_name text default null
 ) 
 returns uuid 
@@ -133,3 +142,50 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END
 $do$;
+
+CREATE OR REPLACE FUNCTION merge_scrims_users(id_user_a uuid, id_user_b uuid)
+RETURNS uuid
+AS $$
+DECLARE
+    tname text;
+    cname text;
+BEGIN
+
+    FOR tname, cname IN
+        SELECT
+            r.table_name, r.column_name
+        FROM information_schema.constraint_column_usage       u
+        INNER JOIN information_schema.referential_constraints fk
+                ON u.constraint_catalog = fk.unique_constraint_catalog
+                    AND u.constraint_schema = fk.unique_constraint_schema
+                    AND u.constraint_name = fk.unique_constraint_name
+        INNER JOIN information_schema.key_column_usage        r
+                ON r.constraint_catalog = fk.constraint_catalog
+                    AND r.constraint_schema = fk.constraint_schema
+                    AND r.constraint_name = fk.constraint_name
+        WHERE
+            u.column_name = 'id_user' AND
+            u.table_catalog = 'scrims' AND
+            u.table_schema = 'public' AND
+            u.table_name = 'scrims_user'
+    LOOP
+        BEGIN
+            EXECUTE 'UPDATE ' || tname || ' SET ' || cname || '=$1 WHERE ' || cname || '=$2' USING id_user_a, id_user_b;
+        EXCEPTION WHEN unique_violation THEN
+            EXECUTE 'DELETE FROM ' || tname || ' WHERE ' || cname || '=$1' USING id_user_b;
+            -- This could happen if both scrims_users have simularities.
+        END;
+    END LOOP;
+
+    FOR cname IN
+        SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'scrims_user' 
+    LOOP
+        EXECUTE ('UPDATE scrims_user SET ' || cname || '=(SELECT ' || cname || ' FROM scrims_user WHERE id_user=$1) WHERE id_user=$2 AND ' || cname || ' IS NULL') USING id_user_b, id_user_a;
+    END LOOP;
+
+    EXECUTE 'DELETE FROM scrims_user WHERE id_user=$1' USING id_user_b;
+    RETURN id_user_a;
+
+END $$
+LANGUAGE plpgsql;
+

@@ -1,4 +1,5 @@
 const ScrimsUserPosition = require("./user_position");
+const ScrimsPosition = require("./position");
 const ScrimsUser = require("./user");
 const { Guild } = require("discord.js");
 
@@ -31,13 +32,13 @@ class ScrimsUserPositionsCollection {
 
     getUserPositions() {
 
-        return Object.values(this.userPositions);
+        return Object.values(this.userPositions).sort(ScrimsUserPosition.sortByLevel);
 
     }
 
     getPositions() {
 
-        return Object.values(this.userPositions).map(userPos => userPos.position).filter(v => v);
+        return Object.values(this.userPositions).map(userPos => userPos.position).filter(v => v).sort(ScrimsPosition.sortByLevel);
         
     }
 

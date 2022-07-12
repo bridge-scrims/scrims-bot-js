@@ -1,4 +1,3 @@
-
 const EventEmitter = require("events");
 
 /**
@@ -109,7 +108,7 @@ class BridgeScrimsCache extends EventEmitter {
         this.removeExpired()
 
         const difference = Object.keys(this.data).length - this.maxKeys
-        if ( difference >= 0 ) {
+        if (difference >= 0) {
  
             const deleteable = this.getDeleteable()
 

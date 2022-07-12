@@ -1,4 +1,4 @@
-const I18n = require("../lib/tools/internationalization");
+const I18n = require("../tools/internationalization");
 const TableRow = require("../postgresql/row");
 const ScrimsPosition = require("./position");
 const { Role } = require("discord.js");
@@ -7,7 +7,7 @@ const ScrimsUser = require("./user");
 class ScrimsVouch extends TableRow {
 
     static uniqueKeys = ['id_vouch']
-    static columns = ['id_vouch', 'id_user', 'id_position', 'id_executor', 'given_at', 'worth']
+    static columns = ['id_vouch', 'id_user', 'id_position', 'id_executor', 'given_at', 'worth', 'comment']
 
     static nonExpired(v) {
         return !v.isExpired();

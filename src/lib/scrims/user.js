@@ -1,8 +1,7 @@
 const { Constants, User, GuildMember, Guild, MessageEmbed } = require("discord.js");
 const ScrimsUserPositionsCollection = require("./user_positions");
-const ScrimsUserPosition = require("./user_position");
 const TableRow = require("../postgresql/row");
-const ScrimsPosition = require("./position");
+const moment = require("moment-timezone");
 
 class ScrimsUser extends TableRow {
 
@@ -290,7 +289,7 @@ class ScrimsUser extends TableRow {
 
             const positions = this.getPositions(userPositions).getUserPositions()
             if (positions.length > 0) embed.addField(
-                "Scrims Positions", positions.sort(ScrimsUserPosition.sortByLevel).map(userPos => `\`•\` ${userPos.toString(guild?.id)}`).join('\n')
+                "Scrims Positions", positions.map(userPos => `\`•\` ${userPos.toString(guild?.id)}`).join('\n')
             )
 
         }

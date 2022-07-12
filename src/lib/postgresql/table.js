@@ -133,7 +133,7 @@ class DBTable {
 
     createWhereClause(selectCondition, prevValues=[]) {
 
-        if (Object.keys(selectCondition).length === 0) return [ "", [] ];
+        if (Object.keys(selectCondition).length === 0) return [ "True", [] ];
 
         const getSymbol = (value) => (value === "NULL") ? " IS " : "="
         
@@ -272,7 +272,7 @@ class DBTable {
 
             const [ conditions, values ] = options.reduce(([conditions, values], id) => {
 
-                const [ thisConditions, thisValues ] = this.createWhereClause( ...this.format(id, values) )
+                const [ thisConditions, thisValues ] = this.createWhereClause(...this.format(id, values))
                 return [ conditions.concat(thisConditions), thisValues ];
 
             }, [ [], [] ])
@@ -283,11 +283,11 @@ class DBTable {
 
             options = this._getObjectSelector(options ?? {})
             options = this.format(options ?? {})
-            options = this.createCountQuery( ...options )
+            options = this.createCountQuery(...options)
 
         }
 
-        const result = await this.query( ...options )
+        const result = await this.query(...options)
         return parseInt((result.rows[0] ?? {})["count"] ?? 0);
 
     }
@@ -326,8 +326,8 @@ class DBTable {
         options = this._getObjectSelector(options ?? {})
         options = this.format(options ?? {})
 
-        if (this.getFunction) return this.createFunctionSelectQuery( ...options );
-        return this.createSelectQuery( ...options );
+        if (this.getFunction) return this.createFunctionSelectQuery(...options);
+        return this.createSelectQuery(...options);
 
     }
 
@@ -343,7 +343,7 @@ class DBTable {
     async _makeFetchQuery(options) {
 
         const query = this._getFetchQuery(options)
-        const result = await this.query( ...query )
+        const result = await this.query(...query)
         return (result.rows[0] ?? {})[this.getFunction] ?? result.rows;
 
     }
@@ -411,7 +411,7 @@ class DBTable {
         const obj = this.getRow(data)
         if (obj.id) this.cache.push(obj)
 
-        const result = await this.query( ...this.createInsertQuery( ...this.format(obj.toJSON(false)) ) ).catch(error => error)
+        const result = await this.query(...this.createInsertQuery(...this.format(obj.toJSON(false)))).catch(error => error)
         if (result instanceof Error) {
             if (obj.id) this.cache.remove(obj.id)
             throw result;

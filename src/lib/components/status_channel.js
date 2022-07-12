@@ -1,7 +1,5 @@
-const { GuildChannel } = require("discord.js")
-
-const UPDATE_TIME_LIMIT = 10*60*1000
-const UPDATE_AMMOUNT_LIMIT = 2
+const { GuildChannel, RateLimitError } = require("discord.js");
+const AsyncFunctionBuffer = require("../tools/buffer");
 
 class StatusChannel {
 
@@ -16,10 +14,10 @@ class StatusChannel {
         this.channelDeleteCall = (channel) => {
             if (channel.id === this.id) this.destroy();
         }
-
         this.channel.client.on('channelDelete', this.channelDeleteCall)
 
-        this.recentRequests = []
+        this.updateBuffer = new AsyncFunctionBuffer((name) => this._setName(name), 0)
+        this.timeoutEnd = -1
         this.waitTimer = null
 
     }
@@ -39,24 +37,27 @@ class StatusChannel {
     postponeUpdate(ms, name) {
 
         if (this.waitTimer) clearTimeout(this.waitTimer)
-        this.waitTimer = setTimeout(() => this.setName(name).catch(console.error), ms)
+        const timeout = setTimeout(() => this.updateBuffer.run(name).catch(console.error), ms)
+        this.waitTimer = timeout
 
     }
 
-    getTimeout() {
+    async _setName(name) {
 
-        this.recentRequests = this.recentRequests.filter(v => (v+UPDATE_TIME_LIMIT) >= Date.now())
-        if (this.recentRequests.length >= UPDATE_AMMOUNT_LIMIT) 
-            return Math.max(...this.recentRequests.map(v => (v+UPDATE_TIME_LIMIT))) - Date.now();
-
-        return null;
-
-    }
-
-    async setName(name) {
-
-        this.recentRequests.push(Date.now())
         if (this.channel) await this.channel.setName(name)
+
+        /*
+        try {
+            if (this.channel) await this.channel.setName(name)
+        }catch (error) {
+            if (error instanceof RateLimitError) {
+                this.timeoutEnd = error.timeout + Date.now()
+                this.postponeUpdate(error.timeout, name)
+            }else {
+                throw error;
+            }
+        }
+        */
 
     }
 
@@ -65,9 +66,11 @@ class StatusChannel {
         if (!this.channel) return false;
         if (this.channel.name === name) return true;
 
-        const timeout = this.getTimeout()
-        if (timeout) this.postponeUpdate(timeout, name)
-        else await this.setName(name)
+        await this.updateBuffer.run(name)
+        /*
+        if (this.timeoutEnd > Date.now()) this.postponeUpdate(this.timeoutEnd-Date.now(), name)
+        else await this.updateBuffer.run(name)
+        */
 
     }
 

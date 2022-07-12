@@ -62,7 +62,7 @@ class DBCache extends EventEmitter {
 
             this.set(value.id, value)
             this.setExpiration(value)
-            this.emit('push', value)
+            this.emit('push', value.clone())
 
         }
 
@@ -92,8 +92,8 @@ class DBCache extends EventEmitter {
 
         const added = values.filter(value => value.id).filter(value => !(value.id in this.data))
         
-        //If all of the new data is not yet added we do not need to emit all those push events
-        if (added.length !== newKeys.length) added.forEach(value => this.emit('push', value))
+        // If all of the new data is not yet added we do not need to emit all those push events
+        if (added.length !== newKeys.length) added.forEach(value => this.emit('push', value.clone()))
 
         oldKeys.filter(key => !(key in newData)).forEach(key => this.remove(key))
         this.data = newData
@@ -159,7 +159,7 @@ class DBCache extends EventEmitter {
 
     /**
      * @param {Object.<string, any>|Array.<string>|string|number|T} options
-     * @returns {T}
+     * @returns {T|null}
      */ 
     find(options) {
 
@@ -207,8 +207,9 @@ class DBCache extends EventEmitter {
         const remove = this.data[id]
         if (remove) {
             
+            remove.destroy()
             delete this.data[id]
-            this.emit('remove', remove)
+            this.emit('remove', remove.clone())
             
         }
         return remove ?? null;
@@ -242,7 +243,7 @@ class DBCache extends EventEmitter {
             }else {
 
                 this.setExpiration(existing)
-                this.emit('update', existing)
+                this.emit('update', existing.clone())
 
             }
 

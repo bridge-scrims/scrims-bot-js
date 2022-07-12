@@ -84,7 +84,7 @@ async function onPopularSuggestion(client, message, suggestion, rating) {
     const { upVotes, downVotes } = rating
     const embed = SuggestionsResponseMessageBuilder.suggestionEmbed(-1, suggestion)
         
-    //if (!message.pinned) await message.pin().catch(console.error)
+    // if (!message.pinned) await message.pin().catch(console.error)
     await message.edit({ embeds: [embed] }).catch(console.error)
 
     if (suggestion.epic) return false;

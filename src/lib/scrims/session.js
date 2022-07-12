@@ -14,6 +14,7 @@ class ScrimsSession extends TableRow {
 
         /** @type {string} */
         this.id_session
+        if (!this.id_session) this.setId()
 
         /** @type {number} */
         this.id_type

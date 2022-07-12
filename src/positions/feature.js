@@ -1,4 +1,3 @@
-const { GuildMember, Role, Guild } = require("discord.js");
 const ScrimsUserPosition = require("../lib/scrims/user_position");
 const { interactionHandler, eventListeners, commands } = require("./commands");
 
@@ -44,7 +43,7 @@ class PositionsFeature {
         const selector = { guild_id: role.guild.id, role_id: role.name }
         if (this.database.positionRoles.cache.find(selector)) {
             await this.database.positionRoles.remove(selector)
-                then(() => this.database.ipc.notify('audited_position_role_remove', { executor_id: this.bot.user.id, selector }))
+                .then(() => this.database.ipc.notify('audited_position_role_remove', { executor_id: this.bot.user.id, selector }))
                 .catch(console.error)
         }
 
@@ -75,7 +74,7 @@ class PositionsFeature {
     async onPositionCreate(userPositionData) {
 
         const userPosition = new ScrimsUserPosition(this.database, userPositionData)
-        const members = this.bot.guilds.cache.map(guild => userPosition.user.getMember(guild)).filter(v => v)
+        const members = this.bot.guilds.cache.filter(guild => guild.id !== this.bot?.syncHost?.hostGuildId).map(guild => userPosition.user.getMember(guild)).filter(v => v)
         const userPositions = await userPosition.user.fetchPositions()
 
         await Promise.allSettled(members.map(member => this.givePositionRoles(member, userPosition, userPositions).catch(console.error)))
@@ -120,7 +119,7 @@ class PositionsFeature {
         const userPosition = new ScrimsUserPosition(this.database, eventPayload.userPosition)
         const remover = { id_user: eventPayload.id_executor, discord_id: eventPayload.executor_id, userPosition: undefined }
         const userPositions = await userPosition.user.fetchPositions()
-        const members = this.bot.guilds.cache.map(guild => userPosition.user.getMember(guild)).filter(v => v)
+        const members = this.bot.guilds.cache.filter(guild => guild.id !== this.bot?.syncHost?.hostGuildId).map(guild => userPosition.user.getMember(guild)).filter(v => v)
         await Promise.allSettled(
             members.map(async member => {
                 const roles = await this.removePositionRoles(member, userPositions, userPosition).catch(console.error)
@@ -164,7 +163,7 @@ class PositionsFeature {
             
         }
 
-        if (userPosition?.position?.name === "banned") 
+        if (userPosition?.position?.name === "banned" && member.scrimsUser) 
             await this.syncPositionsForMember(member, userPositions).catch(console.error)
         return roles.filter(role => !member.roles.cache.has(role.id)).map(role => `${role}`);
 

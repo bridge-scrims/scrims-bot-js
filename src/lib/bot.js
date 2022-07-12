@@ -18,6 +18,7 @@ class ScrimsBot extends Client {
 
     constructor(intents, partials, presence, config) {
         
+        // const rejectOnRateLimit = (data) => (data.timeout > 30*1000);
         super({ intents, partials, presence });
 
         this.token = process.env.DISCORD_TOKEN ?? config.discordToken;
@@ -115,7 +116,7 @@ class ScrimsBot extends Client {
         const botMember = role.guild.me
         if (!(role.guild.ownerId === this.user.id || botMember.permissions.has("ADMINISTRATOR") || botMember.permissions.has("MANAGE_ROLES"))) return false;
         
-        const largest = Math.max( ...botMember.roles.cache.map(role => role.position) )
+        const largest = Math.max(...botMember.roles.cache.map(role => role.position))
         return (largest > role.position);
 
     }

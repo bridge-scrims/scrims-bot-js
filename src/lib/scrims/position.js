@@ -89,6 +89,14 @@ class ScrimsPosition extends TableRow {
 
     }
 
+    isRankLevel(name) {
+
+        const idxa = ScrimsPosition.ranks.indexOf(this.name)
+        const idxb = ScrimsPosition.ranks.indexOf(name)
+        return !(idxa === -1 || idxb === -1) && (idxa >= idxb);
+
+    }
+
     get capitalizedName() {
 
         return this.name && this.name[0].toUpperCase() + this.name.slice(1);

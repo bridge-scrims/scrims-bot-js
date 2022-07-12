@@ -93,6 +93,7 @@ class ScrimsPermissionsClient {
     getCommandAllowedPositions(cmd) {
 
         return [];
+        // eslint-disable-next-line no-unreachable
         const permissionLevelRoles = (cmd?.positionLevel ? this.getPositionLevelPositions(cmd.positionLevel) : [])
         return permissionLevelRoles.concat(cmd?.allowedPositions || []).concat(cmd?.requiredPositions || []);
 

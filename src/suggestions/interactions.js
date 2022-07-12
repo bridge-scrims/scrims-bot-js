@@ -45,7 +45,7 @@ async function onError(interaction, action, error, abort) {
 async function verifySuggestionRequest(interaction) {
 
     if (!interaction.scrimsUser)
-        return interaction.reply( SuggestionsResponseMessageBuilder.scrimsUserNeededMessage() ).then(() => false);
+        return interaction.reply(SuggestionsResponseMessageBuilder.scrimsUserNeededMessage()).then(() => false);
 
     const bannedPosition = await interaction.client.database.userPositions.find({ id_user: interaction.scrimsUser.id_user, position: { name: "suggestion_blacklisted" } })
     if (bannedPosition) {
@@ -216,7 +216,7 @@ async function onModalSubmit(interaction) {
    
     if (createResult === false) return message.delete().catch(error => onError(interaction, `delete suggestion message after aborting command`, error, false));
 
-    //await message.startThread({ name: "Discuss" }).catch(console.error)
+    // await message.startThread({ name: "Discuss" }).catch(console.error)
     await interaction.editReply(SuggestionsResponseMessageBuilder.suggestionSentMessage());
 
 }

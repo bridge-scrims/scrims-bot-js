@@ -1,26 +1,5 @@
 const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent } = require("discord.js");
-const MemoryMessageButton = require("../lib/components/memory_button");
 const ScrimsMessageBuilder = require("../lib/responses");
-
-function hsv2rgb(h, s, v) {                              
-    
-    const i = Math.floor( (h/360)*6 )            
-    const a = v * ( 1 - s )
-    const b = v * ( 1 - s * ( (h/360)*6 - i ) )
-    const c = v * ( 1 - s * ( 1 - ( (h/360)*6 - i ) ) )
- 
-    const values = (() => {
-        if ( i === 0 ) return [ v, c, a ];
-        if ( i === 1 ) return [ b, v, a ];
-        if ( i === 2 ) return [ a, v, c ]; 
-        if ( i === 3 ) return [ a, b, v ];
-        if ( i === 4 ) return [ c, a, v ];
-        if ( i === 5 ) return [ v, a, b ];
-    })()
-
-    return values.map(v => v*255);
-   
-} 
 
 class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
 
@@ -88,19 +67,6 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
             };
 
         })
-
-    }
-
-    static getSuggestionRemoveButtons(suggestions) {
-
-        return suggestions.map((suggestion, idx) => (
-
-            new MessageButton()
-                .setLabel(`Remove ${idx+1}.`)
-                .setCustomId(`suggestionRemove/${suggestion.id_suggestion}`)
-                .setStyle('DANGER')
-
-        ))
 
     }
 
@@ -223,7 +189,7 @@ class SuggestionsResponseMessageBuilder extends ScrimsMessageBuilder {
     static suggestionEmbed(hue, suggestion) {
         return new MessageEmbed()
             .setAuthor({ name: suggestion?.creator?.tag || 'Unknown User', iconURL: suggestion?.creator?.avatarURL() })
-            .setColor((hue < 0 ? this.epicPurple : hsv2rgb(hue, 1, 1)))
+            .setColor((hue < 0 ? this.epicPurple : this.hsv2rgb(hue, 1, 1)))
             .setDescription(suggestion.suggestion)
             .setTimestamp(suggestion.created_at*1000)
             .setImage(suggestion.attachmentURL)

@@ -5,18 +5,9 @@ const ScrimsUser = require("../scrims/user");
 
 class VCSessionParticipant extends ScrimsSessionParticipant {
 
-    /**
-     * @param {VoiceChannelBasedSession} session 
-     * @param {ScrimsUser} user 
-     */
-    constructor(session, user) {
+    constructor(...args) {
 
-        super(session.client)
-    
-        this.setSession(session)
-        this.setUser(user)
-
-        this.setJoinPoint()
+        super(...args)
 
         /** @type {number[]} */
         this.breaks = []
@@ -26,13 +17,26 @@ class VCSessionParticipant extends ScrimsSessionParticipant {
 
     }
 
-    onDisconnect() {
+    /**
+     * @param {VoiceChannelBasedSession} session 
+     * @param {ScrimsUser} user 
+     */
+    joined(session, user) {
+
+        this.setSession(session)
+        this.setUser(user)
+        this.setJoinPoint()
+        return this;
+
+    }
+
+    disconnected() {
 
         this.left_at = Math.floor(Date.now() / 1000)
 
     }
 
-    onRejoin() {
+    rejoined() {
 
         if (this.left_at) {
 
@@ -61,34 +65,48 @@ class VCSessionParticipant extends ScrimsSessionParticipant {
 
 class VoiceChannelBasedSession extends ScrimsSession {
 
-    /**
-     * @param {VoiceBasedChannel} voiceChannel 
-     * @param {string} typeName 
-     * @param {GuildMember} creator 
-     */
-    constructor(voiceChannel, typeName, creator) {
+    constructor(...args) {
 
-        super(voiceChannel.client.database)
+        super(...args)
 
-        this.setType(typeName)
-        this.setCreator({ discord_id: creator.id })
-        this.setStartPoint()
-        this.setEndPoint(null)
-
-        /** @type {VoiceBasedChannel} */
-        this.channel = voiceChannel
+        /** @type {VoiceBasedChannel|null} */
+        this.channel = null
 
         /** @type {Object.<string, VCSessionParticipant>} */
         this.participants = {}
 
         /**
          * @readonly
-         * @type { import("../../bot") }
+         * @type {import("../../bot")}
          */
         this.bot
 
+    }
+
+    /**
+     * @param {VoiceBasedChannel} voiceChannel 
+     * @param {string} typeName 
+     * @param {GuildMember} creator 
+     */
+    start(voiceChannel, typeName, creator) {
+
+        this.setType(typeName)
+        this.setCreator({ discord_id: creator.id })
+        this.setChannel(voiceChannel)
+        this.setEndPoint(null)
+        this.setStartPoint()
+
         this.initialize()
         this.addListeners()
+        return this;
+        
+    }
+
+    /** @param {VoiceBasedChannel|null} channel */
+    setChannel(channel) {
+
+        this.channel = channel
+        return this;
 
     }
 
@@ -101,11 +119,11 @@ class VoiceChannelBasedSession extends ScrimsSession {
 
     initialize() {
 
+        if (!this.channel) return false;
         for (const member of this.channel.members.values()) {
 
-            const scrimsUser = this.client.users.cache.find({ discord_id: member.id })
-            if (scrimsUser && !(member.id in this.participants)) 
-                this.participants[member.id] = new VCSessionParticipant(this, scrimsUser)
+            if (member.scrimsUser && !(member.id in this.participants)) 
+                this.participants[member.id] = new VCSessionParticipant(this.client).joined(this, member.scrimsUser)
 
         }
 
@@ -118,6 +136,7 @@ class VoiceChannelBasedSession extends ScrimsSession {
     async onVoiceStateUpdate(oldState, newState) {
 
         const member = newState.member
+        if (!this.channel || !member.scrimsUser) return false;
 
         // Someone joined this channel
         if (newState.channel === this.channel && oldState.channel !== this.channel) {
@@ -126,12 +145,12 @@ class VoiceChannelBasedSession extends ScrimsSession {
 
                 const scrimsUser = this.client.users.cache.find({ discord_id: member.id })
                 // Someone joined for the first time of this session
-                if (scrimsUser) this.participants[member.id] = new VCSessionParticipant(this, scrimsUser)
+                if (scrimsUser) this.participants[member.id] = new VCSessionParticipant(this.client).joined(this, member.scrimsUser)
 
             }else {
 
                 // Someone rejoined
-                this.participants[member.id].onRejoin()
+                this.participants[member.id].rejoined()
 
             }
 
@@ -142,7 +161,7 @@ class VoiceChannelBasedSession extends ScrimsSession {
 
             if (member.id in this.participants) {
 
-                this.participants[member.id].onDisconnect()
+                this.participants[member.id].disconnected()
 
             }
 
@@ -150,10 +169,14 @@ class VoiceChannelBasedSession extends ScrimsSession {
 
     }
 
+    destroy() {
+        this.bot.off('voiceStateUpdate', this.voiceUpdateCallback)
+        super.destroy()
+    }
+
     async end(trimTime=0) {
 
-        this.bot.off('voiceStateUpdate', this.voiceUpdateCallback)
-
+        this.destroy()
         this.setEndPoint(Math.floor((Date.now() / 1000) - trimTime))
 
         const length = this.ended_at - this.started_at 
@@ -164,11 +187,8 @@ class VoiceChannelBasedSession extends ScrimsSession {
         for (const participant of Object.values(this.participants))
             await participant.create().catch(console.error)
 
-        delete this.channel;
-        delete this.participants;
-        delete this.voiceUpdateCallback;
-
     }
+
 }
 
 module.exports = VoiceChannelBasedSession;

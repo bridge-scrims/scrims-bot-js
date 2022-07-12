@@ -8,7 +8,6 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 class AsyncFunctionBuffer {
 
-    
     constructor(call, cooldown) {
 
         /**
@@ -17,7 +16,7 @@ class AsyncFunctionBuffer {
         this.call = call
 
         this.index = 0
-        this.discardMode = (cooldown < 0)
+        this.discardMode = (cooldown <= 0)
         this.cooldown = Math.abs(cooldown)*1000
         this.lastCall = null
 
@@ -58,7 +57,6 @@ class AsyncFunctionBuffer {
         return this._running;
 
     }
-
 
 }
 

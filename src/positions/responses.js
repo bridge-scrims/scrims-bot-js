@@ -1,4 +1,3 @@
-
 const { MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, MessageAttachment, BaseMessageComponent, GuildMember, Guild } = require("discord.js");
 const ScrimsMessageBuilder = require("../lib/responses");
 const ScrimsPosition = require("../lib/scrims/position");

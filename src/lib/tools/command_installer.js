@@ -107,7 +107,7 @@ class ScrimsCommandInstaller {
             if (!appCmd.equals(builder))
                 // update command
                 await this.bot.application.commands.edit(appCmd.id, builder)
-                    .catch(error => console.error(`Unable to edit app command with id ${appCmd.id}!`, newScrimsCommand, error))
+                    .catch(error => console.error(`Unable to edit app command with id ${appCmd.id}!`, builder, error))
 
         }
 
@@ -147,6 +147,7 @@ class ScrimsCommandInstaller {
 
         return [];
         
+        // eslint-disable-next-line no-unreachable
         const positions = this.bot.permissions.getCommandAllowedPositions(perms)
         if (positions.length === 0) return [];
 

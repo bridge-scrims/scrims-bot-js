@@ -3,26 +3,26 @@ const pgIPC = require('pg-ipc');
 
 const { v4: uuidv4 } = require("uuid");
 
+const ScrimsTicketMessageAttachment = require('../scrims/ticket_message_attachment');
+const ScrimsSessionParticipant = require('../scrims/session_participant');
+const ScrimsUserPositionTable = require("../scrims/user_position_table");
+const ScrimsGuildEntryType = require('../scrims/guild_entry_type');
+const ScrimsTicketMessage = require('../scrims/ticket_message');
 const ScrimsTicketStatus = require("../scrims/ticket_status");
+const ScrimsPositionRole = require('../scrims/position_role');
+const ScrimsSessionType = require('../scrims/session_type');
 const ScrimsTicketType = require("../scrims/ticket_type");
+const ScrimsGuildEntry = require('../scrims/guild_entry');
+const ScrimsSuggestion = require('../scrims/suggestion');
+const ScrimsAttachment = require('../scrims/attachment');
+const ScrimsUserTable = require("../scrims/user_table");
+const ScrimsPosition = require('../scrims/position');
+const ScrimsSession = require('../scrims/session');
 const ScrimsTicket = require("../scrims/ticket");
 const ScrimsGuild = require('../scrims/guild');
-const ScrimsUser = require("../scrims/user");
+const ScrimsVouch = require('../scrims/vouch');
 const DBTable = require('./table');
-const ScrimsGuildEntry = require('../scrims/guild_entry');
-const ScrimsPosition = require('../scrims/position');
-const ScrimsPositionRole = require('../scrims/position_role');
-const ScrimsUserPosition = require('../scrims/user_position');
-const ScrimsGuildEntryType = require('../scrims/guild_entry_type');
-const ScrimsAttachment = require('../scrims/attachment');
-const ScrimsTicketMessage = require('../scrims/ticket_message');
-const ScrimsTicketMessageAttachment = require('../scrims/ticket_message_attachment');
-const ScrimsSession = require('../scrims/session');
-const ScrimsSessionType = require('../scrims/session_type');
-const ScrimsSuggestion = require('../scrims/suggestion');
 
-const ScrimsUserPositionTable = require("../scrims/user_position_table");
-const ScrimsUserTable = require("../scrims/user_table");
 
 class DBClient {
 
@@ -96,8 +96,14 @@ class DBClient {
         /** @type {DBTable<ScrimsSession>} */
         this.sessions
 
+        /** @type {DBTable<ScrimsSessionParticipant>} */
+        this.sessionParticipants
+
         /** @type {DBTable<ScrimsSuggestion} */
         this.suggestions
+
+        /** @type {DBTable<ScrimsVouch>} */
+        this.vouches
 
     }
 
@@ -129,7 +135,10 @@ class DBClient {
         this.addTable("tickets", new DBTable(this, 'scrims_ticket', 'get_tickets', {}, ticketForeigners, ScrimsTicket))
 
         this.addTable("sessionTypes", new DBTable(this, "scrims_session_type", null, { lifeTime: -1 }, [], ScrimsSessionType))
-        this.addTable("sessions", new DBTable(this, "scrims_session", "get_sessions", {}, [ ["type", "id_type", "get_session_type_id"], ["creator", "id_creator", "get_user_id"] ], ScrimsSession))
+        this.addTable("sessions", new DBTable(this, "scrims_session", "get_sessions", { lifeTime: -1 }, [ ["type", "id_type", "get_session_type_id"], ["creator", "id_creator", "get_user_id"] ], ScrimsSession))
+        
+        const sessionParticipantForeigners = [ [ "user", "id_user", "get_user_id" ], [ "session", "id_session", "get_session_id" ] ]
+        this.addTable("sessionParticipants", new DBTable(this, "scrims_session_participant", "get_session_participants", {}, sessionParticipantForeigners, ScrimsSessionParticipant))
 
         const suggestionForeigners = [ ["creator", "id_creator", "get_user_id"], ["attachment", "id_attachment", "get_attachment_id"] ]
         this.addTable("suggestions", new DBTable(this, "scrims_suggestion", "get_suggestions", {}, suggestionForeigners, ScrimsSuggestion))
@@ -139,6 +148,8 @@ class DBClient {
             ["position", "id_position", "get_position_id"],
             ["executor", "id_executor", "get_user_id"]
         ]
+        this.addTable("vouches", new DBTable(this, "scrims_vouch", "get_vouches", {}, vouchForeigners, ScrimsVouch))
+
     }
 
     generateUUID() {
