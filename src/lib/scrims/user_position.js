@@ -1,6 +1,5 @@
 const TableRow = require("../postgresql/row");
 const ScrimsPosition = require("./position");
-const ScrimsUser = require("./user");
 
 class ScrimsUserPosition extends TableRow {
 
@@ -23,7 +22,7 @@ class ScrimsUserPosition extends TableRow {
         /** @type {string} */
         this.id_user
         
-        /** @type {ScrimsUser} */
+        /** @type {import('./user')} */
         this.user
 
         /** @type {number} */
@@ -35,7 +34,7 @@ class ScrimsUserPosition extends TableRow {
         /** @type {string} */
         this.id_executor
 
-        /** @type {ScrimsUser} */
+        /** @type {import('./user')} */
         this.executor
 
         /** @type {number} */
@@ -48,7 +47,7 @@ class ScrimsUserPosition extends TableRow {
     }
 
     /**
-     * @param {string|Object.<string, any>|ScrimsUser} userResolvable 
+     * @param {string|Object.<string, any>|import('./user')} userResolvable 
      */
     setUser(userResolvable) {
 
@@ -77,7 +76,7 @@ class ScrimsUserPosition extends TableRow {
     }
 
     /**
-     * @param {string|Object.<string, any>|ScrimsUser} userResolvable 
+     * @param {string|Object.<string, any>|import('./user')} userResolvable 
      */
     setExecutor(userResolvable) {
 
@@ -144,7 +143,7 @@ class ScrimsUserPosition extends TableRow {
     getDuration() {
 
         return (this.expires_at === null) ? `\`permanently\`` 
-            : ((!this.expires_at) ? '\`for an unknown time period\`' : `until <t:${this.expires_at}:F>`);
+            : ((!this.expires_at) ? '`for an unknown time period`' : `until <t:${this.expires_at}:F>`);
 
     }
 

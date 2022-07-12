@@ -1,6 +1,5 @@
 const ScrimsUserPosition = require("./user_position");
 const ScrimsPosition = require("./position");
-const ScrimsUser = require("./user");
 const { Guild } = require("discord.js");
 
 /**
@@ -10,7 +9,7 @@ class ScrimsUserPositionsCollection {
 
     constructor(user) {
 
-        /** @type {ScrimsUser} */
+        /** @type {import('./user')} */
         this.user = user
 
         /** @type {Object.<string, ScrimsUserPosition>} */

@@ -406,7 +406,7 @@ class SupportFeature {
             }
             
             this.database.ipc.notify('ticket_closed', { guild_id: ticket.guild_id, ticket, executor_id: (ticketCloser?.id ?? null) })
-            await this.transcriber.send(ticket.discordGuild, ticket)
+            if (ticket.discordGuild) await this.transcriber.send(ticket.discordGuild, ticket)
       
             if (ticket.channel) await ticket.channel.delete().catch(() => { /* Channel could already be deleted. */ })
 
