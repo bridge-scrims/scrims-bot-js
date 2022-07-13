@@ -71,8 +71,7 @@ class ScrimsPositionUpdater {
     /** @param {GuildBan} ban */
     async onBanRemove(ban) {
 
-        await ban.fetch()
-        if (ban.guild.id !== this.hostGuildId) return false;
+        if (ban?.guild?.id !== this.hostGuildId) return false;
 
         const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
         if (!bannedPosition || !ban?.user) return false;
@@ -126,7 +125,7 @@ class ScrimsPositionUpdater {
         if (userPosition && !shouldHavePossition) {
 
             const success = await this.database.userPositions.remove({ id_position, id_user }).then(() => true)
-                .catch(error => console.error(`Unable to remove position ${id_position} from ${member?.tag} because of ${error}!`, hasPossition, shouldHavePossition, id_position))
+                .catch(error => console.error(`Unable to remove position ${id_position} from ${member?.tag} because of ${error}!`, shouldHavePossition, id_position))
 
             if (success === true) this.bot.database.ipc.notify("audited_user_position_remove", { executor_id: this.bot.user.id, userPosition })
 
@@ -138,7 +137,7 @@ class ScrimsPositionUpdater {
 
                 id_user,
                 id_position,
-                given_at: Math.round( Date.now()/1000 ),
+                given_at: Math.round(Date.now()/1000),
                 executor: { discord_id: this.bot.user.id }
 
             }
