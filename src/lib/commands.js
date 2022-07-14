@@ -74,6 +74,7 @@ async function onFindCommand(interaction) {
 	const users = memberUsers
 		.sort(ScrimsUser.sortByPositions(userPositions))
 		.concat(databaseUsers.sort(ScrimsUser.sortByPositions(userPositions)))
+		.filter(user => user.tag)
 
 	const content =
 		users
@@ -92,9 +93,7 @@ async function onFindCommand(interaction) {
 
 	let description = ""
 	for (const user of users) {
-		const summary = `\n\`•\` **${user.tag.replace(/[*`_]/g, "")}** (${
-			user.discord_id
-		})`
+		const summary = `\n\`•\` **${user.tag.replace(/[*`_]/g, "")}** (${user.discord_id})`
 		if (description.length + summary.length > 3500) {
 			description += `\n **... and more**`
 			break

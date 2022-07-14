@@ -40,6 +40,7 @@ class SupportFeature {
         this.ticketCloseRequest = {}
 
         bot.on('databaseConnected', () => this.onReady())
+        bot.on('startupComplete', () => this.onStartup())
 
     }
 
@@ -79,6 +80,10 @@ class SupportFeature {
 
         this.database.tickets.cache.on('change', ticket => this.onTicketStatusUpdate(ticket).catch(console.error))
 
+    }
+
+    async onStartup() {
+
         this.addEventHandlers()
 
         await this.deleteGhostTickets().catch(console.error)
@@ -91,7 +96,7 @@ class SupportFeature {
         const existingTickets = this.database.tickets.cache.filter(ticket => ticket.status.name !== 'deleted')
         for (const ticket of existingTickets) {
 
-            if (!(await ticket.fetchChannel())) {
+            if (ticket.discordGuild && !(await ticket.fetchChannel())) {
 
                 await this.closeTicket(
                     ticket, null, this.bot.user, 

@@ -36,7 +36,7 @@ class ScrimsMessageBuilder {
         matches = scrimsUsers.filter(user => user.discord_username === resolvable)
         if (matches.length === 1) return matches[0];
 
-        matches = scrimsUsers.filter(user => user.tag.toLowerCase() === resolvable.toLowerCase())
+        matches = scrimsUsers.filter(user => user.tag && user.tag.toLowerCase() === resolvable.toLowerCase())
         if (matches.length === 1) return matches[0];
 
         return null;
