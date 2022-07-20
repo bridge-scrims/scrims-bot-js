@@ -216,7 +216,8 @@ async function onDeny(interaction, ticket) {
         id: interaction.id, author: interaction.user, 
         content: `denied the close request from ${interaction.executor.tag} with reason: ${interaction.reason}` 
     }
-    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); // Command should not abort just because the event was not logged
+    // Command should not abort just because the event was not logged
+    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); 
 
     await interaction.editReply("Close request denied.");
     await interaction.message.edit(SupportResponseMessageBuilder.errorMessage(`Close Request Denied`, `${interaction.user} has denied the close request.`));

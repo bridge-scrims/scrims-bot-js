@@ -74,7 +74,7 @@ class PositionsFeature {
     async onPositionCreate(userPositionData) {
 
         const userPosition = new ScrimsUserPosition(this.database, userPositionData)
-        const members = this.bot.guilds.cache.filter(guild => guild.id !== this.bot?.syncHost?.hostGuildId).map(guild => userPosition.user.getMember(guild)).filter(v => v)
+        const members = this.bot.guilds.cache.map(guild => userPosition.user.getMember(guild)).filter(v => v)
         const userPositions = await userPosition.user.fetchPositions()
 
         await Promise.allSettled(members.map(member => this.givePositionRoles(member, userPosition, userPositions).catch(console.error)))
@@ -119,7 +119,7 @@ class PositionsFeature {
         const userPosition = new ScrimsUserPosition(this.database, eventPayload.userPosition)
         const remover = { id_user: eventPayload.id_executor, discord_id: eventPayload.executor_id, userPosition: undefined }
         const userPositions = await userPosition.user.fetchPositions()
-        const members = this.bot.guilds.cache.filter(guild => guild.id !== this.bot?.syncHost?.hostGuildId).map(guild => userPosition.user.getMember(guild)).filter(v => v)
+        const members = this.bot.guilds.cache.map(guild => userPosition.user.getMember(guild)).filter(v => v)
         await Promise.allSettled(
             members.map(async member => {
                 const roles = await this.removePositionRoles(member, userPositions, userPosition).catch(console.error)

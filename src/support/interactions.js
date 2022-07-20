@@ -62,25 +62,20 @@ async function requestTicketClosure(interaction) {
     const timeout = interaction.options.getString('timeout') ?? null;
 
     if (!interaction.channel) return false;
-    const ticket = await interaction.client.database.tickets.fetch({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
-    if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage()); // This is no support channel (bruh moment)
+    const ticket = await interaction.client.support.getTicket(interaction.channelId)
+    if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage());
 
     if (ticket.id_user === interaction.scrimsUser.id_user) {
-
         // Creator wants to close the ticket, so close it
         return closeTicket(interaction, ticket, `closed this request because of ${reason}`);
-
     }
 
     if (interaction.options.getBoolean('force')) {
-     
         // Someone is using the force, so we must comply
         return closeTicket(interaction, ticket, `closed this request with force because of ${reason}`);
-
     }
 
-    if (timeout) {
-        
+    if (timeout) { 
         const duration = parseDuration(timeout)
         if (!duration || duration <= 0 || duration > (30*24*60*60*1000)) 
             throw new UserError("Invalid Timeout", "Please use a valid duration greater then 0 and less then a month and try again.");
@@ -90,11 +85,8 @@ async function requestTicketClosure(interaction) {
         interaction.client.support.closeRequestTimeouts[message.id] = setTimeout(closeCall, duration)
         const existing = interaction.client.support.ticketCloseRequest[ticket.id_ticket] ?? []
         interaction.client.support.ticketCloseRequest[ticket.id_ticket] = [message.id, ...existing]
-
     }else {
-
         await interaction.reply(SupportResponseMessageBuilder.closeRequestMessage(interaction.user, reason, ticket))
-
     }
 
 }
@@ -117,10 +109,9 @@ async function closeTicket(interaction, ticket, content) {
  */
 async function supportTicket(interaction) {
 
-    const ticket = await interaction.client.database.tickets.fetch({ channel_id: interaction.channel.id }).then(v => v[0] ?? null)
-    if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage()); // This is no support channel (bruh moment) (good commenting whatcats)
-    
-    // I know you like the const keyword :)
+    const ticket = await interaction.client.support.getTicket(interaction.channel.id)
+    if (!ticket) return interaction.reply(SupportResponseMessageBuilder.missingTicketMessage());
+
     const user = interaction.options.getUser("user");
     const operation = interaction.options.getString("operation");
     const operactionPreposition = ((operation === "add") ? "to" : "from")

@@ -10,6 +10,7 @@ const { commandHandler, commands } = require("./interactions");
 const ScrimsTicket = require("../lib/scrims/ticket");
 const AsyncFunctionBuffer = require("../lib/tools/buffer");
 
+const TICKET_TYPES = ["report", "support"]
 class SupportFeature {
 
     constructor(bot) {
@@ -28,9 +29,7 @@ class SupportFeature {
 
         this.closeTicketBuffer = new AsyncFunctionBuffer((...args) => this.__closeTicket(...args))
 
-        /**
-         * @type { Object.<string, StatusChannel> }
-         */
+        /** @type {Object.<string, StatusChannel>} */
         this.statusChannels = {}
 
         /** @type {Object.<string, NodeJS.Timeout} */
@@ -93,10 +92,10 @@ class SupportFeature {
 
     async deleteGhostTickets() {
 
-        const existingTickets = this.database.tickets.cache.filter(ticket => ticket.status.name !== 'deleted')
+        const existingTickets = this.database.tickets.cache.filter(ticket => TICKET_TYPES.includes(ticket.type.name) && ticket.status.name !== 'deleted')
         for (const ticket of existingTickets) {
 
-            if (ticket.discordGuild && !(await ticket.fetchChannel())) {
+            if (ticket?.discordGuild?.me && !(await ticket.fetchChannel())) {
 
                 await this.closeTicket(
                     ticket, null, this.bot.user, 
@@ -126,9 +125,7 @@ class SupportFeature {
     async onTicketStatusUpdate(ticket) {
 
         if (['support', 'report'].includes(ticket.type.name)) {
-
             await this.updateTicketStatusChannel(ticket.guild_id)
-
         }
 
     }
@@ -138,8 +135,8 @@ class SupportFeature {
         const statusChannel = this.statusChannels[guildId]
         if (!statusChannel) return false;
 
-        const totalTickets = await this.database.tickets.count({ guild_id: guildId }) 
-        const finishedTickets = await this.database.tickets.count([{ guild_id: guildId, status: { name: "closed" } }, { guild_id: guildId, status: { name: "deleted" } }])
+        const totalTickets = await this.database.tickets.count(TICKET_TYPES.map(name => ({ guild_id: guildId, type: { name } })))
+        const finishedTickets = await this.database.tickets.count(TICKET_TYPES.map(typeName => ['closed', 'deleted'].map(name => ({ guild_id: guildId, status: { name }, type: { name: typeName } }))).flat())
         const status = `${finishedTickets}/${totalTickets} Tickets`
         await statusChannel.update(status).catch(console.error)
 
@@ -196,13 +193,9 @@ class SupportFeature {
     async setTranscriptChannel(guildId, channelId) {
 
         if (this.getTranscriptChannel(guildId)?.id === channelId) return true;
-
         const channel = await this.bot.channels.fetch(channelId).catch(console.error)
-
         if (channel) {
-
             this.transcriptChannels[guildId] = channel
-
         }
 
     }
@@ -210,12 +203,9 @@ class SupportFeature {
     async setTicketsCategory(guildId, channelId, typeName) {
 
         const channel = await this.bot.channels.fetch(channelId).catch(console.error)
-
         if (channel) {
- 
             if (!(guildId in this.ticketCategorys)) this.ticketCategorys[guildId] = {}
             this.ticketCategorys[guildId][typeName] = channel
-
         }
 
     }
@@ -223,13 +213,10 @@ class SupportFeature {
     async setTicketStatusChannel(guild_id, channelId) {
 
         const channel = await this.bot.channels.fetch(channelId).catch(console.error)
-
         if (channel) {
-
             if (this.statusChannels[guild_id]) this.statusChannels[guild_id].destroy()
             this.statusChannels[guild_id] = new StatusChannel(channel)
             await this.updateTicketStatusChannel(guild_id)
-
         }
 
     }
@@ -247,10 +234,16 @@ class SupportFeature {
 
     }
 
+    async getTicket(channel_id) {
+        const ticket = await this.database.tickets.find({ channel_id })
+        if (!ticket || !TICKET_TYPES.includes(ticket.type.name)) return false;
+        return ticket;
+    } 
+
     async onMessageCreate(message) {
 
-        const ticket = this.database.tickets.cache.get({ channel_id: message.channel.id })[0] ?? null
-        if (!ticket) return false;
+        const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })
+        if (!ticket || !TICKET_TYPES.includes(ticket.type.name)) return false;
 
         if (message.author.id === this.bot.user.id) return false;
         if (!message.content) message.content = "";
@@ -272,7 +265,7 @@ class SupportFeature {
         this.cancelCloseTimeout(message.id)
 
         const ticket = this.database.tickets.cache.find({ channel_id: message.channel.id })
-        if (!ticket) return false;
+        if (!ticket || !TICKET_TYPES.includes(ticket.type.name)) return false;
 
         await this.database.ticketMessages.update({ id_ticket: ticket.id_ticket, message_id: message.id }, { deleted: Math.round(Date.now() / 1000) })
             .catch(error => console.error(`Unable to log support ticket message deletion because of ${error}`, ticket))
@@ -288,29 +281,22 @@ class SupportFeature {
     async verifyTicketRequest(scrimsUser, guild_id, typeName) {
 
         if (!scrimsUser) return ScrimsMessageBuilder.scrimsUserNeededMessage()
+        if (!TICKET_TYPES.includes(typeName)) throw new Error(`Unsupported ticket type '${typeName}' in support feature.`)
 
         const bannedPosition = await this.database.userPositions.find({ id_user: scrimsUser.id_user, position: { name: "support_blacklisted" } })
         if (bannedPosition) {
-
-            return ScrimsMessageBuilder.errorMessage(`Blacklisted`, `You are not allowed to create tickets ${bannedPosition.getDuration()} since you didn't follow the rules.`)
-
+            return ScrimsMessageBuilder.errorMessage(`Blacklisted`, `You are not allowed to create support tickets ${bannedPosition.getDuration()} since you didn't follow the rules.`)
         }
 
         const existing = await this.database.tickets.find({ guild_id, type: { name: typeName }, id_user: scrimsUser.id_user, status: { name: "open" } })
         if (existing) {
-            
             const channel = await this.bot.channels.fetch(existing.channel_id).catch(() => null)
             if (channel) {
-                
                 return ScrimsMessageBuilder.errorMessage(`Already Created`, `You already have a ticket of this type open (${channel})!`)
-
             }
-
             // Ticket is open, but the channel does not exist
             await this.closeTicket(existing, null, this.bot.user, `closed this ticket because of the channel no longer existing`)
-        
         }
-
         return true;
 
     }
@@ -378,12 +364,9 @@ class SupportFeature {
 
         }
 
-        const tickets = await this.database.tickets.fetch({ channel_id: channel.id }).catch(console.error)
-        if (tickets) {
-            
-            const openTickets = tickets.filter(ticket => ticket.status.name !== "deleted")
-            await Promise.all(openTickets.map(ticket => this.closeTicket(ticket, channel?.executor, channel?.executor, `deleted the ticket channel`))).catch(console.error)
-
+        const ticket = await this.database.tickets.find({ channel_id: channel.id }).catch(console.error)
+        if (ticket && TICKET_TYPES.includes(ticket.type.name)) {
+            this.closeTicket(ticket, channel?.executor, channel?.executor, `deleted the ticket channel`).catch(console.error)
         }
 
     }
@@ -424,7 +407,7 @@ class SupportFeature {
      */
     async onMemberRemove(member) {
 
-        const tickets = this.database.tickets.cache.get({ user: { discord_id: member.id } })
+        const tickets = this.database.tickets.cache.get({ user: { discord_id: member.id } }).filter(ticket => TICKET_TYPES.includes(ticket.type.name))
         await Promise.allSettled(tickets.map(
             ticket => this.closeTicket(ticket, this.bot.user, this.bot.user, `closed this ticket because of the person leaving the server`)
                 .catch(error => console.error(`Error while automatically closing ticket: ${error}!`))

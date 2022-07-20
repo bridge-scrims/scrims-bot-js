@@ -92,7 +92,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
             .setColor("#5D9ACF")
             .setTitle("Close Request")
             .addField("Reason", `\`\`\`${reason}\`\`\``, false)
-            .setDescription( `${user} has requested to close this ticket. Please accept or deny using the buttons below.${timeoutText}`)
+            .setDescription(`${user} has requested to close this ticket. Please accept or deny using the buttons below.${timeoutText}`)
             .setTimestamp()
 
     }

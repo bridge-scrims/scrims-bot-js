@@ -193,7 +193,7 @@ async function suggestionRemoveComponent(interaction) {
     const removed = interaction.client.database.suggestions.cache.remove(id_suggestion)
 
     const message = await suggestion.fetchMessage()
-    const rating = message ? this.getMessageRating(message) : undefined
+    const rating = message ? interaction.client.suggestions.getMessageRating(message) : undefined
     if (message) {
         const response = await message.delete().catch(error => error)
         if (response instanceof Error) {

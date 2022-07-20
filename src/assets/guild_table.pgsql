@@ -6,8 +6,10 @@ CREATE TABLE IF NOT EXISTS scrims_guild_entry_type (
         
 );
 
-DO
-$$
+DO $$
+DECLARE 
+    session_type_name text;
+    ticket_type_name text;
 BEGIN
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'guild_positions_log_channel') THEN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('guild_positions_log_channel');
@@ -25,14 +27,27 @@ BEGIN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('config_log_channel');
     END IF;
 
+    FOR session_type_name IN
+        SELECT name FROM scrims_session_type 
+    LOOP
+        if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = (session_type_name || '_log_channel')) THEN
+            INSERT INTO scrims_guild_entry_type (name) VALUES ((session_type_name || '_log_channel'));
+        END IF;
+    END LOOP;
+
+    FOR ticket_type_name IN
+        SELECT name FROM scrims_ticket_type 
+    LOOP
+        if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = ('tickets_' || ticket_type_name || '_category')) THEN
+            INSERT INTO scrims_guild_entry_type (name) VALUES (('tickets_' || ticket_type_name || '_category'));
+        END IF;
+    END LOOP;
+    
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'prime_app_transcript_channel') THEN
+        INSERT INTO scrims_guild_entry_type (name) VALUES ('prime_app_transcript_channel');
+    END IF;
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_transcript_channel') THEN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_transcript_channel');
-    END IF;
-    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_support_category') THEN
-        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_support_category');
-    END IF;
-    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_report_category') THEN
-        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_report_category');
     END IF;
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_status_channel') THEN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_status_channel');
