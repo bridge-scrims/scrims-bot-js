@@ -1,5 +1,6 @@
 const ScrimsSyncHostFeature = require("./sync-host/feature");
 const SuggestionFeature = require("./suggestions/feature");
+const ScrimsQueuingFeature = require("./queuing/feature");
 const PositionsFeature = require("./positions/feature");
 const LoggingFeature = require("./logging/feature");
 const SupportFeature = require("./support/feature");
@@ -19,6 +20,7 @@ class ScrimsJSBot extends ScrimsBot {
         this.positions = new PositionsFeature(this, config)
         this.suggestions = new SuggestionFeature(this, config)
         this.syncHost = new ScrimsSyncHostFeature(this, config)
+        this.queuing = new ScrimsQueuingFeature(this, config)
 
         this.logging = new LoggingFeature(this, config)
 
