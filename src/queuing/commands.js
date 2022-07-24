@@ -112,8 +112,10 @@ async function onTeamsCommand(interaction) {
         throw new UserError("This channel is just not the queue channel 🙄")
 
     const voiceChannel = interaction.member.voice.channel
-    if (!voiceChannel || !QUEUE_CATEGORYS.includes(voiceChannel.parentId)) 
-        throw new UserError("You must join a queue call to use this command!")
+    if (!voiceChannel) return interaction.reply({ embeds: [aloneQueueEmbed(interaction.member)], ephemeral: true });
+        
+    if (!QUEUE_CATEGORYS.includes(voiceChannel.parentId))
+        throw new UserError("This channel is just not the queue call 🙄")
 
     if (!voiceChannel.full) throw new UserError("Now in which universe do you think this call is full 🤦‍♂️")
     
@@ -177,6 +179,14 @@ function getTeamEmbed(title, color, members, teamCall, command) {
 
     return embed;
 
+}
+
+function aloneQueueEmbed(member) {
+    const embed = new MessageEmbed().setTitle("Teams").setColor("#00ff51").setFooter({ text: "(Maybe join a queue call first)" })
+    const members = mixCollection([member, "🦍 Imaginary Friend 1", "🐸 Imaginary Friend 2", "🐈 Imaginary Friend 3"])
+    embed.addField("Team 1", members.slice(0, 2).join("\n"), true)
+    embed.addField("Team 2", members.slice(2, 4).join("\n"), true)
+    return embed;
 }
 
 function parseIGN(name) {
