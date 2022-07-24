@@ -101,7 +101,7 @@ class ScrimsSyncHostFeature {
 
         const bannedPosition = this.bot.database.positions.cache.find({ name: "banned" })
         if (bannedPosition && currentPositions.find(v => v.id_position === bannedPosition.id_position))
-            return (bans && scrimsUser.discord_id && !bans.has(scrimsUser.discord_id)) ? [bannedPosition] : [];
+            return (bans && scrimsUser.discord_id && !bans.has(scrimsUser.discord_id)) ? [bannedPosition.id_position] : [];
 
         const unallowedPositions = member ? currentPositions.filter(userPos => !this.permissions.hasRequiredPositionRoles(member, userPos.position, true)) : currentPositions.filter(userPos => (!userPos.position?.sticky) && (userPos.position?.name !== "banned"))
         return Array.from(new Set(unallowedPositions.map(userPos => userPos.id_position)));
@@ -180,7 +180,7 @@ class ScrimsSyncHostFeature {
 
         const createResults = await Promise.all(
             create.map(id_position => ({ id_user: scrimsUser.id_user, id_position, given_at: Math.floor(Date.now()/1000), id_executor }))
-                .map(userPos => this.bot.database.userPositions.create( userPos ).then(() => true)
+                .map(userPos => this.bot.database.userPositions.create(userPos).then(() => true)
                     .catch(error => console.error(`Unable to create user position because of ${error}!`, userPos))
                 )
         )
