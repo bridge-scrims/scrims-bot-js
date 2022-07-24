@@ -89,7 +89,7 @@ class TicketTranscriber {
                             + `<td>\${getDate(${message.created_at*1000})}</td>`
                             + `<td>\${getTime(${message.created_at*1000})}</td>`
                             + `<td>${escape(message.author.tag)}</td>`
-                            + `<td class="last">${escape(((message?.edits?.slice(-1) ?? [])[0] ?? message).content)}${getMessageAttachments(message)}${getMessageExtra(message)}</td>`
+                            + `<td class="last">${escape((message?.edits?.slice(-1)?.[0] ?? message).content)}${getMessageAttachments(message)}${getMessageExtra(message)}</td>`
                         + `</tr>` 
                     + `\`);`
                 )).join("")
@@ -137,7 +137,7 @@ class TicketTranscriber {
 
     async getTicketMessages(ticket) {
 
-        const messageAttachments = this.client.ticketMessageAttachments.cache.getArrayMap('message_id')
+        const messageAttachments = await this.client.ticketMessageAttachments.getArrayMap({}, ['message_id'], false)
         const allMessages = await this.client.ticketMessages.fetch({ id_ticket: ticket.id_ticket }, false)
         allMessages.sort((a, b) => a.created_at - b.created_at).forEach((v, idx, arr) => {
             const existing = arr.filter(msg => msg.message_id === v.message_id)[0]
