@@ -23,7 +23,7 @@ const GAME_TYPES = ["1v1", "2v2", "3v3", "4v4"]
 const GAME_RANKS = ["Default", "Prime", "Private", "Premium"]
 const DUEL_COMMANDS = ["bridge", "bridge_doubles", "bridge_threes", "bridge_teams"]
 
-const RANK_QUEUE_CATEGORYS = {
+const RANK_QUEUE_CATEGORIES = {
     "Default": ["759894401957888035"],
     "Prime": ["850031246301069372"],
     "Private": ["773997680850370560"],
@@ -33,22 +33,22 @@ const RANK_QUEUE_CATEGORYS = {
 const GAME_CATEOGORIES = ["759950714528727070", "908851492981702737", "908852795296337940"];
 
 /*
-const RANK_QUEUE_CATEGORYS = {
+const RANK_QUEUE_CATEGORIES = {
     "Default": ["841843351233757195", "841843352764547135"],
     "Prime": [],
     "Private": ["841843351968153600"],
     "Premium": ["841843352256643112"]
 }
 */
+const QUEUE_CATEGORIES = Object.values(RANK_QUEUE_CATEGORIES).map(v => v[0])
 
-const QUEUE_CATEGORYS = Object.values(RANK_QUEUE_CATEGORYS).map(v => v[0])
-const RESERVED_CALLS = {}
-const RESERVED_TIMEOUTS = {}
+const reservedCalls = {}
+const reservedTimeouts = {}
 
 function setReserveTimeout(rollId) {
-    clearTimeout(RESERVED_TIMEOUTS[rollId])
-    const timeout = setTimeout(() => (delete RESERVED_CALLS[rollId]), 30 * 1000)
-    RESERVED_TIMEOUTS[rollId] = timeout
+    clearTimeout(reservedTimeouts[rollId])
+    const timeout = setTimeout(() => (delete reservedCalls[rollId]), 30 * 1000)
+    reservedTimeouts[rollId] = timeout
 }
 /**
  * @param {Guild} guild 
@@ -57,7 +57,7 @@ function setReserveTimeout(rollId) {
  */
 function getTeamCalls(guild, gameType) {
 
-    return (GAME_CATEOGORIES ?? [])
+    return GAME_CATEOGORIES
         .map(v => guild.channels.cache.get(v))
         .filter(v => (v instanceof CategoryChannel))
         .map(v => Array.from(v.children.values())).flat()
@@ -65,13 +65,13 @@ function getTeamCalls(guild, gameType) {
         .sort((a, b) => a.position - b.position)
         .filter(v => /team #\d+|team call \d+/i.test(v.name))
         .filter(v => (!gameType || !GAME_TYPES.some(e => v.name.includes(e)) || v.name.includes(gameType)))
-        .filter(v => v.members.size === 0 && !Object.values(RESERVED_CALLS).flat().includes(v.id))
+        .filter(v => v.members.size === 0 && !Object.values(reservedCalls).flat().includes(v.id))
 
 }
 
 /** @param {import("discord.js").VoiceBasedChannel} call */
 function reserved(call, rollId) {
-    RESERVED_CALLS[rollId] = [call.id].concat(RESERVED_CALLS[rollId] ?? [])
+    reservedCalls[rollId] = [call.id].concat(reservedCalls[rollId] ?? [])
     return call;
 }
 
@@ -104,14 +104,14 @@ function mixCollection(collection) {
  */
 async function onTeamsCommand(interaction) {
 
-    if (!QUEUE_CATEGORYS.includes(interaction?.channel?.parentId))
+    if (!QUEUE_CATEGORIES.includes(interaction?.channel?.parentId))
         throw new UserError("You must be in a queue channel to use this command!");
 
     const voiceChannel = interaction.member.voice.channel
     // this ones ok it can stay
     if (!voiceChannel) return interaction.reply({ embeds: [aloneQueueEmbed(interaction.member)], ephemeral: true });
 
-    if (!QUEUE_CATEGORYS.includes(voiceChannel.parentId))
+    if (!QUEUE_CATEGORIES.includes(voiceChannel.parentId))
         throw new UserError("You must be in a queue channel to use this command!");
 
     if (!voiceChannel.full) throw new UserError("The queue channel is not full!");
@@ -151,13 +151,16 @@ async function onRerollCommand(interaction) {
 
     if (!voiceChannel.full) throw new UserError("Someone left the queue channel!");
 
-    delete RESERVED_CALLS[rollId] // I like this constant abuse
+    delete reservedCalls[rollId]
     setReserveTimeout(rollId)
 
     await interaction.update(await getTeamsPayload(voiceChannel, rollId))
 
 }
 
+/**
+ * @param {import("discord.js").VoiceBasedChannel} teamCall 
+ */
 async function getTeamEmbed(title, color, members, teamCall, command) {
 
     const embed = new MessageEmbed().setTitle(title).setColor(color)
@@ -169,11 +172,11 @@ async function getTeamEmbed(title, color, members, teamCall, command) {
     const igns = members.map(m => parseIGN(m.displayName).replaceAll(/(?![a-zA-Z0-9_])./g, ""))
     if (igns.length >= 2) embed.addField("Party Commands", `\`•\` /p transfer ${igns[0]}` + `\n\`•\` /p ${igns.slice(1).join(" ")}`)
     */
-    let invite = await teamCall.createInvite({
+    const invite = await teamCall.createInvite({
         maxAge: 60 * 60,
         reason: "Team call!"
     });
-    if (teamCall) embed.addField("Team Call", `${teamCall.name} *[click to join](${invite})*`)
+    if (teamCall) embed.addField("Team Call", `${teamCall} *[click to join](${invite})*`)
 
     // embed.setDescription(`/duel ${igns[0]} ${command}`)
 
@@ -204,7 +207,7 @@ function parseIGN(name) {
         if (result) return result;
     }
 
-    return name.slice(0, name.search(/(?![a-zA-Z0-9_])/) + 1 ?? name.length);
+    return name.slice(0, name.search(/(?![a-zA-Z0-9_])/) + 1 ?? name.length).slice(0, 13);
 
 }
 
