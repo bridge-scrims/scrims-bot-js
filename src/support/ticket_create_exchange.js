@@ -57,14 +57,6 @@ class TicketCreateExchange extends ModalEphemeralExchange {
         
     }
 
-    isNiteBlock() {
-
-        const keyWords = ["alpha", "testing", "tester"]
-        const value = this.getValue("reason").toLowerCase()
-        return keyWords.some(v => value.startsWith(`${v} `) || value.endsWith(` ${v}`) || value.includes(` ${v} `))
-
-    }
-
     /** @param {MessageEmbed} embed */
     _getResponsePayload(embed, fields, currentIndex) {
 

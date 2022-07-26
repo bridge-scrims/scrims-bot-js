@@ -208,19 +208,6 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
      */
     static ticketInfoMessage(exchange, mentionRoles=[], supportRole=null) {
 
-        if (exchange.isNiteBlock()) {
-
-            const embed = new MessageEmbed()
-                .setTitle(`Minecraft Server Support Ticket`)
-                .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. <@445556389532925952> has been alerted because we detected that this is minecraft server related.`)
-                .setFields(exchange.getEmbedFields())
-                .setColor('#ff9d00')
-
-            const content = `${exchange.creator} <@445556389532925952>`
-            return { content, embeds: [embed], allowedMentions: (exchange.isTest() ? { users: [exchange.creator.discord_id] } : {}) };
-
-        }
-
         const embed = new MessageEmbed()
             .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
             .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? 'support'} team have been alerted and will be with you shortly.`)
