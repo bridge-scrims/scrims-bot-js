@@ -20,9 +20,6 @@ BEGIN
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'suggestions_log_channel') THEN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('suggestions_log_channel');
     END IF;
-    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_log_channel') THEN
-        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_log_channel');
-    END IF;
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'config_log_channel') THEN
         INSERT INTO scrims_guild_entry_type (name) VALUES ('config_log_channel');
     END IF;
@@ -41,16 +38,19 @@ BEGIN
         if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = ('tickets_' || ticket_type_name || '_category')) THEN
             INSERT INTO scrims_guild_entry_type (name) VALUES (('tickets_' || ticket_type_name || '_category'));
         END IF;
+        if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = ('tickets_' || ticket_type_name || '_log_channel')) THEN
+            INSERT INTO scrims_guild_entry_type (name) VALUES (('tickets_' || ticket_type_name || '_log_channel'));
+        END IF;
+        if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = ('tickets_' || ticket_type_name || '_transcript_channel')) THEN
+            INSERT INTO scrims_guild_entry_type (name) VALUES (('tickets_' || ticket_type_name || '_transcript_channel'));
+        END IF;
     END LOOP;
-    
-    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'prime_app_transcript_channel') THEN
-        INSERT INTO scrims_guild_entry_type (name) VALUES ('prime_app_transcript_channel');
+
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = ('tickets_support_status_channel')) THEN
+            INSERT INTO scrims_guild_entry_type (name) VALUES (('tickets_support_status_channel'));
     END IF;
-    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_transcript_channel') THEN
-        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_transcript_channel');
-    END IF;
-    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'tickets_status_channel') THEN
-        INSERT INTO scrims_guild_entry_type (name) VALUES ('tickets_status_channel');
+    if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = ('tickets_prime_app_status_channel')) THEN
+            INSERT INTO scrims_guild_entry_type (name) VALUES (('tickets_prime_app_status_channel'));
     END IF;
 
     if NOT EXISTS (select * FROM scrims_guild_entry_type WHERE name = 'vouch_status_channel') THEN

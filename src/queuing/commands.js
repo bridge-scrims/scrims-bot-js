@@ -172,11 +172,14 @@ async function getTeamEmbed(title, color, members, teamCall, command) {
     const igns = members.map(m => parseIGN(m.displayName).replaceAll(/(?![a-zA-Z0-9_])./g, ""))
     if (igns.length >= 2) embed.addField("Party Commands", `\`•\` /p transfer ${igns[0]}` + `\n\`•\` /p ${igns.slice(1).join(" ")}`)
     */
-    const invite = await teamCall.createInvite({
-        maxAge: 60 * 60,
-        reason: "Team call!"
-    });
-    if (teamCall) embed.addField("Team Call", `${teamCall} *[click to join](${invite})*`)
+    
+    if (teamCall) {
+        const invite = await teamCall.createInvite({
+            maxAge: 60 * 60,
+            reason: "Team call!"
+        });
+        embed.addField("Team Call", `${teamCall} *[click to join](${invite})*`)
+    }
 
     // embed.setDescription(`/duel ${igns[0]} ${command}`)
 

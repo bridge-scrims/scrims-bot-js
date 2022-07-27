@@ -27,10 +27,8 @@ async function addCronStuff() {
     querys.push(await fs.readFile(path.join(ASSETS, 'user_position_cron.pgsql'), { encoding: 'utf8' }))
     querys.push(await fs.readFile(path.join(ASSETS, 'ticket_cron.pgsql'), { encoding: 'utf8' }))
 
-    for (let query of querys) {
-
+    for (const query of querys) {
         await client.query(query).catch(console.error)
-
     }
 
     await client.end()
@@ -67,11 +65,10 @@ async function create() {
     querys.push(await fs.readFile(path.join(ASSETS, 'ticket_table.pgsql'), { encoding: 'utf8' }))
     querys.push(await fs.readFile(path.join(ASSETS, 'transcript_table.pgsql'), { encoding: 'utf8' }))
     querys.push(await fs.readFile(path.join(ASSETS, 'session_table.pgsql'), { encoding: 'utf8' }))
+    querys.push(await fs.readFile(path.join(ASSETS, 'game_table.pgsql'), { encoding: 'utf8' }))
 
-    for (let query of querys) {
-
+    for (const query of querys) {
         await client.query(query).catch(console.error)
-
     }
 
     await client.end()
