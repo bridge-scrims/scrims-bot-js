@@ -217,8 +217,8 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
      */
     static ticketInfoMessage(exchange, mentionRoles = [], supportRole = null) {
 
-        const content = `${exchange.creator} created a ${exchange.ticketType.name} ticket. `
-        const embed = new MessageEmbed()
+        let content = `${exchange.creator} created a ${exchange.ticketType.name} ticket. `
+        let embed = new MessageEmbed()
             .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
         if (exchange.ticketType.name === 'tournament') {
             embed.setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} tournament organizers have been alerted and will be with you shortly.`)
