@@ -45,7 +45,7 @@ function getTicketTypeFromName(interaction) {
 async function onTicketCreateRequest(interaction) {
 
     const ticketType = getTicketTypeFromName(interaction)
-    if (!ticketType) return interaction.reply(SupportResponseMessageBuilder.failedMessage('create a support ticket'));
+    if (!ticketType) return interaction.reply(SupportResponseMessageBuilder.failedMessage('This is not a valid ticket type, try again with a support ticket.'));
 
     const allowed = await interaction.client.support.verifyTicketRequest(interaction.scrimsUser, interaction.guildId, ticketType.name)
     if (allowed !== true) return interaction.reply(allowed);
@@ -70,7 +70,7 @@ async function createTicket(exchange) {
     const channel = await createTicketChannel(exchange.client, exchange.guild, category, exchange.creator.discordUser, exchange.ticketType.name, ticketIndex)
 
     const ticket = await exchange.client.database.tickets.create(
-        
+
         new ScrimsTicket(exchange.client.database)
             .setUser(exchange.creator)
             .setType(exchange.ticketType)
@@ -104,18 +104,18 @@ async function sendTicketChannelMessages(exchange, ticket, channel) {
 
     const targets = exchange.getValue("targets")
     const reason = exchange.getValue("reason")
-    
-    const logMessage = { 
 
-        id: exchange.customId, 
+    const logMessage = {
+
+        id: exchange.customId,
         createdTimestamp: Date.now(),
-        author: exchange.creator.discordUser, 
+        author: exchange.creator.discordUser,
         content: `Created a ${exchange.ticketType.name} ticket.`
-            + ((targets?.length > 0) ? ` Reporting: ${targets.map(target => (target?.user?.tag || target?.tag) ? `@${target?.user?.tag || target.tag}` : target).join(' | ')}`: ``)
-            + (reason ? ` Reason: ${reason}` : ``) 
+            + ((targets?.length > 0) ? ` Reporting: ${targets.map(target => (target?.user?.tag || target?.tag) ? `@${target?.user?.tag || target.tag}` : target).join(' | ')}` : ``)
+            + (reason ? ` Reason: ${reason}` : ``)
 
     }
-    
+
     await exchange.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
 
 }
@@ -128,9 +128,19 @@ function getSupportLevelRoles(client, guild) {
 
 }
 
+
+function getTournamentLevelRoles(client, guild) {
+
+    const to = client.database.positions.cache.find({ name: "tournament_organizer" })
+    if (!to) return [];
+    return to.getPositionLevelPositions().map(position => client.permissions.getPositionRequiredRoles(guild.id, position)).flat();
+
+}
+
+
 function getChannelName(type, user, ticketIndex) {
 
-    if (type === 'support') return `${type}-${user.username.toLowerCase()}`;
+    if (type !== 'report') return `${type}-${user.username.toLowerCase()}`;
     return `${type}-${ticketIndex}`;
 
 }
@@ -139,6 +149,15 @@ async function createTicketChannel(client, guild, categoryId, user, type, ticket
 
     const title = getChannelName(type, user, ticketIndex);
 
+    const roles = getSupportLevelRoles(client, guild);
+
+    if (type === 'tournament') {
+
+        const tournamentRoles = getTournamentLevelRoles(client, guild);
+        roles.push(...tournamentRoles);
+
+    }
+
     return guild.channels.create(title, {
         parent: categoryId || null,
         permissionOverwrites: [
@@ -146,7 +165,7 @@ async function createTicketChannel(client, guild, categoryId, user, type, ticket
                 id: guild.roles.everyone,
                 deny: ["VIEW_CHANNEL", "SEND_MESSAGES", "READ_MESSAGE_HISTORY"],
             },
-            ...[ user.id, ...getSupportLevelRoles(client, guild) ] 
+            ...[user.id, ...roles]
                 .map(id => ({ id, allow: ["VIEW_CHANNEL", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"] }))
         ],
     });
@@ -162,7 +181,7 @@ function getCreatedPayload(channel, type) {
         .setDescription(`Opened a new ticket for your ${type.name} request at ${channel}.`)
 
     return { content: null, components: [], embeds: [embed], ephemeral: true };
-    
+
 }
 
 const closeRequestHandlers = { "ACCEPT": onAccept, "DENY": onDeny, "FORCE": onForce }
@@ -194,7 +213,7 @@ async function onTicketCloseRequest(interaction) {
 
     const handler = closeRequestHandlers[interaction.args.shift()];
     if (!handler) return interaction.reply({ content: "This button does not have a handler. Please refrain from trying again.", ephemeral: true });
-    
+
     await interaction.deferReply({ ephemeral: true })
     return handler(interaction, interaction.ticket);
 
@@ -212,12 +231,12 @@ async function onDeny(interaction, ticket) {
 
     interaction.client.support.cancelCloseTimeout(interaction.message.id)
     const transcriber = interaction.client.support.transcriber;
-    const message = { 
-        id: interaction.id, author: interaction.user, 
-        content: `denied the close request from ${interaction.executor.tag} with reason: ${interaction.reason}` 
+    const message = {
+        id: interaction.id, author: interaction.user,
+        content: `denied the close request from ${interaction.executor.tag} with reason: ${interaction.reason}`
     }
     // Command should not abort just because the event was not logged
-    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error); 
+    await transcriber.transcribe(ticket.id_ticket, message).catch(console.error);
 
     await interaction.editReply("Close request denied.");
     await interaction.message.edit(SupportResponseMessageBuilder.errorMessage(`Close Request Denied`, `${interaction.user} has denied the close request.`));
@@ -235,7 +254,7 @@ async function onAccept(interaction, ticket) {
         return interaction.editReply(getNotAllowedPayload(interaction.i18n, ticket.user));
 
     await interaction.client.support.closeTicket(
-        interaction.ticket, interaction.executor, 
+        interaction.ticket, interaction.executor,
         interaction.user, `accepted the close request from ${interaction.executor.tag} with reason: ${interaction.reason}`
     )
 
@@ -245,13 +264,13 @@ async function onAccept(interaction, ticket) {
  * @param { import('../types').ScrimsComponentInteraction } interaction 
  * @param { ScrimsTicket } ticket
  */
- async function onForce(interaction, ticket) {
+async function onForce(interaction, ticket) {
 
     const hasPermission = interaction.scrimsPositions.hasPositionLevel('support')
     if (!hasPermission) return interaction.editReply(SupportResponseMessageBuilder.missingPermissionsMessage(interaction.i18n, 'You must be bridge scrims support or higher to do this.'))
 
     await interaction.client.support.closeTicket(
-        ticket, interaction.executor, interaction.user, 
+        ticket, interaction.executor, interaction.user,
         `forcibly closed this ticket using the request from ${interaction.executor.tag} with reason: ${interaction.reason}`
     )
 

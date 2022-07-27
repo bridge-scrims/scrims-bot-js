@@ -11,7 +11,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
      * @param { Role } supportRole 
      */
     static supportInfoEmbed(supportRole) {
-        
+
         return new MessageEmbed()
             .setColor(supportRole.hexColor)
             .setTitle(`${supportRole.guild.name} Support and Report`)
@@ -30,7 +30,10 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
                 + `If you are sending a montage make sure that it is in cooperation with rules and if `
                 + `there is NSFW, racism, etc. you will be blacklisted from sending montages. `
                 + `Sending montages are for **privates** and above!`
-            ).setFooter({ text: `Managed by the support team`, iconURL: supportRole.iconURL() })
+            )
+            // Comment this out when its over.
+            .addField(`Tournament Tickets`, `Ask questions about the ongoing tournament.`)
+            .setFooter({ text: `Managed by the support team`, iconURL: supportRole.iconURL() })
 
     }
 
@@ -40,7 +43,9 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
             .addComponents(
 
                 new MessageButton().setCustomId("support/ticketCreate/support").setLabel("Support").setEmoji("📩").setStyle(1),
-                new MessageButton().setCustomId("support/ticketCreate/report").setLabel("Report").setEmoji("⚖️").setStyle(4)
+                new MessageButton().setCustomId("support/ticketCreate/report").setLabel("Report").setEmoji("⚖️").setStyle(4),
+                // and this
+                new MessageButton().setCustomId("support/ticketCreate/tournament").setLabel("Tournament").setEmoji("<:tourney:1001683405324439663>").setStyle(3)
 
             )
 
@@ -51,7 +56,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
      */
     static supportInfoMessage(supportRole) {
 
-        return { embeds: [ this.supportInfoEmbed(supportRole) ], components: [ this.supportInfoActions() ] }
+        return { embeds: [this.supportInfoEmbed(supportRole)], components: [this.supportInfoActions()] }
 
     }
 
@@ -65,12 +70,12 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
         return new MessageActionRow()
             .addComponents([
-    
+
                 new MessageButton()
                     .setCustomId(`support/ticketClose/${ticketId}/${userId}/ACCEPT`)
                     .setLabel("Accept & Close")
                     .setStyle("PRIMARY"),
-    
+
                 new MessageButton()
                     .setCustomId(`support/ticketClose/${ticketId}/${userId}/DENY`)
                     .setLabel("Deny & Keep Open")
@@ -80,21 +85,24 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
                     .setCustomId(`support/ticketClose/${ticketId}/${userId}/FORCE`)
                     .setLabel("Force Close")
                     .setStyle("DANGER")
-    
+
             ])
-    
+
     }
-    
+
     static closeRequestEmbed(user, reason, timeout) {
-    
-        const timeoutText = (timeout ? ` If you do not respond with **<t:${Math.floor((Date.now()+timeout)/1000)}:R> this ticket will auto close**.` : "")
-        return new MessageEmbed()
+
+        const timeoutText = (timeout ? ` If you do not respond with **<t:${Math.floor((Date.now() + timeout) / 1000)}:R> this ticket will auto close**.` : "")
+        const embed = new MessageEmbed()
             .setColor("#5D9ACF")
             .setTitle("Close Request")
-            .addField("Reason", `\`\`\`${reason}\`\`\``, false)
             .setDescription(`${user} has requested to close this ticket. Please accept or deny using the buttons below.${timeoutText}`)
             .setTimestamp()
 
+        if (reason) {
+            embed.addField("Reason", `\`\`\`${reason}\`\`\``, false)
+        }
+        return embed;
     }
 
     /**
@@ -127,7 +135,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
     /**
      * @param { ScrimsTicketType } type 
      */
-    static ticketCreateModal(type, wasReopened=false) {
+    static ticketCreateModal(type, wasReopened = false) {
 
         const modal = new Modal()
             .setCustomId(`support/ticketModalSubmit/${type.id_type}/${wasReopened ? 'REOPEN' : ''}`)
@@ -186,8 +194,9 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
                 this.cancelButton(i18n)
             )
 
-        const test = (ticketData.reason === "testing the ticket system without pinging the bridge scrims support team") 
-            || (ticketData.reason === "testing the ticket system without pinging support") 
+        const test = (ticketData.reason === "testing the ticket system without pinging the bridge scrims support team")
+            || (ticketData.reason === "testing the ticket system without pinging support")
+            || (ticketData.reason === "no ping")
 
         const reasonLabel = (ticketData.type.name !== 'report') ? 'Why are you opening a ticket?' : 'Why are you creating this report?'
         const embed = new MessageEmbed()
@@ -195,8 +204,8 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
             .setDescription(`Please verify that all fields are filled to your liking, then create this ticket using the button below.`)
             .setColor('#ffffff')
 
-        if (ticketData.targets) embed.addField('Who are you reporting?', (ticketData.targets.length > 0) ? this.stringifyArray(ticketData.targets.map(v => v?.id ? `${v} (${v.id})` : v)) : '``` ```'+this.ticketTargetsMissingContent())
-        if (ticketData.reason) embed.addField(reasonLabel, (ticketData.reason.length > 0) ? `\`\`\`${ticketData.reason}\`\`\`` : '``` ```'+this.ticketReasonMissingContent())
+        if (ticketData.targets) embed.addField('Who are you reporting?', (ticketData.targets.length > 0) ? this.stringifyArray(ticketData.targets.map(v => v?.id ? `${v} (${v.id})` : v)) : '``` ```' + this.ticketTargetsMissingContent())
+        if (ticketData.reason) embed.addField(reasonLabel, (ticketData.reason.length > 0) ? `\`\`\`${ticketData.reason}\`\`\`` : '``` ```' + this.ticketReasonMissingContent())
 
         const content = (test ? ' *(Test ticket detected)*' : null)
         return { content, embeds: [embed], components: [actions], ephemeral: true };
@@ -206,21 +215,30 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
     /**
      * @param { TicketCreateExchange } exchange 
      */
-    static ticketInfoMessage(exchange, mentionRoles=[], supportRole=null) {
+    static ticketInfoMessage(exchange, mentionRoles = [], supportRole = null) {
 
-        const embed = new MessageEmbed()
+        let content = `${exchange.creator} created a ${exchange.ticketType.name} ticket. `
+        let embed = new MessageEmbed()
             .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
-            .setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? 'support'} team have been alerted and will be with you shortly.`)
-            .setColor(supportRole?.hexColor || '#ff9d00')
-            .setFooter({ text: `Managed by the support team`, iconURL: supportRole?.iconURL() })
-            .setFields(exchange.getEmbedFields())
-            .setTimestamp()
-
-        const content = `${mentionRoles.join(' ')} ${exchange.creator} created a ${exchange.ticketType.name} ticket.`
+        if (exchange.ticketType.name === 'tournament') {
+            embed.setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} tournament organizers have been alerted and will be with you shortly.`)
+                .setColor('#0dbf7a')
+                .setFooter({ text: `Bridge Scrims Tournaments`, iconURL: supportRole?.iconURL() })
+                .setFields(exchange.getEmbedFields())
+                .setTimestamp()
+            content += '<@&910021405586886676>'
+        } else {
+            embed.setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? 'support'} team have been alerted and will be with you shortly.`)
+                .setColor(supportRole?.hexColor || '#ff9d00')
+                .setFooter({ text: `Managed by the support team`, iconURL: supportRole?.iconURL() })
+                .setFields(exchange.getEmbedFields())
+                .setTimestamp()
+            content += mentionRoles.join(' ')
+        }
         return { content, embeds: [embed], allowedMentions: { roles: (exchange.isTest() ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
 
     }
-    
+
 }
 
 module.exports = SupportResponseMessageBuilder;
