@@ -12,13 +12,13 @@ const commandHandlers = {
     "support-ticket": supportTicket,
     "close": requestTicketClosure,
     'support': onSupportAction,
-    
+
 }
 async function onCommand(interaction) {
 
     const handler = commandHandlers[interaction.commandName]
     if (handler) return handler(interaction);
-    
+
     throw new Error(`Interaction with name '${interaction.commandName}' does not have a handler!`, commandHandlers);
 
 }
@@ -29,7 +29,7 @@ async function onCommand(interaction) {
 async function getSupportRole(interaction) {
 
     const errorMessage = `To send this message you first need to add a role connected to the support position!`
-    
+
     const positionRoles = await interaction.client.database.positionRoles.fetch({ guild_id: interaction.guild.id, position: { name: 'support' } })
     if (positionRoles.length === 0) return interaction.reply(SupportResponseMessageBuilder.errorMessage(`No Support Role`, errorMessage)).then(() => false);
 
@@ -58,7 +58,7 @@ async function supportMessage(interaction) {
  */
 async function requestTicketClosure(interaction) {
 
-    const reason = interaction.options.getString('reason') ?? "no reason provided";
+    const reason = interaction.options.getString('reason');
     const timeout = interaction.options.getString('timeout') ?? null;
 
     if (!interaction.channel) return false;
@@ -75,17 +75,17 @@ async function requestTicketClosure(interaction) {
         return closeTicket(interaction, ticket, `closed this request with force because of ${reason}`);
     }
 
-    if (timeout) { 
+    if (timeout) {
         const duration = parseDuration(timeout)
-        if (!duration || duration <= 0 || duration > (30*24*60*60*1000)) 
+        if (!duration || duration <= 0 || duration > (30 * 24 * 60 * 60 * 1000))
             throw new UserError("Invalid Timeout", "Please use a valid duration greater then 0 and less then a month and try again.");
-        
+
         const message = await interaction.reply({ ...SupportResponseMessageBuilder.closeRequestMessage(interaction.user, reason, ticket, duration), fetchReply: true })
         const closeCall = () => interaction.client.support.closeTicket(ticket, interaction.user, interaction.user, `had this ticket closed because of ${reason} automatically after ${timeout}`).catch(console.error)
         interaction.client.support.closeRequestTimeouts[message.id] = setTimeout(closeCall, duration)
         const existing = interaction.client.support.ticketCloseRequest[ticket.id_ticket] ?? []
         interaction.client.support.ticketCloseRequest[ticket.id_ticket] = [message.id, ...existing]
-    }else {
+    } else {
         await interaction.reply(SupportResponseMessageBuilder.closeRequestMessage(interaction.user, reason, ticket))
     }
 
@@ -99,7 +99,7 @@ async function requestTicketClosure(interaction) {
 async function closeTicket(interaction, ticket, content) {
 
     await interaction.reply({ content: `Support ticket closing...` })
-    
+
     await interaction.client.support.closeTicket(ticket, interaction.user, interaction.user, content)
 
 }
@@ -115,10 +115,10 @@ async function supportTicket(interaction) {
     const user = interaction.options.getUser("user");
     const operation = interaction.options.getString("operation");
     const operactionPreposition = ((operation === "add") ? "to" : "from")
-    
+
     const permissionOverwrites = interaction.channel.permissionOverwrites;
     const userPermission = Object.fromEntries(['SEND_MESSAGES', 'VIEW_CHANNEL', 'READ_MESSAGE_HISTORY'].map(perm => [perm, (operation === "add")]))
-    
+
     const result = await permissionOverwrites.edit(user, userPermission).catch(error => error)
     if (result instanceof Error) {
 
@@ -127,9 +127,9 @@ async function supportTicket(interaction) {
 
     }
 
-    const pastTenseOperation = (operation.endsWith('e') ? `${operation}d` : `${operation}ed`) 
+    const pastTenseOperation = (operation.endsWith('e') ? `${operation}d` : `${operation}ed`)
     const action = `has been ${pastTenseOperation} ${operactionPreposition} the ticket!`
-    
+
     const logMessage = { id: interaction.id, createdTimestamp: interaction.createdTimestamp, author: interaction.user, content: `${user.tag} ${action}` }
     await interaction.client.support.transcriber.transcribe(ticket.id_ticket, logMessage).catch(console.error)
 
@@ -194,13 +194,13 @@ function buildSupportTicketCommand() {
         )
 
     return [supportTicketOptionCommand, { positionLevel: "support" }, { forceGuild: true, forceScrimsUser: false }];
-    
+
 }
 
 
 module.exports = {
 
     commandHandler: onCommand,
-    commands: [ buildCloseCommand(), buildSupportMessageCommand(), buildSupportTicketCommand() ]
+    commands: [buildCloseCommand(), buildSupportMessageCommand(), buildSupportTicketCommand()]
 
 }

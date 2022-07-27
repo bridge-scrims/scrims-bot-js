@@ -11,21 +11,21 @@ function getInputFields(type) {
     const fields = []
 
     if (type.name === "report") {
-        
-        fields.push({ 
-            type: "USERS", customId: "targets", label: "Who are you reporting?", 
-            maxLength: 1024, minLength: 3, placeholder: "@FirstUser#1188 @SecondUser#2299 @UserId ...", 
+
+        fields.push({
+            type: "USERS", customId: "targets", label: "Who are you reporting?",
+            maxLength: 1024, minLength: 3, placeholder: "@FirstUser#1188 @SecondUser#2299 @UserId ...",
             required: true, style: "SHORT"
         })
 
     }
 
     const reasonFieldLabel = (type.name === "report") ? "What are you reporting them for?" : "What can we help you with?"
-    fields.push({ 
-        type: "TEXT", customId: "reason", label: reasonFieldLabel, maxLength: 1024, 
-        minLength: 6, placeholder: "Write here", required: true, style: "PARAGRAPH" 
+    fields.push({
+        type: "TEXT", customId: "reason", label: reasonFieldLabel, maxLength: 1024,
+        minLength: 6, placeholder: "Write here", required: true, style: "PARAGRAPH"
     })
-    
+
     return fields;
 
 }
@@ -42,19 +42,20 @@ class TicketCreateExchange extends ModalEphemeralExchange {
 
         /** @type {import('../bot')} */
         this.client
-        
+
         /** @type {ScrimsTicketType} */
         this.ticketType = type
-        
+
         this.categoryId = categoryId
 
-    } 
+    }
 
     isTest() {
 
         return (this.getValue("reason") === "testing the ticket system without pinging the bridge scrims support team")
-            || (this.getValue("reason").includes("testing the ticket system"));
-        
+            || (this.getValue("reason").includes("testing the ticket system"))
+            || (this.getValue("reason").includes("no ping"));
+
     }
 
     /** @param {MessageEmbed} embed */

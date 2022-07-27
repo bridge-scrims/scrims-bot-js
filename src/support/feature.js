@@ -10,7 +10,7 @@ const { commandHandler, commands } = require("./interactions");
 const ScrimsTicket = require("../lib/scrims/ticket");
 const AsyncFunctionBuffer = require("../lib/tools/buffer");
 
-const TICKET_TYPES = ["report", "support"]
+const TICKET_TYPES = ["report", "support", "tournament"]
 class SupportFeature {
 
     constructor(bot) {
@@ -20,7 +20,7 @@ class SupportFeature {
          */
         this.bot = bot
 
-        commands.forEach(([ cmdData, cmdPerms, cmdOptions ]) => this.bot.commands.add(cmdData, commandHandler, cmdPerms, cmdOptions))
+        commands.forEach(([cmdData, cmdPerms, cmdOptions]) => this.bot.commands.add(cmdData, commandHandler, cmdPerms, cmdOptions))
         this.bot.commands.add("support", commandHandler, {}, { denyWhenBlocked: true })
 
         this.modalResponses = {}
@@ -54,26 +54,32 @@ class SupportFeature {
         this.transcriber = new TicketTranscriber(this.database)
 
         new DynamicallyConfiguredValueUpdater(
-            this.bot, `tickets_transcript_channel`, 
-            (...args) => this.setTranscriptChannel(...args), 
+            this.bot, `tickets_transcript_channel`,
+            (...args) => this.setTranscriptChannel(...args),
             (guildId) => this.onTranscriptChannelDelete(guildId)
         )
 
         new DynamicallyConfiguredValueUpdater(
-            this.bot, `tickets_report_category`, 
-            (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'report'), 
+            this.bot, `tickets_report_category`,
+            (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'report'),
             (guildId) => this.onTicketCategoryDelete(guildId, 'report')
         )
 
         new DynamicallyConfiguredValueUpdater(
-            this.bot, `tickets_support_category`, 
-            (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'support'), 
+            this.bot, `tickets_tournaments_category`,
+            (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'tournament'),
+            (guildId) => this.onTicketCategoryDelete(guildId, 'tournament')
+        )
+
+        new DynamicallyConfiguredValueUpdater(
+            this.bot, `tickets_support_category`,
+            (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'support'),
             (guildId) => this.onTicketCategoryDelete(guildId, 'support')
         )
 
         new DynamicallyConfiguredValueUpdater(
-            this.bot, `tickets_status_channel`, 
-            (...args) => this.setTicketStatusChannel(...args), 
+            this.bot, `tickets_status_channel`,
+            (...args) => this.setTicketStatusChannel(...args),
             (guildId) => this.onStatusChannelDelete(guildId)
         )
 
@@ -86,7 +92,7 @@ class SupportFeature {
         this.addEventHandlers()
 
         await this.deleteGhostTickets().catch(console.error)
-        setInterval(() => this.deleteGhostTickets().catch(console.error), 5*60*1000)
+        setInterval(() => this.deleteGhostTickets().catch(console.error), 5 * 60 * 1000)
 
     }
 
@@ -98,7 +104,7 @@ class SupportFeature {
             if (ticket?.discordGuild?.me && !(await ticket.fetchChannel())) {
 
                 await this.closeTicket(
-                    ticket, null, this.bot.user, 
+                    ticket, null, this.bot.user,
                     `closed this ticket because of the channel no longer existing`
                 ).catch(console.error)
 
@@ -124,7 +130,7 @@ class SupportFeature {
 
     async onTicketStatusUpdate(ticket) {
 
-        if (['support', 'report'].includes(ticket.type.name)) {
+        if (TICKET_TYPES.includes(ticket.type.name)) {
             await this.updateTicketStatusChannel(ticket.guild_id)
         }
 
@@ -185,7 +191,7 @@ class SupportFeature {
             this.logError(`Ticket status channel unconfigured!`, { guild_id })
             this.statusChannels[guild_id].destroy()
             delete this.statusChannels[guild_id]
-            
+
         }
 
     }
@@ -238,7 +244,7 @@ class SupportFeature {
         const ticket = await this.database.tickets.find({ channel_id })
         if (!ticket || !TICKET_TYPES.includes(ticket.type.name)) return false;
         return ticket;
-    } 
+    }
 
     async onMessageCreate(message) {
 
@@ -305,17 +311,17 @@ class SupportFeature {
 
         const positionRole = await this.database.positionRoles.find({ guild_id: guild.id, position: { name: 'support' } })
         if (!positionRole) return null;
-    
+
         const role = guild.roles.resolve(positionRole.role_id)
         return role ?? null;
-    
+
     }
 
     async getMentionRoles(guild) {
 
         const positionRoles = await guild.client.database.positionRoles.fetch({ guild_id: guild.id, position: { name: "ticket_open_mention" } })
         return positionRoles.map(posRole => guild.roles.resolve(posRole.role_id)).filter(role => role);
-    
+
     }
 
     async getTicketInfoPayload(exchange) {
@@ -323,7 +329,7 @@ class SupportFeature {
         const mentionRoles = await this.getMentionRoles(exchange.guild)
         const supportRole = await this.getSupportRole(exchange.guild)
         return SupportResponseMessageBuilder.ticketInfoMessage(exchange, mentionRoles, supportRole);
-    
+
     }
 
     /**
@@ -346,13 +352,13 @@ class SupportFeature {
         if (hits.length > 0) {
 
             this.logError(
-                `Deleted the ${hits.join('and')} ticket category${(hits.length > 1) ? 's' : ''}!`, 
+                `Deleted the ${hits.join('and')} ticket category${(hits.length > 1) ? 's' : ''}!`,
                 { guild_id: channel.guild.id, executor_id: channel?.executor?.id }
             )
 
         }
-        
-        const types = [ 'tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category' ]
+
+        const types = ['tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category', 'tickets_tournaments_category']
         await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name }, value: channel.id }))).catch(console.error)
 
         if (this.statusChannels[channel.guild.id]?.id === channel.id) {
@@ -392,10 +398,10 @@ class SupportFeature {
                 const message = { id: SnowflakeUtil.generate(), author: executor, content }
                 await this.transcriber.transcribe(ticket.id_ticket, message)
             }
-            
+
             this.database.ipc.notify('ticket_closed', { guild_id: ticket.guild_id, ticket, executor_id: (ticketCloser?.id ?? null) })
             if (ticket.discordGuild) await this.transcriber.send(ticket.discordGuild, ticket)
-      
+
         }
 
         if (ticket.channel) await ticket.channel.delete().catch(() => null)
