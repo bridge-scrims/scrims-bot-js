@@ -220,7 +220,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
 
         const embed = new MessageEmbed()
             .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
-        if (exchange.ticketType === 'tournament') {
+        if (exchange.ticketType.name === 'tournament') {
             embed.setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} tournament organizers have been alerted and will be with you shortly.`)
                 .setColor('#0dbf7a')
                 .setFooter({ text: `Bridge Scrims Tournaments`, iconURL: supportRole?.iconURL() })
