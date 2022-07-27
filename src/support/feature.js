@@ -66,7 +66,7 @@ class SupportFeature {
         )
 
         new DynamicallyConfiguredValueUpdater(
-            this.bot, `tickets_tournaments_category`,
+            this.bot, `tickets_tournament_category`,
             (guildId, channelId) => this.setTicketsCategory(guildId, channelId, 'tournament'),
             (guildId) => this.onTicketCategoryDelete(guildId, 'tournament')
         )
@@ -358,7 +358,7 @@ class SupportFeature {
 
         }
 
-        const types = ['tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category', 'tickets_tournaments_category']
+        const types = ['tickets_transcript_channel', 'tickets_report_category', 'tickets_support_category', 'tickets_tournament_category']
         await Promise.all(types.map(name => this.database.guildEntrys.remove({ guild_id: channel.guild.id, type: { name }, value: channel.id }))).catch(console.error)
 
         if (this.statusChannels[channel.guild.id]?.id === channel.id) {
