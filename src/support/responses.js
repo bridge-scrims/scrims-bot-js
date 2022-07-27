@@ -217,7 +217,7 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
      */
     static ticketInfoMessage(exchange, mentionRoles = [], supportRole = null) {
 
-
+        const content = `${exchange.creator} created a ${exchange.ticketType.name} ticket. `
         const embed = new MessageEmbed()
             .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
         if (exchange.ticketType.name === 'tournament') {
@@ -226,14 +226,15 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
                 .setFooter({ text: `Bridge Scrims Tournaments`, iconURL: supportRole?.iconURL() })
                 .setFields(exchange.getEmbedFields())
                 .setTimestamp()
+            content += '<@&910021405586886676>'
         } else {
             embed.setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? 'support'} team have been alerted and will be with you shortly.`)
                 .setColor(supportRole?.hexColor || '#ff9d00')
                 .setFooter({ text: `Managed by the support team`, iconURL: supportRole?.iconURL() })
                 .setFields(exchange.getEmbedFields())
                 .setTimestamp()
+            content += mentionRoles.join(' ')
         }
-        const content = `${mentionRoles.join(' ')} ${exchange.creator} created a ${exchange.ticketType.name} ticket.`
         return { content, embeds: [embed], allowedMentions: { roles: (exchange.isTest() ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
 
     }
