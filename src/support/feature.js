@@ -151,7 +151,6 @@ class SupportFeature {
     getTicketCategory(guildId, typeName) {
 
         if (!(guildId in this.ticketCategorys)) return null;
-
         return this.ticketCategorys[guildId][typeName] ?? null;
 
     }

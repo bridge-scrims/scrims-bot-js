@@ -67,7 +67,7 @@ async function createTicket(exchange) {
 
     const category = exchange.client.support.getTicketCategory(exchange.guild.id, exchange.ticketType.name)?.id ?? exchange.categoryId
     const ticketIndex = await exchange.client.database.tickets.callFunction("nextval", ["support_ticket_index"])
-    const channel = await createTicketChannel(exchange.client, exchange.guild, category, exchange.creator.discordUser, exchange.ticketType.name, ticketIndex)
+    const channel = await createTicketChannel(exchange.client, exchange.guild, category, exchange.creator.discordUser, exchange.ticketType.name, ticketIndex, exchange.isScreenshare())
 
     const ticket = await exchange.client.database.tickets.create(
 
@@ -138,26 +138,26 @@ function getTournamentLevelRoles(client, guild) {
 }
 
 
-function getChannelName(type, user, ticketIndex) {
-
-    if (type !== 'report') return `${type}-${user.username.toLowerCase()}`;
-    return `${type}-${ticketIndex}`;
-
+function getScreensharerLevelRoles(client, guild) {
+    const ss = client.database.positions.cache.find({ name: "screensharer" })
+    if (!ss) return [];
+    return ss.getPositionLevelPositions().map(position => client.permissions.getPositionRequiredRoles(guild.id, position)).flat();
 }
 
-async function createTicketChannel(client, guild, categoryId, user, type, ticketIndex) {
+function getChannelName(type, user, ticketIndex, ss) {
+    if (ss) return `screenshare-${user.username.toLowerCase()}`;
+    if (type !== 'report') return `${type}-${user.username.toLowerCase()}`;
+    return `${type}-${ticketIndex}`;
+}
 
-    const title = getChannelName(type, user, ticketIndex);
+async function createTicketChannel(client, guild, categoryId, user, type, ticketIndex, ss) {
 
+    const title = getChannelName(type, user, ticketIndex, ss);
     const roles = getSupportLevelRoles(client, guild);
 
-    if (type === 'tournament') {
-
-        const tournamentRoles = getTournamentLevelRoles(client, guild);
-        roles.push(...tournamentRoles);
-
-    }
-
+    if (ss) roles.push(...getScreensharerLevelRoles(client, guild));
+    else if (type === 'tournament') roles.push(...getTournamentLevelRoles(client, guild));
+    
     return guild.channels.create(title, {
         parent: categoryId || null,
         permissionOverwrites: [

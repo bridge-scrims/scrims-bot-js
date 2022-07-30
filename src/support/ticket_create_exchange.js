@@ -51,11 +51,11 @@ class TicketCreateExchange extends ModalEphemeralExchange {
     }
 
     isTest() {
+        return ["testing the ticket system", "no ping"].includes(this.getValue("reason").toLowerCase());
+    }
 
-        return (this.getValue("reason") === "testing the ticket system without pinging the bridge scrims support team")
-            || (this.getValue("reason").includes("testing the ticket system"))
-            || (this.getValue("reason").includes("no ping"));
-
+    isScreenshare() {
+        return this.getValue("reason").toLowerCase().includes("screenshare");
     }
 
     /** @param {MessageEmbed} embed */
@@ -70,7 +70,7 @@ class TicketCreateExchange extends ModalEphemeralExchange {
         )
         embed.setColor('#BBDDF5')
 
-        const content = (this.isTest() ? ' *(Test ticket detected)*' : null)
+        const content = (this.isTest() ? '*(Test ticket detected)*' : (this.isScreenshare() ? '*(Screenshare request detected)*' : null))
         return { content, embeds: [embed] };
 
     }

@@ -185,58 +185,31 @@ class SupportResponseMessageBuilder extends ScrimsMessageBuilder {
         return '⛔ **Please let us know why you are creating this ticket!**';
     }
 
-    static ticketConfirmMessage(i18n, client, ticketData) {
-
-        const actions = new MessageActionRow()
-            .addComponents(
-                new MemoryMessageButton(client, ticketData).setCustomId('support/sendTicket/CREATE').setLabel('Create').setStyle('SUCCESS'),
-                new MemoryMessageButton(client, ticketData).setCustomId('support/sendTicket/REOPEN').setLabel('Edit').setStyle('PRIMARY'),
-                this.cancelButton(i18n)
-            )
-
-        const test = (ticketData.reason === "testing the ticket system without pinging the bridge scrims support team")
-            || (ticketData.reason === "testing the ticket system without pinging support")
-            || (ticketData.reason === "no ping")
-
-        const reasonLabel = (ticketData.type.name !== 'report') ? 'Why are you opening a ticket?' : 'Why are you creating this report?'
-        const embed = new MessageEmbed()
-            .setTitle(`Ticket Create Confirmation`)
-            .setDescription(`Please verify that all fields are filled to your liking, then create this ticket using the button below.`)
-            .setColor('#ffffff')
-
-        if (ticketData.targets) embed.addField('Who are you reporting?', (ticketData.targets.length > 0) ? this.stringifyArray(ticketData.targets.map(v => v?.id ? `${v} (${v.id})` : v)) : '``` ```' + this.ticketTargetsMissingContent())
-        if (ticketData.reason) embed.addField(reasonLabel, (ticketData.reason.length > 0) ? `\`\`\`${ticketData.reason}\`\`\`` : '``` ```' + this.ticketReasonMissingContent())
-
-        const content = (test ? ' *(Test ticket detected)*' : null)
-        return { content, embeds: [embed], components: [actions], ephemeral: true };
-
-    }
-
-    /**
-     * @param { TicketCreateExchange } exchange 
-     */
+    /** @param {TicketCreateExchange} exchange */
     static ticketInfoMessage(exchange, mentionRoles = [], supportRole = null) {
-
         let content = `${exchange.creator} created a ${exchange.ticketType.name} ticket. `
-        let embed = new MessageEmbed()
+        const embed = new MessageEmbed()
             .setTitle(`${exchange.ticketType.capitalizedName} Ticket`)
-        if (exchange.ticketType.name === 'tournament') {
+            .setFields(exchange.getEmbedFields())
+            .setTimestamp()
+
+        if (exchange.isScreenshare()) {
+            embed.setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The <@&815051841858961448> have been alerted and will be with you shortly. Please send us the ign you are ssing and the screenshot of you telling them not to log.`)
+                .setColor("#f03291")
+                .setFooter({ text: `Managed by the screenshare team`, iconURL: "https://cdn.discordapp.com/role-icons/896161327087751178/56a911343b77e14bb81e91fd973ee1b0.webp" })
+            content += '<@&774457162759012412>'
+        }else if (exchange.ticketType.name === 'tournament') {
             embed.setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} tournament organizers have been alerted and will be with you shortly.`)
                 .setColor('#0dbf7a')
-                .setFooter({ text: `Bridge Scrims Tournaments`, iconURL: supportRole?.iconURL() })
-                .setFields(exchange.getEmbedFields())
-                .setTimestamp()
+                .setFooter({ text: `Bridge Scrims Tournaments` })
             content += '<@&910021405586886676>'
-        } else {
+        }else {
             embed.setDescription(`👋 **Welcome** ${exchange.creator} to your ticket channel. The ${exchange.guild.name.toLowerCase()} ${supportRole ?? 'support'} team have been alerted and will be with you shortly.`)
                 .setColor(supportRole?.hexColor || '#ff9d00')
                 .setFooter({ text: `Managed by the support team`, iconURL: supportRole?.iconURL() })
-                .setFields(exchange.getEmbedFields())
-                .setTimestamp()
             content += mentionRoles.join(' ')
         }
         return { content, embeds: [embed], allowedMentions: { roles: (exchange.isTest() ? [] : mentionRoles.map(v => v.id)), users: [exchange.creator.discord_id] } };
-
     }
 
 }
